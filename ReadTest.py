@@ -12,16 +12,17 @@ shp = 'avalanches0119_endversion.shp'
 # get satellite image
 tif_path = os.path.join(os.path.join(data_folder, tif_folder), tif)
 dataset = gdal.Open(tif_path, gdal.GA_ReadOnly)
+
+offset = (5000,5000) # x, y
+res = (5000, 5000) # x, y
 bands = []
 for band in range(3):
     rb = dataset.GetRasterBand(band+1)
-    bands.append(rb.ReadAsArray(5000, 5000, 5000, 5000))
+    bands.append(rb.ReadAsArray(offset[0], offset[1], res[0], res[1]))
 
 # plot image
 image = np.stack(bands, axis=2)
-# image = (image / image.max())
-plt.imshow(image)
-plt.show()
+image = (image / image.max())
 
 
 # get shapefile in raster format
@@ -38,21 +39,17 @@ mb_v = ogr.Open(shape_path)
 mb_l = mb_v.GetLayer()
 pixel_width = geo_transform[1]
 
-shp_raster = '/tmp/shp_raster.tif'
-target_ds = gdal.GetDriverByName('GTiff').Create(shp_raster, x_res, y_res, 1, gdal.GDT_Byte)
-target_ds.SetGeoTransform((x_min, pixel_width, 0, y_min, 0, pixel_width))
-gdal.RasterizeLayer(target_ds, [1], mb_l)
-target_ds = None
+target_ds = gdal.GetDriverByName('MEM').Create('', res[0], res[1], 1, gdal.GDT_Byte)
+target_ds.SetGeoTransform((x_min+offset[0]*pixel_width, pixel_width, 0, y_min+(-offset[1]+y_res)*pixel_width, 0, -pixel_width))
+err = gdal.RasterizeLayer(target_ds, [1], mb_l, burn_values=[1])
+if err != 0:
+    print('Rasterising error: ', err)
 
-# plot shapefile over satellite image
-raster = gdal.Open(shp_raster, gdal.GA_ReadOnly)
-shp_image = raster.GetRasterBand(1).ReadAsArray()
-image = np.concatenate([image, np.expand_dims(shp_image, axis=2)], axis=2)
-# image /= image.max()
-print('about tot diividie')
-image = np.divide(image, 65535.0)
-print('did divide')
+shp_image = target_ds.ReadAsArray()
+image[:,:,0] += 0.2*shp_image
+image[:,:,1] -= 0.2*shp_image
+image[:,:,2] -= 0.2*shp_image
+
+plt.figure(dpi=500)
 plt.imshow(image)
-
 plt.show()
-print('reached the end')
