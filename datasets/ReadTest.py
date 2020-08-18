@@ -1,8 +1,9 @@
+import glob
 import os.path
 import matplotlib.pyplot as plt
 from osgeo import gdal, ogr
-import data_utils
-import glob
+from utils import data_utils
+
 
 # data_folder = '/media/patrick/Seagate Expansion Drive/SLF_Avaldata/2019'
 data_folder = '/home/patrick/ecovision/data'
@@ -19,9 +20,9 @@ shape_path = os.path.join(data_folder, shp)
 shapefile = ogr.Open(shape_path)
 
 # extract patch into numpy array
-offset = (10000, 10000)  # x, y
+offset = (18000, 0)  # x, y
 res = (5000, 5000)  # x, y
-image = data_utils.getAllBandsAsNumpy(vrt, offset, res, bands=[1,2,3])
+image = data_utils.getAllBandsAsNumpy(vrt, offset, res, bands=[1, 2, 3])
 shp_image = data_utils.getNumpyFromShapefile(shapefile, vrt, offset, res)
 
 # overlay shapefile in red
