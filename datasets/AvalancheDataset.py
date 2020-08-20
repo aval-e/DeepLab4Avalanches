@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset
-from utils.data_utils import getAllBandsAsNumpy, getNumpyFromShapefile
+from utils.data_utils import get_all_bands_as_numpy, get_numpy_from_shapefile
 from osgeo import gdal, ogr
 import os
 import glob
