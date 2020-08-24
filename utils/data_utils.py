@@ -1,5 +1,7 @@
 import numpy as np
 from osgeo import gdal, ogr
+import geopandas as gpd
+from shapely.geometry import Point
 
 
 def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):
@@ -68,7 +70,7 @@ def get_raster_extent(raster):
     """
     Get the spatial extent of the raster in its coordinate frame
     :param raster: gdal raster object
-    :return: ulx, uly, lrx, lry whereby ul is upper left and lr is lower right
+    :return: ulx, uly, lrx, lry whereby ul is upper left and lr is lower right in meters
     """
     ulx, xres, xskew, uly, yskew, yres = raster.GetGeoTransform()
     lrx = ulx + (raster.RasterXSize * xres)
@@ -76,44 +78,37 @@ def get_raster_extent(raster):
     return ulx, uly, lrx, lry
 
 
-def generate_point_grid(extent, step=(1, 1)):
+def generate_point_grid(region, tile_size, overlap=(0, 0)):
     """
-    Generate a a multipoint object of coordinates on a grid from which to sample patches for dataset
+    Generate a geopandas Geoseries object of coordinates within a region
+    corresponding to the top left corner of the corrsponding patch.
 
-    :param extent: (ulx, uly, lrx, lry) as retrieved from get_raster_extent
-    :param step: distance between multipoint (x,y)
-    :return: ogr multipoint geometry object of coordinates
+    The region is expanded before checking whether points are within it such that
+    it is completely covered by the points.
+
+    :param region: shapefile opened with geopandas
+    :param tile_size: size (x,y) that patches will be in meters
+    :param overlap: overlap of tiles in (x,y) in meters
+    :return: geopandas geoseries of coordinates as Points
     """
 
-    ulx, uly, lrx, lry = extent
-    X, Y = np.mgrid[ulx:lrx:step[0], uly:lry:step[1]]
-    coords = np.vstack([X.ravel(), Y.ravel()])
+    bb = region.bounds
+    minx = bb.at[0, 'minx']
+    maxx = bb.at[0, 'maxx']
+    miny = bb.at[0, 'miny']
+    maxy = bb.at[0, 'maxy']
 
-    multipoint = ogr.Geometry(ogr.wkbMultiPoint)
-    for i in range(coords.shape[1]):
-        point = ogr.Geometry(ogr.wkbPoint)
-        point.AddPoint(coords[0, i], coords[1, i])
-        multipoint.AddGeometry(point)
+    spacing = (tile_size[0] - overlap[0], tile_size[1] - overlap[1])
 
-    memDriver = ogr.GetDriverByName('Memory')
+    X, Y = np.mgrid[minx:maxx + spacing[0]:spacing[0], miny:maxy + spacing[1]:spacing[1]]
+    X, Y = X.ravel(), Y.ravel()
+    points = gpd.GeoSeries(map(Point, zip(X, Y)))
 
-    # Create the output shapefile
-    data_source = memDriver.CreateDataSource('memData')
-    out_layer = data_source.CreateLayer("coords", geom_type=ogr.wkbMultiPoint)
+    expanded_region = region.buffer(max(tile_size)/4, join_style=2)
+    mask = points.within(expanded_region.loc[0])
+    points = points.loc[mask]
 
-    # Add an ID field
-    idField = ogr.FieldDefn("id", ogr.OFTInteger)
-    out_layer.CreateField(idField)
+    # translate coordinates such that they are in the top left of the patch
+    points = points.translate(xoff=-tile_size[0] / 2, yoff=tile_size[1] / 2)
 
-    # Create the feature and set values
-    featureDefn = out_layer.GetLayerDefn()
-    feature = ogr.Feature(featureDefn)
-    feature.SetGeometry(multipoint)
-    feature.SetField("id", 1)
-    out_layer.CreateFeature(feature)
-    feature = None
-
-    # Save and close DataSource
-    # data_source = None
-
-    return out_layer
+    return points
