@@ -75,7 +75,8 @@ if __name__ == '__main__':
     data_folder = '/home/patrick/ecovision/data'
     tif_folder = 'Spot6_Ortho_2_3_3_4_5'
     ava_file = 'avalanches0119_endversion.shp'
-    region_file = 'Region_Selection.shp'
+    # region_file = 'Region_Selection.shp'
+    region_file = 'Multiple_regions.shp'
 
     my_dataset = AvalancheDataset(data_folder, [tif_folder], ava_file, region_file)
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=1)

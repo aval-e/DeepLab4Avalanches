@@ -2,6 +2,7 @@ import numpy as np
 from osgeo import gdal, ogr
 import geopandas as gpd
 from shapely.geometry import Point
+import matplotlib.pyplot as plt
 
 
 def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):
@@ -92,21 +93,26 @@ def generate_point_grid(region, tile_size, overlap=(0, 0)):
     :return: geopandas geoseries of coordinates as Points
     """
 
-    bb = region.bounds
-    minx = bb.at[0, 'minx']
-    maxx = bb.at[0, 'maxx']
-    miny = bb.at[0, 'miny']
-    maxy = bb.at[0, 'maxy']
-
     spacing = (tile_size[0] - overlap[0], tile_size[1] - overlap[1])
 
+    # generate uniform grid over the entire extent
+    minx, miny, maxx, maxy = region.total_bounds
     X, Y = np.mgrid[minx:maxx + spacing[0]:spacing[0], miny:maxy + spacing[1]:spacing[1]]
     X, Y = X.ravel(), Y.ravel()
     points = gpd.GeoSeries(map(Point, zip(X, Y)))
 
+    # slightly expand regions and filter out points outside of polygons
     expanded_region = region.buffer(max(tile_size)/4, join_style=2)
     mask = points.within(expanded_region.loc[0])
+    for i in range(1, len(expanded_region)):
+        mask |= points.within(expanded_region.loc[i])
     points = points.loc[mask]
+
+    fig, ax = plt.subplots()
+    expanded_region.plot(ax=ax, color='y')
+    region.plot(ax=ax)
+    points.plot(ax=ax, color='r')
+    plt.show()
 
     # translate coordinates such that they are in the top left of the patch
     points = points.translate(xoff=-tile_size[0] / 2, yoff=tile_size[1] / 2)
