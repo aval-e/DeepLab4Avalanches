@@ -71,6 +71,7 @@ class AvalancheDataset(Dataset):
 
 if __name__ == '__main__':
     # run test
+
     # data_folder = '/media/patrick/Seagate Expansion Drive/SLF_Avaldata/2019'
     data_folder = '/home/patrick/ecovision/data'
     tif_folder = 'Spot6_Ortho_2_3_3_4_5'

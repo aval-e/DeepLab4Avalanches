@@ -108,13 +108,7 @@ def generate_point_grid(region, tile_size, overlap=(0, 0)):
         mask |= points.within(expanded_region.loc[i])
     points = points.loc[mask]
 
-    fig, ax = plt.subplots()
-    expanded_region.plot(ax=ax, color='y')
-    region.plot(ax=ax)
-    points.plot(ax=ax, color='r')
-    plt.show()
-
-    # translate coordinates such that they are in the top left of the patch
+    # shift coordinates such that they are in the top left of each patch
     points = points.translate(xoff=-tile_size[0] / 2, yoff=tile_size[1] / 2)
 
     return points
