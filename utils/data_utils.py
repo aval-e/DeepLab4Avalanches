@@ -2,7 +2,6 @@ import numpy as np
 from osgeo import gdal, ogr
 import geopandas as gpd
 from shapely.geometry import Point
-import matplotlib.pyplot as plt
 
 
 def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):

@@ -1,9 +1,11 @@
+import os
+import glob
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import os
-from utils import data_utils
-import glob
 from osgeo import gdal, ogr
+from random import randint
+from utils import data_utils, viz_utils
+
 
 # data_folder = '/media/patrick/Seagate Expansion Drive/SLF_Avaldata/2019'
 data_folder = '/home/patrick/ecovision/data'
@@ -17,7 +19,7 @@ region = gpd.read_file(os.path.join(data_folder, region_file))
 tile_size = (2000, 2000)  # x, y in meters
 points = data_utils.generate_point_grid(region, tile_size)
 
-coord = points.iloc[5]
+coord = points.iloc[randint(0, len(points)-1)]
 
 fig, ax = plt.subplots()
 region.plot(ax=ax, facecolor='red')
@@ -41,13 +43,11 @@ image = data_utils.get_all_bands_as_numpy(vrt, offset, res, bands=[1, 2, 3])
 # open avalanche shapefile
 ava_path = os.path.join(data_folder, ava_file)
 avalanches = ogr.Open(ava_path)
+avalanches_l = avalanches.GetLayer()
 
-shp_image = data_utils.get_numpy_from_shapefile(avalanches, vrt, offset, res)
+shp_images = []
+for i in range(1,4):
+    avalanches_l.SetAttributeFilter("aval_shape = " + str(i))
+    shp_images.append(data_utils.get_numpy_from_shapefile(avalanches, vrt, offset, res))
 
-# overlay shapefile in red
-image[:, :, 0] += 0.4 * shp_image
-image[:, :, 1] -= 0.4 * shp_image
-image[:, :, 2] -= 0.4 * shp_image
-
-plt.imshow(image)
-plt.show()
+viz_utils.overlay_and_plot_avalanches_by_certainty(image, shp_images)
