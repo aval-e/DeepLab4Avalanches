@@ -65,6 +65,11 @@ class AvalancheDataset(Dataset):
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, offset, self.res)
         shp_image = data_utils.get_numpy_from_shapefile(self.shapes, self.vrt, offset, self.res)
+        image = image[:, :, 0:3]
+
+        if self.transform:
+            image = self.transform(image)
+            shp_image = self.transform(shp_image)
 
         return [image, shp_image]
 
