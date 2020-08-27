@@ -1,12 +1,8 @@
-import os
 import torch
-import torch.nn.functional as F
-from torch.nn import CrossEntropyLoss, L1Loss
+from torch.nn import L1Loss, BCELoss, Sigmoid
 from torchvision.models.segmentation import deeplabv3_resnet50
-from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning import TrainResult
-from torch.utils.data import random_split
 from utils import viz_utils
 
 
@@ -15,7 +11,8 @@ class EasyExperiment(pl.LightningModule):
     def __init__(self):
         super().__init__()
         self.model = deeplabv3_resnet50(num_classes=1)
-        self.loss = L1Loss()
+        self.sigmoid = Sigmoid()
+        self.loss = BCELoss()
 
     def forward(self, x):
         return self.model(x)['out']
@@ -28,7 +25,7 @@ class EasyExperiment(pl.LightningModule):
         x, y = batch
         x = x.float()
         y = y.float()
-        y_hat = self(x)
+        y_hat = self.sigmoid(self(x))
         loss = self.loss(y_hat, y)
 
         result = TrainResult(loss)

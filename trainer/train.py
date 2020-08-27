@@ -6,7 +6,7 @@ from torchvision.transforms import ToTensor
 
 
 # data_folder = '/media/patrick/Seagate Expansion Drive/SLF_Avaldata/2019'
-data_folder = '/home/patrick/ecovision/data'
+data_folder = '/home/patrick/ecovision/data/2019'
 tif_folder = 'Spot6_Ortho_2_3_3_4_5'
 ava_file = 'avalanches0119_endversion.shp'
 region_file = 'Region_Selection.shp'
