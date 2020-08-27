@@ -3,17 +3,17 @@ import torch
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss, L1Loss
 from torchvision.models.segmentation import deeplabv3_resnet50
-from torchvision import transforms
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from pytorch_lightning import TrainResult
 from torch.utils.data import random_split
+from utils import viz_utils
 
 
 class EasyExperiment(pl.LightningModule):
 
     def __init__(self):
         super().__init__()
-
         self.model = deeplabv3_resnet50(num_classes=1)
         self.loss = L1Loss()
 
@@ -30,7 +30,12 @@ class EasyExperiment(pl.LightningModule):
         y = y.float()
         y_hat = self(x)
         loss = self.loss(y_hat, y)
-        return pl.TrainResult(loss)
+
+        result = TrainResult(loss)
+        result.log('train_loss', loss, prog_bar=True)
+        image = viz_utils.viz_training(x, y, y_hat)
+        self.logger.experiment.add_image("Sample", image, self.current_epoch)
+        return result
 
     # def validation_step(self, batch, batch_idx):
     #     x, y = batch

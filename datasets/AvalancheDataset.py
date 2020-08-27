@@ -1,7 +1,6 @@
 import os
 import glob
 import geopandas as gpd
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from osgeo import gdal, ogr
 from utils import data_utils, viz_utils
@@ -64,6 +63,7 @@ class AvalancheDataset(Dataset):
         offset = ((coord.x - self.ulx) / self.pixel_w, (self.uly - coord.y) / self.pixel_w)
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, offset, self.res)
+        shp_image = data_utils.get_numpy_from_shapefile(self.shapes, self.vrt, offset, self.res)
         shp_image = data_utils.get_numpy_from_shapefile(self.shapes, self.vrt, offset, self.res)
         image = image[:, :, 0:3]
 

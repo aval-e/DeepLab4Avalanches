@@ -59,7 +59,7 @@ def get_numpy_from_shapefile(shapefile, ref_raster, offset=(0, 0), res=None):
 
     # rasterise
     shape_l = shapefile.GetLayer()
-    err = gdal.RasterizeLayer(shape_raster, [1], shape_l, burn_values=[1])
+    err = gdal.RasterizeLayer(shape_raster, [1], shape_l, burn_values=[255])
     if err != 0:
         print('Rasterising error: ', err)
 
