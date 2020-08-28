@@ -1,6 +1,6 @@
 import torch
-from torch.nn import L1Loss, BCELoss, Sigmoid
-from torchvision.models.segmentation import deeplabv3_resnet50
+from torch.nn import L1Loss, BCELoss
+from models.deep_lab_v4 import DeepLabv4
 import pytorch_lightning as pl
 from pytorch_lightning import TrainResult
 from utils import viz_utils
@@ -8,14 +8,15 @@ from utils import viz_utils
 
 class EasyExperiment(pl.LightningModule):
 
-    def __init__(self):
+    def __init__(self, hparams):
         super().__init__()
-        self.model = deeplabv3_resnet50(num_classes=1)
-        self.sigmoid = Sigmoid()
+        self.hparams = hparams
+
+        self.model = DeepLabv4()
         self.loss = BCELoss()
 
     def forward(self, x):
-        return self.model(x)['out']
+        return self.model(x)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -25,13 +26,14 @@ class EasyExperiment(pl.LightningModule):
         x, y = batch
         x = x.float()
         y = y.float()
-        y_hat = self.sigmoid(self(x))
+        y_hat = self(x)
         loss = self.loss(y_hat, y)
 
         result = TrainResult(loss)
         result.log('train_loss', loss, prog_bar=True)
-        image = viz_utils.viz_training(x, y, y_hat)
-        self.logger.experiment.add_image("Sample", image, self.current_epoch)
+        if self.global_step % self.hparams.log_save_interval == 0:
+            image = viz_utils.viz_training(x, y, y_hat)
+            self.logger.experiment.add_image("Sample", image, self.global_step)
         return result
 
     # def validation_step(self, batch, batch_idx):

@@ -21,16 +21,17 @@ class AvalancheDataset(Dataset):
     :return pytorch dataset to be used with dataloader
     """
 
-    def __init__(self, root_dir, image_dirs, shape_file, region_file, tile_size=(1000, 1000), overlap=(0, 0),
+    def __init__(self, root_dir, shape_file, region_file, tile_size=(1000, 1000), overlap=(0, 0),
                  transform=None):
         self.tile_size = tile_size
         self.overlap = overlap
         self.transform = transform
 
-        # open satellite images
+        # open satellite images - all tiffs found in root directory
         all_tiffs = []
-        for image_dir in image_dirs:
-            all_tiffs += glob.glob(os.path.join(os.path.join(root_dir, image_dir), '*.TIF'))
+        for dirpath, _, filenames in os.walk(root_dir):
+            for filename in [f for f in filenames if f.endswith(".tif") or f.endswith(".TIF")]:
+                all_tiffs.append(os.path.join(dirpath, filename))
         self.vrt = gdal.BuildVRT('/tmp/myVRT.vrt', all_tiffs)
 
         geo_transform = self.vrt.GetGeoTransform()
@@ -64,8 +65,7 @@ class AvalancheDataset(Dataset):
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, offset, self.res)
         shp_image = data_utils.get_numpy_from_shapefile(self.shapes, self.vrt, offset, self.res)
-        shp_image = data_utils.get_numpy_from_shapefile(self.shapes, self.vrt, offset, self.res)
-        image = image[:, :, 0:3]
+        # image = image[:, :, 0:3]
 
         if self.transform:
             image = self.transform(image)
@@ -79,12 +79,11 @@ if __name__ == '__main__':
 
     # data_folder = '/media/patrick/Seagate Expansion Drive/SLF_Avaldata/2019'
     data_folder = '/home/patrick/ecovision/data/2019'
-    tif_folder = 'Spot6_Ortho_2_3_3_4_5'
     ava_file = 'avalanches0119_endversion.shp'
     # region_file = 'Region_Selection.shp'
     region_file = 'Multiple_regions.shp'
 
-    my_dataset = AvalancheDataset(data_folder, [tif_folder], ava_file, region_file)
+    my_dataset = AvalancheDataset(data_folder, ava_file, region_file)
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=1)
 
     dataiter = iter(dataloader)
