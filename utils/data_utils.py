@@ -24,10 +24,13 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):
     band_list = []
     for band in bands:
         rb = raster.GetRasterBand(band)
-        band_list.append(rb.ReadAsArray(offset[0], offset[1], res[0], res[1]))
+        rb.SetNoDataValue(0)
+        band_list.append(rb.ReadAsArray(offset[0], offset[1], res[0], res[1], buf_type=gdal.GDT_Float32))
 
     image = np.stack(band_list, axis=2)
-    return image / image.max()
+    if image.max() != 0:
+        image /= image.max()
+    return image
 
 
 def get_numpy_from_shapefile(shapefile, ref_raster, offset=(0, 0), res=None):
