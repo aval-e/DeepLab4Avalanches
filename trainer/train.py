@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/scratch/bartonp/AvaMap")
+
 from argparse import ArgumentParser
 from pytorch_lightning import Trainer
 from experiments.easy_experiment import EasyExperiment
@@ -32,12 +35,6 @@ if __name__ == "__main__":
 
     # Trainer args
     parser = Trainer.add_argparse_args(parser)
-    # parser.add_argument('--', type=int, default=1)
     hparams = parser.parse_args()
-
-    # define some here for ease of use where default value is suboptimal
-    hparams.gpus = 1
-    hparams.row_log_interval = 5
-    hparams.log_save_interval = 20
 
     main(hparams)
