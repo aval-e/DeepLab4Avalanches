@@ -2,7 +2,7 @@ import numpy as np
 from osgeo import gdal, ogr
 import geopandas as gpd
 from shapely.geometry import Point
-
+from matplotlib import pyplot as plt
 
 def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):
     """
@@ -114,3 +114,20 @@ def generate_point_grid(region, tile_size, overlap=(0, 0)):
     points = points.translate(xoff=-tile_size[0] / 2, yoff=tile_size[1] / 2)
 
     return points
+
+
+def get_avalanches_in_region(avalanches, region):
+    selection = avalanches.within(region.geometry.loc[0])
+    for i in range(1, len(region)):
+        selection |= avalanches.within(region.geometry.loc[i])
+
+    avalanches = avalanches[selection]
+
+    avalanches.plot()
+    plt.show()
+    print(avalanches)
+    print()
+    print()
+    print(avalanches.iloc[0])
+    return avalanches
+

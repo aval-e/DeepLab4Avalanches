@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from pytorch_lightning import Trainer
 from experiments.easy_experiment import EasyExperiment
-from datasets.avalanche_dataset import AvalancheDataset
+from datasets.avalanche_dataset_grid import AvalancheDataset
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 
