@@ -141,3 +141,5 @@ dmypy.json
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
+
+trainer/run_training.sh

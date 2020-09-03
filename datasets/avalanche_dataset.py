@@ -18,7 +18,8 @@ class AvalancheDataset(Dataset):
     :return pytorch dataset to be used with dataloader
     """
 
-    def __init__(self, root_dir, shape_file, region_file, transform=None):
+    def __init__(self, root_dir, shape_file, region_file, tile_size=(512, 512), transform=None):
+        self.tile_size = tile_size
         self.transform = transform
 
         # open satellite images - all tiffs found in root directory
@@ -34,9 +35,10 @@ class AvalancheDataset(Dataset):
         # get x and y coordinates of upper left corner
         self.ulx, self.uly, _, _ = data_utils.get_raster_extent(self.vrt)
 
-        # get avalanche shapes
+        # get avalanche shapes with geopandas for filtering etc and ogr for rasterising
         shape_path = os.path.join(root_dir, shape_file)
         self.avalanches = gpd.read_file(shape_path)
+        self.avalanches = self.avalanches[self.avalanches.aval_shape == 1]
         self.ogr_aval = ogr.Open(shape_path)
 
         # get sample points within region
@@ -58,12 +60,14 @@ class AvalancheDataset(Dataset):
         # calculate pixel coords, width and height of patch
         offset = ((bbox[0] - self.ulx) / self.pixel_w, (self.uly - bbox[3]) / self.pixel_w)
         res_aval = (ceil((bbox[2] - bbox[0]) / self.pixel_w), ceil((bbox[3] - bbox[1]) / self.pixel_w))
-        # make size a power of 2 and randomly shift avalanche within this patch
-        res = (self._next_pow2(res_aval[0]), self._next_pow2(res_aval[1]))
-        offset = (offset[0] - randint(0,res[0]-res_aval[0]), offset[1] - randint(0,res[1]-res_aval[1]))
+        # # make size a power of 2 and randomly shift avalanche within this patch
+        # res = (self._next_pow2(res_aval[0]), self._next_pow2(res_aval[1]))
+        # offset = (offset[0] - randint(0,res[0]-res_aval[0]), offset[1] - randint(0,res[1]-res_aval[1]))
+        if res_aval[0] < self.tile_size[0] and res_aval[1] < self.tile_size[1]:
+            offset = (offset[0] - randint(0, self.tile_size[0] - res_aval[0]), offset[1] - randint(0, self.tile_size[1] - res_aval[1]))
 
-        image = data_utils.get_all_bands_as_numpy(self.vrt, offset, res)
-        shp_image = data_utils.get_numpy_from_shapefile(self.ogr_aval, self.vrt, offset, res)
+        image = data_utils.get_all_bands_as_numpy(self.vrt, offset, self.tile_size)
+        shp_image = data_utils.get_numpy_from_shapefile(self.ogr_aval, self.vrt, offset, self.tile_size)
 
         if self.transform:
             image = self.transform(image)
