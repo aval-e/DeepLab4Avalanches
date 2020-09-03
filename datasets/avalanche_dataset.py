@@ -3,6 +3,8 @@ import geopandas as gpd
 from torch.utils.data import Dataset, DataLoader
 from osgeo import gdal, ogr
 from utils import data_utils, viz_utils
+from math import log, ceil
+from random import randint
 
 
 class AvalancheDataset(Dataset):
@@ -35,6 +37,7 @@ class AvalancheDataset(Dataset):
         # get avalanche shapes
         shape_path = os.path.join(root_dir, shape_file)
         self.avalanches = gpd.read_file(shape_path)
+        self.ogr_aval = ogr.Open(shape_path)
 
         # get sample points within region
         region = gpd.read_file(os.path.join(root_dir, region_file))
@@ -50,18 +53,27 @@ class AvalancheDataset(Dataset):
         :return: [image, rasterised avalanches] as list
         """
         aval = self.avalanches.iloc[idx]
+        bbox = aval.geometry.bounds
 
-        offset = ((coord.x - self.ulx) / self.pixel_w, (self.uly - coord.y) / self.pixel_w)
+        # calculate pixel coords, width and height of patch
+        offset = ((bbox[0] - self.ulx) / self.pixel_w, (self.uly - bbox[3]) / self.pixel_w)
+        res_aval = (ceil((bbox[2] - bbox[0]) / self.pixel_w), ceil((bbox[3] - bbox[1]) / self.pixel_w))
+        # make size a power of 2 and randomly shift avalanche within this patch
+        res = (self._next_pow2(res_aval[0]), self._next_pow2(res_aval[1]))
+        offset = (offset[0] - randint(0,res[0]-res_aval[0]), offset[1] - randint(0,res[1]-res_aval[1]))
 
-        image = data_utils.get_all_bands_as_numpy(self.vrt, offset, self.res)
-        shp_image = data_utils.get_numpy_from_shapefile(self.avalanches, self.vrt, offset, self.res)
-        # image = image[:, :, 0:3]
+        image = data_utils.get_all_bands_as_numpy(self.vrt, offset, res)
+        shp_image = data_utils.get_numpy_from_shapefile(self.ogr_aval, self.vrt, offset, res)
 
         if self.transform:
             image = self.transform(image)
             shp_image = self.transform(shp_image)
 
         return [image, shp_image]
+
+    def _next_pow2(self, x):
+        """ Return the next higher number that is a power of 2"""
+        return pow(2, ceil(log(x) / log(2)))
 
 
 if __name__ == '__main__':

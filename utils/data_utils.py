@@ -62,7 +62,7 @@ def get_numpy_from_shapefile(shapefile, ref_raster, offset=(0, 0), res=None):
 
     # rasterise
     shape_l = shapefile.GetLayer()
-    err = gdal.RasterizeLayer(shape_raster, [1], shape_l, burn_values=[255])
+    err = gdal.RasterizeLayer(shape_raster, [1], shape_l, burn_values=[1])
     if err != 0:
         print('Rasterising error: ', err)
 
@@ -117,17 +117,12 @@ def generate_point_grid(region, tile_size, overlap=(0, 0)):
 
 
 def get_avalanches_in_region(avalanches, region):
-    selection = avalanches.within(region.geometry.loc[0])
+    """
+    Return geoseries of all avalanches within the region
+    """
+    selection = avalanches.intersects(region.geometry.loc[0])
     for i in range(1, len(region)):
-        selection |= avalanches.within(region.geometry.loc[i])
+        selection |= avalanches.intersects(region.geometry.loc[i])
 
-    avalanches = avalanches[selection]
-
-    avalanches.plot()
-    plt.show()
-    print(avalanches)
-    print()
-    print()
-    print(avalanches.iloc[0])
-    return avalanches
+    return avalanches[selection]
 
