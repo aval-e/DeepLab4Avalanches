@@ -10,4 +10,4 @@ log_save_interval=20
 
 # model hyperparameters
 
-python train.py --train_root_dir $train_root_dir --gpus $gpus --row_log_interval $row_log_interval --log_save_interval $log_save_interval
+python -m trainer.train --train_root_dir $train_root_dir --gpus $gpus --row_log_interval $row_log_interval --log_save_interval $log_save_interval

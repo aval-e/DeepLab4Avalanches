@@ -1,6 +1,3 @@
-import sys
-sys.path.append("/scratch/bartonp/AvaMap")
-
 from argparse import ArgumentParser
 from pytorch_lightning import Trainer
 from experiments.easy_experiment import EasyExperiment
