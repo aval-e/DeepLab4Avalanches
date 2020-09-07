@@ -4,6 +4,7 @@ from models.deep_lab_v4 import DeepLabv4
 import pytorch_lightning as pl
 from pytorch_lightning import TrainResult
 from utils import viz_utils
+from argparse import ArgumentParser
 
 
 class EasyExperiment(pl.LightningModule):
@@ -19,7 +20,7 @@ class EasyExperiment(pl.LightningModule):
         return self.model(x)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -41,3 +42,10 @@ class EasyExperiment(pl.LightningModule):
     #     y_hat = self(x)
     #     val_loss = self.loss(y_hat, y)
     #     return val_loss
+
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        # allows adding model specific args via command line and logging them
+        parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument('--lr', type=float, default=1e-3, help="learning rate of optimisation algorithm")
+        return parser

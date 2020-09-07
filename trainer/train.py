@@ -30,6 +30,9 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
     parser.add_argument('--tile_size', type=tuple, nargs=2, default= (256,256), help='patch size during training in pixels')
 
+    # Model specific args
+    parser = EasyExperiment.add_model_specific_args(parser)
+
     # Trainer args
     parser = Trainer.add_argparse_args(parser)
     hparams = parser.parse_args()

@@ -25,7 +25,7 @@ class AvalancheDataset(Dataset):
         # open satellite images - all tiffs found in root directory
         all_tiffs = []
         for dirpath, _, filenames in os.walk(root_dir):
-            for filename in [f for f in filenames if f.endswith(".tif") or f.endswith(".TIF")]:
+            for filename in [f for f in filenames if f.endswith(('.tif', '.TIF', '.img', '.IMG'))]:
                 all_tiffs.append(os.path.join(dirpath, filename))
         self.vrt = gdal.BuildVRT('/tmp/myVRT.vrt', all_tiffs)
 
