@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# used when running on leonhard cluster
 
 
 # dataset hyperparameters
