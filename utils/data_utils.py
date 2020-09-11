@@ -3,6 +3,10 @@ from osgeo import gdal, ogr
 import geopandas as gpd
 from shapely.geometry import Point
 from matplotlib import pyplot as plt
+import affine
+import rasterio
+import rasterio.features
+
 
 def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):
     """
@@ -33,7 +37,7 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):
     return image
 
 
-def get_numpy_from_shapefile(shapefile, ref_raster, offset=(0, 0), res=None):
+def get_numpy_from_ogr_shapefile(shapefile, ref_raster, offset=(0, 0), res=None):
     """
     Rasterises shapefile and return numpy array. The shapefile should be opened with ogr.
 
@@ -67,6 +71,22 @@ def get_numpy_from_shapefile(shapefile, ref_raster, offset=(0, 0), res=None):
         print('Rasterising error: ', err)
 
     return shape_raster.ReadAsArray()
+
+
+def rasterise_geopandas(dataset, tile_size, offset, burn_val=1):
+    """
+    Rasterise geopandas dataset and return numpy array
+
+    :param dataset: geopandas dataset to be rasterised
+    :param tile_size: size of the output patch
+    :param offset: position of top left corner. Make sure this is in the correct CRS
+    :param burn_val: value to write where there is a shape. Background is zero.
+    """
+    transform = affine.Affine(1.5, 0, offset[0], 0, -1.5, offset[1])
+
+    shapes = ((geom, value) for geom, value in zip(dataset.geometry, len(dataset)*[burn_val]))
+    raster = rasterio.features.rasterize(shapes, tile_size, transform=transform)
+    return raster
 
 
 def get_raster_extent(raster):

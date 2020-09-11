@@ -1,7 +1,7 @@
 import os
 import geopandas as gpd
 from torch.utils.data import Dataset, DataLoader
-from osgeo import gdal, ogr
+from osgeo import gdal
 from utils import data_utils, viz_utils
 from math import log, ceil
 from random import randint
@@ -14,12 +14,14 @@ class AvalancheDataset(Dataset):
     :param root_dir: directory in which all data is located
     :param shape_file: shapefile name located in root_dir of the avalanches
     :param region_file: shapefile containing polygon specifying which area will be considered by the Dataset
+    :param random: whether extracted patches should be shifted randomly or centered on the avalanche
     :param transform: transform to apply to data. Eg. rotation, toTensor, etc.
     :return pytorch dataset to be used with dataloader
     """
 
-    def __init__(self, root_dir, shape_file, region_file, tile_size=(512, 512), transform=None):
+    def __init__(self, root_dir, shape_file, region_file, tile_size=(512, 512), random=True, transform=None):
         self.tile_size = tile_size
+        self.random = random
         self.transform = transform
 
         # open satellite images - all tiffs found in root directory
@@ -39,7 +41,6 @@ class AvalancheDataset(Dataset):
         shape_path = os.path.join(root_dir, shape_file)
         self.avalanches = gpd.read_file(shape_path)
         self.avalanches = self.avalanches[self.avalanches.aval_shape == 1]
-        self.ogr_aval = ogr.Open(shape_path)
 
         # get sample points within region
         region = gpd.read_file(os.path.join(root_dir, region_file))
@@ -58,16 +59,22 @@ class AvalancheDataset(Dataset):
         bbox = aval.geometry.bounds
 
         # calculate pixel coords, width and height of patch
-        offset = ((bbox[0] - self.ulx) / self.pixel_w, (self.uly - bbox[3]) / self.pixel_w)
-        res_aval = (ceil((bbox[2] - bbox[0]) / self.pixel_w), ceil((bbox[3] - bbox[1]) / self.pixel_w))
-        # # make size a power of 2 and randomly shift avalanche within this patch
-        # res = (self._next_pow2(res_aval[0]), self._next_pow2(res_aval[1]))
-        # offset = (offset[0] - randint(0,res[0]-res_aval[0]), offset[1] - randint(0,res[1]-res_aval[1]))
-        if res_aval[0] < self.tile_size[0] and res_aval[1] < self.tile_size[1]:
-            offset = (offset[0] - randint(0, self.tile_size[0] - res_aval[0]), offset[1] - randint(0, self.tile_size[1] - res_aval[1]))
+        offset_px = ((bbox[0] - self.ulx) / self.pixel_w, (self.uly - bbox[3]) / self.pixel_w)
+        res_aval_px = (ceil((bbox[2] - bbox[0]) / self.pixel_w), ceil((bbox[3] - bbox[1]) / self.pixel_w))
+        size_diff = (self.tile_size[0] - res_aval_px[0], self.tile_size[1] - res_aval_px[1])
 
-        image = data_utils.get_all_bands_as_numpy(self.vrt, offset, self.tile_size)
-        shp_image = data_utils.get_numpy_from_shapefile(self.ogr_aval, self.vrt, offset, self.tile_size)
+        # move avalanche to center or augment position around center if random enabled
+        px_offset = (0,0)
+        if self.random:
+            if res_aval_px[0] < self.tile_size[0] and res_aval_px[1] < self.tile_size[1]:
+                px_offset = (randint(0, size_diff[0]), randint(0, size_diff[1]))
+        else:
+            px_offset = (size_diff[0]//2, size_diff[1]//2)
+        offset_px = (offset_px[0] - px_offset[0], offset_px[1] - px_offset[1])
+        offset_gpd = (bbox[0] - px_offset[0] * self.pixel_w, bbox[3] + px_offset[1] * self.pixel_w)
+
+        image = data_utils.get_all_bands_as_numpy(self.vrt, offset_px, self.tile_size)
+        shp_image = data_utils.rasterise_geopandas(self.avalanches, self.tile_size, offset_gpd)
 
         if self.transform:
             image = self.transform(image)
@@ -90,7 +97,7 @@ if __name__ == '__main__':
     region_file = 'Multiple_regions.shp'
 
     my_dataset = AvalancheDataset(data_folder, ava_file, region_file)
-    dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=1)
+    dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=2)
 
     dataiter = iter(dataloader)
     batch = next(dataiter)

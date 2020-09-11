@@ -62,7 +62,7 @@ class AvalancheDatasetGrid(Dataset):
         offset = ((coord.x - self.ulx) / self.pixel_w, (self.uly - coord.y) / self.pixel_w)
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, offset, self.res)
-        shp_image = data_utils.get_numpy_from_shapefile(self.shapes, self.vrt, offset, self.res)
+        shp_image = data_utils.get_numpy_from_ogr_shapefile(self.shapes, self.vrt, offset, self.res)
         # image = image[:, :, 0:3]
 
         if self.transform:
