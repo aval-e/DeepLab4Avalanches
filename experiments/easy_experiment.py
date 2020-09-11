@@ -2,7 +2,7 @@ import torch
 from torch.nn import L1Loss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
 import pytorch_lightning as pl
-from pytorch_lightning import TrainResult
+from pytorch_lightning import TrainResult, EvalResult
 from utils import viz_utils
 from argparse import ArgumentParser
 
@@ -37,11 +37,13 @@ class EasyExperiment(pl.LightningModule):
             self.logger.experiment.add_image("Sample", image, self.global_step)
         return result
 
-    # def validation_step(self, batch, batch_idx):
-    #     x, y = batch
-    #     y_hat = self(x)
-    #     val_loss = self.loss(y_hat, y)
-    #     return val_loss
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        val_loss = self.loss(y_hat, y)
+        result = EvalResult(val_loss)
+        result.log('val_loss', val_loss)
+        return result
 
     @staticmethod
     def add_model_specific_args(parent_parser):
