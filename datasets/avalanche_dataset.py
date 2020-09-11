@@ -37,14 +37,12 @@ class AvalancheDataset(Dataset):
         # get x and y coordinates of upper left corner
         self.ulx, self.uly, _, _ = data_utils.get_raster_extent(self.vrt)
 
-        # get avalanche shapes with geopandas for filtering etc and ogr for rasterising
-        shape_path = os.path.join(root_dir, shape_file)
-        self.avalanches = gpd.read_file(shape_path)
-        self.avalanches = self.avalanches[self.avalanches.aval_shape == 1]
-
-        # get sample points within region
+        # get avalanche shapes with geopandas
         region = gpd.read_file(os.path.join(root_dir, region_file))
-        self.avalanches = data_utils.get_avalanches_in_region(self.avalanches, region)
+        shape_path = os.path.join(root_dir, shape_file)
+        self.all_avalanches = gpd.read_file(shape_path)
+        self.all_avalanches = data_utils.get_avalanches_in_region(self.all_avalanches, region)
+        self.avalanches = self.all_avalanches[self.all_avalanches.aval_shape == 1]
 
     def __len__(self):
         return len(self.avalanches)
@@ -64,27 +62,23 @@ class AvalancheDataset(Dataset):
         size_diff = (self.tile_size[0] - res_aval_px[0], self.tile_size[1] - res_aval_px[1])
 
         # move avalanche to center or augment position around center if random enabled
-        px_offset = (0,0)
+        px_offset = (0, 0)
         if self.random:
             if res_aval_px[0] < self.tile_size[0] and res_aval_px[1] < self.tile_size[1]:
                 px_offset = (randint(0, size_diff[0]), randint(0, size_diff[1]))
         else:
-            px_offset = (size_diff[0]//2, size_diff[1]//2)
+            px_offset = (size_diff[0] // 2, size_diff[1] // 2)
         offset_px = (offset_px[0] - px_offset[0], offset_px[1] - px_offset[1])
         offset_gpd = (bbox[0] - px_offset[0] * self.pixel_w, bbox[3] + px_offset[1] * self.pixel_w)
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, offset_px, self.tile_size)
-        shp_image = data_utils.rasterise_geopandas(self.avalanches, self.tile_size, offset_gpd)
+        shp_image = data_utils.rasterise_geopandas(self.all_avalanches, self.tile_size, offset_gpd)
 
         if self.transform:
             image = self.transform(image)
             shp_image = self.transform(shp_image)
 
         return [image, shp_image]
-
-    def _next_pow2(self, x):
-        """ Return the next higher number that is a power of 2"""
-        return pow(2, ceil(log(x) / log(2)))
 
 
 if __name__ == '__main__':

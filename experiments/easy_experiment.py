@@ -14,7 +14,8 @@ class EasyExperiment(pl.LightningModule):
         self.hparams = hparams
 
         self.model = DeepLabv4()
-        self.loss = BCELoss()
+        self.bce_loss = BCELoss()
+        self.l1 = L1Loss()
 
     def forward(self, x):
         return self.model(x)
@@ -28,10 +29,10 @@ class EasyExperiment(pl.LightningModule):
         x = x.float()
         y = y.float()
         y_hat = self(x)
-        loss = self.loss(y_hat, y)
+        loss = self.bce_loss(y_hat, y)
 
         result = TrainResult(loss)
-        result.log('train_loss', loss, prog_bar=True)
+        result.log('train_loss', loss, on_epoch=True, prog_bar=True, sync_dist=True)
         if self.global_step % self.hparams.log_save_interval == 0:
             image = viz_utils.viz_training(x, y, y_hat)
             self.logger.experiment.add_image("Sample", image, self.global_step)
@@ -40,9 +41,14 @@ class EasyExperiment(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        val_loss = self.loss(y_hat, y)
-        result = EvalResult(val_loss)
-        result.log('val_loss', val_loss)
+        pred = torch.round(y_hat) # rounds probability to 0 or 1
+        bce_loss = self.bce_loss(y_hat, y)
+        l1_loss = self.l1(y_hat, y)
+        pred_loss = self.l1(pred, y)
+        result = EvalResult()
+        result.log('val_bce_loss', bce_loss, sync_dist=True)
+        result.log('val_l1_loss', l1_loss, sync_dist=True)
+        result.log('pred_loss', pred_loss, sync_dist=True)
         return result
 
     @staticmethod
