@@ -13,7 +13,7 @@ class EasyExperiment(pl.LightningModule):
         super().__init__()
         self.hparams = hparams
 
-        self.model = DeepLabv4()
+        self.model = DeepLabv4(in_channels=hparams.in_channels)
         self.bce_loss = BCELoss()
         self.l1 = L1Loss()
 
@@ -26,8 +26,6 @@ class EasyExperiment(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        x = x.float()
-        y = y.float()
         y_hat = self(x)
         loss = self.bce_loss(y_hat, y)
 
@@ -42,9 +40,11 @@ class EasyExperiment(pl.LightningModule):
         x, y = batch
         y_hat = self(x)
         pred = torch.round(y_hat) # rounds probability to 0 or 1
+
         bce_loss = self.bce_loss(y_hat, y)
         l1_loss = self.l1(y_hat, y)
         pred_loss = self.l1(pred, y)
+
         result = EvalResult()
         result.log('val_bce_loss', bce_loss, sync_dist=True)
         result.log('val_l1_loss', l1_loss, sync_dist=True)
@@ -56,4 +56,5 @@ class EasyExperiment(pl.LightningModule):
         # allows adding model specific args via command line and logging them
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument('--lr', type=float, default=1e-3, help="learning rate of optimisation algorithm")
+        parser.add_argument('--in_channels', type=int, default=4, help="no. of input channels to network")
         return parser

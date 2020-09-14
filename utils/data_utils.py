@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from osgeo import gdal, ogr
 import geopandas as gpd
@@ -8,7 +9,23 @@ import rasterio
 import rasterio.features
 
 
-def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):
+def list_paths_in_dir(root_dir, file_endings=None):
+    """
+    Get a list of paths to files within a directory and subdirectories
+
+    :param root_dir: directory to search
+    :param file_endings: list of file endings to consider. Default is all
+    """
+    files = []
+    for dirpath, _, filenames in os.walk(root_dir):
+        if file_endings:
+            filenames = [f for f in filenames if f.endswith(file_endings)]
+        for filename in filenames:
+            files.append(os.path.join(dirpath, filename))
+    return files
+
+
+def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, normalise=False):
     """
     Fetches bands from a raster, stacks them and returns normalised numpy array.
 
@@ -16,6 +33,7 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):
     :param offset: offset tuple (x,y) in pixels from top left corner
     :param res: output size (x,y) in pixels (crops input). Default is to use the whole raster.
     :param bands: list of bands to extract. Default is all.
+    :param normalise: bool whether to normalise array or not
     :return: normalised numpy array
      """
 
@@ -32,7 +50,7 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None):
         band_list.append(rb.ReadAsArray(offset[0], offset[1], res[0], res[1], buf_type=gdal.GDT_Float32))
 
     image = np.stack(band_list, axis=2)
-    if image.max() != 0:
+    if normalise and image.max() != 0:
         image /= image.max()
     return image
 
@@ -66,7 +84,7 @@ def get_numpy_from_ogr_shapefile(shapefile, ref_raster, offset=(0, 0), res=None)
 
     # rasterise
     shape_l = shapefile.GetLayer()
-    err = gdal.RasterizeLayer(shape_raster, [1], shape_l, burn_values=[255])
+    err = gdal.RasterizeLayer(shape_raster, [1], shape_l, burn_values=[1])
     if err != 0:
         print('Rasterising error: ', err)
 
@@ -85,7 +103,7 @@ def rasterise_geopandas(dataset, tile_size, offset, burn_val=1):
     transform = affine.Affine(1.5, 0, offset[0], 0, -1.5, offset[1])
 
     shapes = ((geom, value) for geom, value in zip(dataset.geometry, len(dataset)*[burn_val]))
-    raster = rasterio.features.rasterize(shapes, tile_size, transform=transform)
+    raster = rasterio.features.rasterize(shapes, tile_size, transform=transform, dtype=np.single)
     return raster
 
 
