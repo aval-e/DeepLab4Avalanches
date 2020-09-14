@@ -14,6 +14,7 @@ def main(hparams):
                                  dem_dir=hparams.dem_dir,
                                  random=True,
                                  tile_size=hparams.tile_size,
+                                 certainty=hparams.aval_certainty,
                                  transform=ToTensor(),
                                  )
 
@@ -24,6 +25,7 @@ def main(hparams):
                                dem_dir=hparams.dem_dir,
                                random=False,
                                tile_size=hparams.tile_size,
+                               certainty=hparams.aval_certainty,
                                transform=ToTensor(),
                                )
 
@@ -62,6 +64,8 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
     parser.add_argument('--tile_size', type=tuple, nargs=2, default=(256, 256),
                         help='patch size during training in pixels')
+    parser.add_argument('--aval_certainty', type=int, default=None,
+                        help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
 
     # Model specific args
     parser = EasyExperiment.add_model_specific_args(parser)

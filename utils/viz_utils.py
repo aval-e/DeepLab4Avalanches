@@ -10,8 +10,13 @@ def viz_sample(sample):
     i[:, :, 0] += 0.4 * aval
     i[:, :, 1] -= 0.4 * aval
     i[:, :, 2] -= 0.4 * aval
-
     plt.imshow(i)
+    plt.show()
+
+    # also plot DEM if available
+    if (image.shape[2] == 5):
+        dem = image[:, :, 4]
+    plt.imshow(dem)
     plt.show()
 
 
@@ -42,23 +47,30 @@ def overlay_and_plot_avalanches_by_certainty(image, aval_images):
     plt.show()
 
 
-def viz_training(x, y, y_hat):
+def viz_training(x, y, y_hat, pred=None):
     """
     Show input, ground truth and prediction next to each other.
 
     All arguments are torch tensors with [B,C,H,W]
     :param x: satellite image
     :param y: ground truth
-    :param y_hat: prediction
+    :param y_hat: probability output
+    :param pred: predicition - y_hat rounded to zero or one
     :return: image grid of comparisons for all samples in batch
     """
     with torch.no_grad():
-        x_only = x[:,0:3,:,:]
+        x_only = x[:, 0:3, :, :]
         y_over = overlay_avalanches(x_only, y)
         y_hat_over = overlay_avalanches(x_only, y_hat)
-        image_array = torch.cat([x_only, y_over, y_hat_over], dim=0)
+        if pred is not None:
+            pred_over = overlay_avalanches(x_only, pred)
+            image_list = [x_only, y_over, pred_over, y_hat_over]
+        else:
+            image_list = [x_only, y_over, y_hat_over]
+
+        image_array = torch.cat(image_list, dim=0)
         image = make_grid(image_array, nrow=x.shape[0])
-    return image.clamp(0,1)
+    return image.clamp(0, 1)
 
 
 def overlay_avalanches(image, aval_image):
@@ -75,7 +87,7 @@ def overlay_avalanches(image, aval_image):
     if torch.is_tensor(image):
         with torch.no_grad():
             if image.dim() == 3:
-                i = image[0:3,:,:].clone()
+                i = image[0:3, :, :].clone()
                 i[0:1, :, :] += 0.4 * aval_image
                 i[1:2, :, :] -= 0.4 * aval_image
                 i[2:3, :, :] -= 0.4 * aval_image
