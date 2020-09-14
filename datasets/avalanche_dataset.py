@@ -14,10 +14,9 @@ class AvalancheDataset(Dataset):
     SLF Avalanche Dataset. Samples are taken from avalanches within specified region
 
     :param root_dir: directory in which all data is located
-    :param image_dir: directory containing satellite images
     :param aval_file: shapefile name located in root_dir of the avalanches
     :param region_file: shapefile containing polygon specifying which area will be considered by the Dataset
-    :param dem_dir: dir in root directory of digital elevation model if it is to be used. Default: None
+    :param dem_path: file path of digital elevation model if it is to be used. Default: None
     :param tile_size: patch size to use for training
     :param certainty: Which avalanches to consider. Default: all, 1: exact, 2: estimated, 3: guessed
     :param random: whether extracted patches should be shifted randomly or centered on the avalanche
@@ -25,14 +24,14 @@ class AvalancheDataset(Dataset):
     :return pytorch dataset to be used with dataloader
     """
 
-    def __init__(self, root_dir, image_dir, aval_file, region_file, dem_dir=None, tile_size=(512, 512), certainty=None,
+    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), certainty=None,
                  random=True, transform=None):
         self.tile_size = tile_size
         self.random = random
         self.transform = transform
 
         # open satellite images - all tiffs found in root directory
-        all_tiffs = data_utils.list_paths_in_dir(os.path.join(root_dir, image_dir), ('.tif', '.TIF', '.img', '.IMG'))
+        all_tiffs = data_utils.list_paths_in_dir(root_dir, ('.tif', '.TIF', '.img', '.IMG'))
         self.vrt = gdal.BuildVRT('', all_tiffs)
 
         geo_transform = self.vrt.GetGeoTransform()
@@ -52,9 +51,8 @@ class AvalancheDataset(Dataset):
 
         # get DEM if specified
         self.dem = None
-        if dem_dir:
-            dem_tiffs = data_utils.list_paths_in_dir(os.path.join(root_dir, dem_dir), ('.tif', '.TIF', '.img', '.IMG'))
-            self.dem = gdal.BuildVRT('', dem_tiffs)
+        if dem_path:
+            self.dem = gdal.Open(dem_path)
             self.dem_ulx, self.dem_uly, _, _ = data_utils.get_raster_extent(self.dem)
 
     def __len__(self):
@@ -111,7 +109,7 @@ if __name__ == '__main__':
     # region_file = 'Region_Selection.shp'
     region_file = 'Multiple_regions.shp'
 
-    my_dataset = AvalancheDataset(data_folder, image_folder, ava_file, region_file, dem_dir=image_folder)
+    my_dataset = AvalancheDataset(data_folder, image_folder, ava_file, region_file, dem_path=image_folder)
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=2)
 
     dataiter = iter(dataloader)
