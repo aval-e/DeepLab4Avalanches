@@ -5,10 +5,10 @@
 train_root_dir="/home/pf/pfstud/bartonp/slf_avalanches/2018"
 train_ava_file="avalanches0118_endversion.shp"
 train_region_file="Train_area_2018.shp"
-val_root_dir=train_root_dir
-val_ava_file=train_ava_file
+val_root_dir="$train_root_dir"
+val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
-dem_dir='' # '/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
+dem_dir="" # '/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 tile_size="256 256"
 aval_certainty=1
 
@@ -34,7 +34,7 @@ python -m trainer.train \
 --val_root_dir $val_root_dir \
 --val_ava_file $val_ava_file \
 --val_region_file $val_region_file \
---dem_dir $dem_dir \
+--dem_dir "$dem_dir" \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \
 --seed $seed \
@@ -48,3 +48,5 @@ python -m trainer.train \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \
 --val_viz_idx $val_viz_idx \
+--limit_train_batches 0.1 \
+--limit_val_batches 0.1 \

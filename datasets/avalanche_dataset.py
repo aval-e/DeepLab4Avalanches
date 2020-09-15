@@ -46,13 +46,15 @@ class AvalancheDataset(Dataset):
         self.all_avalanches = gpd.read_file(aval_path)
         self.all_avalanches = data_utils.get_avalanches_in_region(self.all_avalanches, region)
         self.avalanches = self.all_avalanches
+
         if certainty:
-            self.avalanches = self.all_avalanches[self.all_avalanches.aval_shape <= 1]
+            self.avalanches = self.all_avalanches[self.all_avalanches.aval_shape <= certainty]
 
         # get DEM if specified
         self.dem = None
         if dem_path:
-            self.dem = gdal.Open(dem_path)
+            # read DEM through vrt because of errors when using multiple workers without vrt
+            self.dem = gdal.BuildVRT('', dem_path)
             self.dem_ulx, self.dem_uly, _, _ = data_utils.get_raster_extent(self.dem)
 
     def __len__(self):
@@ -102,14 +104,18 @@ class AvalancheDataset(Dataset):
 if __name__ == '__main__':
     # run test
 
-    # data_folder = '/media/patrick/Seagate Expansion Drive/SLF_Avaldata/2019'
-    data_folder = '/home/patrick/ecovision/data/2019'
-    image_folder = 'Spot6_Ortho_2_3_3_4_5'
-    ava_file = 'avalanches0119_endversion.shp'
-    # region_file = 'Region_Selection.shp'
-    region_file = 'Multiple_regions.shp'
+    # home
+    # data_folder = '/home/patrick/ecovision/data/2019'
+    # ava_file = 'avalanches0119_endversion.shp'
+    # region_file = 'Multiple_regions.shp'
 
-    my_dataset = AvalancheDataset(data_folder, image_folder, ava_file, region_file, dem_path=image_folder)
+    # pfpc
+    data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
+    ava_file = 'avalanches0118_endversion.shp'
+    region_file = 'Val_area_2018.shp'
+    dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
+
+    my_dataset = AvalancheDataset(data_folder, ava_file, region_file, dem_path=dem_path)
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=2)
 
     dataiter = iter(dataloader)

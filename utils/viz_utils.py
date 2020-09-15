@@ -16,8 +16,8 @@ def viz_sample(sample):
     # also plot DEM if available
     if (image.shape[2] == 5):
         dem = image[:, :, 4]
-    plt.imshow(dem)
-    plt.show()
+        plt.imshow(dem)
+        plt.show()
 
 
 def overlay_and_plot_avalanches_by_certainty(image, aval_images):

@@ -29,10 +29,11 @@ def main(hparams):
                                transform=ToTensor(),
                                )
 
-    train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=2, drop_last=True)
-    val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=2, drop_last=False)
+    train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=8, drop_last=True, pin_memory=True)
+    val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=8, drop_last=False, pin_memory=True)
 
     model = EasyExperiment(hparams)
+
     trainer = Trainer.from_argparse_args(hparams)
 
     trainer.fit(model, train_loader, val_loader)
@@ -58,7 +59,7 @@ if __name__ == "__main__":
                         help='directory of the DEM within root_dir')
 
     parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
-    parser.add_argument('--tile_size', type=tuple, nargs=2, default=(256, 256),
+    parser.add_argument('--tile_size', type=int, nargs=2, default=[256, 256],
                         help='patch size during training in pixels')
     parser.add_argument('--aval_certainty', type=int, default=None,
                         help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
