@@ -48,5 +48,6 @@ python -m trainer.train \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \
 --val_viz_idx $val_viz_idx \
---limit_train_batches 0.1 \
---limit_val_batches 0.1 \
+--limit_train_batches 20 \
+--limit_val_batches 5 \
+--profiler True \

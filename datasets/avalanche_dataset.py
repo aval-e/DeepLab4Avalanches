@@ -30,8 +30,11 @@ class AvalancheDataset(Dataset):
         self.random = random
         self.transform = transform
 
+        aval_raster_path = os.path.join(root_dir, os.path.splitext(aval_file)[0] + '.tif')
+
         # open satellite images - all tiffs found in root directory
         all_tiffs = data_utils.list_paths_in_dir(root_dir, ('.tif', '.TIF', '.img', '.IMG'))
+        all_tiffs.remove(aval_raster_path)
         self.vrt = gdal.BuildVRT('', all_tiffs)
 
         geo_transform = self.vrt.GetGeoTransform()
@@ -43,12 +46,15 @@ class AvalancheDataset(Dataset):
         # get avalanche shapes with geopandas
         region = gpd.read_file(os.path.join(root_dir, region_file))
         aval_path = os.path.join(root_dir, aval_file)
-        self.all_avalanches = gpd.read_file(aval_path)
-        self.all_avalanches = data_utils.get_avalanches_in_region(self.all_avalanches, region)
-        self.avalanches = self.all_avalanches
+        self.avalanches = gpd.read_file(aval_path)
+        self.avalanches = data_utils.get_avalanches_in_region(self.avalanches, region)
+
+        # get rasterised avalanches
+        self.aval_raster = gdal.BuildVRT('', aval_raster_path)
+        self.aval_ulx, self.aval_uly, _, _ = data_utils.get_raster_extent(self.aval_raster)
 
         if certainty:
-            self.avalanches = self.all_avalanches[self.all_avalanches.aval_shape <= certainty]
+            self.avalanches = self.avalanches[self.avalanches.aval_shape <= certainty]
 
         # get DEM if specified
         self.dem = None
@@ -83,9 +89,11 @@ class AvalancheDataset(Dataset):
         vrt_offset = ((bbox[0] - self.ulx) / self.pixel_w, (self.uly - bbox[3]) / self.pixel_w)
         vrt_offset = (vrt_offset[0] - px_offset[0], vrt_offset[1] - px_offset[1])
         offset_gpd = (bbox[0] - px_offset[0] * self.pixel_w, bbox[3] + px_offset[1] * self.pixel_w)
+        aval_offset = ((bbox[0] - self.aval_ulx) / self.pixel_w, (self.aval_uly - bbox[3]) / self.pixel_w)
+        aval_offset = (aval_offset[0] - px_offset[0], aval_offset[1] - px_offset[1])
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size, normalise=True)
-        shp_image = data_utils.rasterise_geopandas(self.all_avalanches, self.tile_size, offset_gpd)
+        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size, normalise=False)
 
         if self.dem:
             dem_offset = ((bbox[0] - self.dem_ulx) / self.pixel_w, (self.dem_uly - bbox[3]) / self.pixel_w)
