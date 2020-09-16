@@ -48,6 +48,7 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, normalis
         rb = raster.GetRasterBand(band)
         rb.SetNoDataValue(0)
         band_list.append(rb.ReadAsArray(offset[0], offset[1], res[0], res[1], buf_type=gdal.GDT_Float32))
+        rb = None
 
     image = np.stack(band_list, axis=2)
 
