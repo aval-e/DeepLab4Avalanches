@@ -46,17 +46,17 @@ class EasyExperiment(pl.LightningModule):
         bce_loss = self.bce_loss(y_hat, y)
         l1_loss = self.l1(y_hat, y)
         pred_loss = self.l1(pred, y)
-        precision, recall = precision_recall(y_hat, y, 2)
-        f1 = f1_score(y_hat, y, 2)
+        precision, recall = precision_recall(pred, y, 1)
+        f1 = f1_score(pred, y, 1)
 
         # Logging
-        result = EvalResult()
+        result = EvalResult(checkpoint_on=bce_loss)
         result.log('val_bce_loss', bce_loss, sync_dist=True)
         result.log('val_l1_loss', l1_loss, sync_dist=True)
         result.log('val_pred_loss', pred_loss, sync_dist=True)
-        result.log('Precision', precision, sync_dist=True)
-        result.log('Recall', recall, sync_dist=True)
-        result.log('F1 Score', f1, sync_dist=True)
+        result.log('precision', precision, sync_dist=True)
+        result.log('recall', recall, sync_dist=True)
+        result.log('f1 Score', f1, sync_dist=True)
         if batch_idx == self.hparams.val_viz_idx:
             image = viz_utils.viz_training(x, y, y_hat, pred)
             self.logger.experiment.add_image("Validation Sample", image, self.global_step)
