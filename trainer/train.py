@@ -29,8 +29,8 @@ def main(hparams):
                                transform=ToTensor(),
                                )
 
-    train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=8, drop_last=True, pin_memory=True)
-    val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=8, drop_last=False, pin_memory=True)
+    train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=hparams.num_workers, drop_last=True, pin_memory=True)
+    val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers, drop_last=False, pin_memory=True)
 
     model = EasyExperiment(hparams)
 
@@ -63,6 +63,7 @@ if __name__ == "__main__":
                         help='patch size during training in pixels')
     parser.add_argument('--aval_certainty', type=int, default=None,
                         help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
+    parser.add_argument('--num_workers', type=int, default=4, help='no. of workers each dataloader uses')
 
     # Model specific args
     parser = EasyExperiment.add_model_specific_args(parser)

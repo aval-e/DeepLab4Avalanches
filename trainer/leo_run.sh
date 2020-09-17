@@ -22,12 +22,13 @@ val_region_file="Val_area_2018.shp"
 dem_dir="" # '/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 tile_size="256 256"
 aval_certainty=1
+num_workers=2
 
 # Training hyperparameters
 seed=42
 deterministic=False
 gpus=1
-batch_size=2
+batch_size=8
 max_epochs=10
 row_log_interval=5
 log_save_interval=50
@@ -38,7 +39,7 @@ default_root_dir="/cluster/scratch/bartonp"
 # Model hyperparameters
 lr=1e-4
 in_channels=4
-train_viz_interval=100
+train_viz_interval=400
 val_viz_idx=1
 
 python -m trainer.train \
@@ -51,6 +52,7 @@ python -m trainer.train \
 --dem_dir "$dem_dir" \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \
+--num_workers $num_workers \
 --seed $seed \
 --deterministic $deterministic \
 --gpus $gpus \
