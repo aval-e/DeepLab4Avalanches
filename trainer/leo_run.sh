@@ -8,7 +8,9 @@ export PYTHONPATH=$PWD
 #BSUB -n 8
 #BSUB -W 200
 #BSUB -R "rusage[ngpus_excl_p=1]"
-#BSUB -R "rusage[mem=4096]"
+#BSUB -R "rusage[mem=16384]"
+# #BSUB -o "8_workers_4batches"
+
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -29,7 +31,7 @@ batch_size=2
 max_epochs=10
 row_log_interval=5
 log_save_interval=50
-distributed_backend=None
+distributed_backend="ddp"
 default_root_dir="/cluster/scratch/bartonp"
 
 
