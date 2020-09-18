@@ -33,14 +33,12 @@ def main(hparams):
                                    transform=ToTensor(),
                                    )
 
-<<<<<<< HEAD
     train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=8, drop_last=True,
                               pin_memory=True)
     val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=8, drop_last=False,
                             pin_memory=True)
     geo_val_loader = DataLoader(geo_val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=8,
                                 drop_last=False, pin_memory=True)
->>>>>>> 1f27bfa2d4fd6f2b9796a57140e8ed7d2605ec14
 
     model = EasyExperiment(hparams)
 
