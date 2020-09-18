@@ -18,25 +18,35 @@ def main(hparams):
                                  certainty=hparams.aval_certainty,
                                  transform=ToTensor(),
                                  )
+    train_size = int(hparams.train_val_split * len(train_set))
+    test_size = len(train_set) - train_size
+    train_set, val_set = random_split(train_set, [train_size, test_size])
 
-    val_set = AvalancheDataset(hparams.val_root_dir,
-                               hparams.val_ava_file,
-                               hparams.val_region_file,
-                               dem_path=hparams.dem_dir,
-                               random=False,
-                               tile_size=hparams.tile_size,
-                               certainty=hparams.aval_certainty,
-                               transform=ToTensor(),
-                               )
+    # Geographic validation set - different geographic area
+    geo_val_set = AvalancheDataset(hparams.val_root_dir,
+                                   hparams.val_ava_file,
+                                   hparams.val_region_file,
+                                   dem_path=hparams.dem_dir,
+                                   random=False,
+                                   tile_size=hparams.tile_size,
+                                   certainty=hparams.aval_certainty,
+                                   transform=ToTensor(),
+                                   )
 
-    train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=hparams.num_workers, drop_last=True, pin_memory=True)
-    val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers, drop_last=False, pin_memory=True)
+<<<<<<< HEAD
+    train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=8, drop_last=True,
+                              pin_memory=True)
+    val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=8, drop_last=False,
+                            pin_memory=True)
+    geo_val_loader = DataLoader(geo_val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=8,
+                                drop_last=False, pin_memory=True)
+>>>>>>> 1f27bfa2d4fd6f2b9796a57140e8ed7d2605ec14
 
     model = EasyExperiment(hparams)
 
     trainer = Trainer.from_argparse_args(hparams)
 
-    trainer.fit(model, train_loader, val_loader)
+    trainer.fit(model, train_loader, [val_loader, geo_val_loader])
 
 
 if __name__ == "__main__":
@@ -57,6 +67,8 @@ if __name__ == "__main__":
                         help='File name of shapefile in root directory defining validation area')
     parser.add_argument('--dem_dir', type=str, default=None,
                         help='directory of the DEM within root_dir')
+    parser.add_argument('--train_val_split', type=float, default=0.95,
+                        help='fraction of data from training area to be used for validation in the range 0-1')
 
     parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
     parser.add_argument('--tile_size', type=int, nargs=2, default=[256, 256],
