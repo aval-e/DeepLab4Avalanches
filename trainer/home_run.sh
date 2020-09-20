@@ -18,6 +18,8 @@ limit_val_batches=10
 lr=1e-4
 
 python -m trainer.train \
+--date "$(date +"%d.%m.%y")" \
+--time "$(date +"%T")" \
 --train_root_dir $train_root_dir \
 --aval_certainty $aval_certainty \
 --seed $seed \

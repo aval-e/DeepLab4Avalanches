@@ -33,11 +33,11 @@ def main(hparams):
                                    transform=ToTensor(),
                                    )
 
-    train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=8, drop_last=True,
+    train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=hparams.num_workers, drop_last=True,
                               pin_memory=True)
-    val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=8, drop_last=False,
+    val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers, drop_last=False,
                             pin_memory=True)
-    geo_val_loader = DataLoader(geo_val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=8,
+    geo_val_loader = DataLoader(geo_val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
                                 drop_last=False, pin_memory=True)
 
     model = EasyExperiment(hparams)
@@ -80,6 +80,8 @@ if __name__ == "__main__":
 
     # Trainer args
     parser.add_argument('--seed', type=int, default=42, help='seed to init all random generators for reproducibility')
+    parser.add_argument('--date', type=str, default='None', help='date when experiment was run')
+    parser.add_argument('--time', type=str, default='None', help='time when experiment was run')
     parser = Trainer.add_argparse_args(parser)
     hparams = parser.parse_args()
 

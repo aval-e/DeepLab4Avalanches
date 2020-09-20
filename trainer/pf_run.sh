@@ -28,6 +28,8 @@ train_viz_interval=100
 val_viz_idx=1
 
 python -m trainer.train \
+--date "$(date +"%d.%m.%y")" \
+--time "$(date +"%T")" \
 --train_root_dir $train_root_dir \
 --train_ava_file $train_ava_file \
 --train_region_file $train_region_file \

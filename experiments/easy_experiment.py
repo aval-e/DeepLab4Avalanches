@@ -1,5 +1,5 @@
 import torch
-from torch.nn import L1Loss, BCELoss
+from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
 import pytorch_lightning as pl
 from pytorch_lightning import TrainResult, EvalResult
@@ -17,6 +17,7 @@ class EasyExperiment(pl.LightningModule):
         self.model = DeepLabv4(in_channels=hparams.in_channels)
         self.bce_loss = BCELoss()
         self.l1 = L1Loss()
+        self.mse = MSELoss()
 
     def forward(self, x):
         return self.model(x)
@@ -44,21 +45,29 @@ class EasyExperiment(pl.LightningModule):
         pred = torch.round(y_hat) # rounds probability to 0 or 1
 
         bce_loss = self.bce_loss(y_hat, y)
-        l1_loss = self.l1(y_hat, y)
+        l2_loss = self.mse(y_hat, y)
         pred_loss = self.l1(pred, y)
         precision, recall, f1 = get_precision_recall_f1(y, pred)
 
         # Logging
         result = EvalResult(checkpoint_on=bce_loss)
-        result.log('val_bce_loss', bce_loss, sync_dist=True)
-        result.log('val_l1_loss', l1_loss, sync_dist=True)
-        result.log('val_pred_loss', pred_loss, sync_dist=True)
-        result.log('precision', precision, sync_dist=True)
-        result.log('recall', recall, sync_dist=True)
-        result.log('f1 Score', f1, sync_dist=True)
-        if batch_idx == self.hparams.val_viz_idx:
-            image = viz_utils.viz_training(x, y, y_hat, pred)
-            self.logger.experiment.add_image("Validation Sample", image, self.global_step)
+        if (val_set_no == 0):
+            result.log('val bce loss', bce_loss, sync_dist=True)
+            result.log('val l2 loss', l2_loss, sync_dist=True)
+            result.log('val pred loss', pred_loss, sync_dist=True)
+            result.log('precision', precision, sync_dist=True)
+            result.log('recall', recall, sync_dist=True)
+            result.log('f1 Score', f1, sync_dist=True)
+        else:
+            result.log('geo val bce loss', bce_loss, sync_dist=True)
+            result.log('geo val l2 loss', l2_loss, sync_dist=True)
+            result.log('geo val pred loss', pred_loss, sync_dist=True)
+            result.log('geo precision', precision, sync_dist=True)
+            result.log('geo recall', recall, sync_dist=True)
+            result.log('geo f1 Score', f1, sync_dist=True)
+            if batch_idx == self.hparams.val_viz_idx:
+                image = viz_utils.viz_training(x, y, y_hat, pred)
+                self.logger.experiment.add_image("Validation Sample", image, self.global_step)
         return result
 
     @staticmethod

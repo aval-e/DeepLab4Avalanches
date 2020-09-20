@@ -22,7 +22,7 @@ val_region_file="Val_area_2018.shp"
 dem_dir="" #"/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif"
 tile_size="256 256"
 aval_certainty=1
-num_workers=4
+num_workers=2
 
 # Training hyperparameters
 seed=42
@@ -43,6 +43,8 @@ train_viz_interval=400
 val_viz_idx=4
 
 python -m trainer.train \
+--date "$(date +"%d.%m.%y")" \
+--time "$(date +"%T")" \
 --train_root_dir $train_root_dir \
 --train_ava_file $train_ava_file \
 --train_region_file $train_region_file \
