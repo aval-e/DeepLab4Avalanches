@@ -11,6 +11,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
+exp_name="my_experiment"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -33,7 +34,7 @@ max_epochs=10
 row_log_interval=50
 log_save_interval=100
 distributed_backend="ddp"
-default_root_dir="/cluster/scratch/bartonp"
+log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 
 # Model hyperparameters
@@ -43,6 +44,7 @@ train_viz_interval=400
 val_viz_idx=4
 
 python -m trainer.train \
+--exp_name $exp_name \
 --date "$(date +"%d.%m.%y")" \
 --time "$(date +"%T")" \
 --train_root_dir $train_root_dir \
@@ -63,7 +65,7 @@ python -m trainer.train \
 --row_log_interval $row_log_interval \
 --log_save_interval $log_save_interval \
 --distributed_backend $distributed_backend \
---default_root_dir $default_root_dir \
+--log_dir $log_dir \
 --lr $lr \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \

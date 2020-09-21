@@ -1,5 +1,7 @@
+import os
 from argparse import ArgumentParser
 from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.loggers import TensorBoardLogger
 from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset import AvalancheDataset
 from torch.utils.data import DataLoader, random_split
@@ -41,8 +43,8 @@ def main(hparams):
                                 drop_last=False, pin_memory=True)
 
     model = EasyExperiment(hparams)
-
-    trainer = Trainer.from_argparse_args(hparams)
+    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
+    trainer = Trainer.from_argparse_args(hparams, logger=mylogger)
 
     trainer.fit(model, train_loader, [val_loader, geo_val_loader])
 
@@ -50,7 +52,22 @@ def main(hparams):
 if __name__ == "__main__":
     parser = ArgumentParser(description='train avalanche mapping network')
 
+    # Trainer args
+    parser.add_argument('--date', type=str, default='None', help='date when experiment was run')
+    parser.add_argument('--time', type=str, default='None', help='time when experiment was run')
+    parser.add_argument('--exp_name', type=str, default="default", help='experiment name')
+    parser.add_argument('--seed', type=int, default=42, help='seed to init all random generators for reproducibility')
+    parser.add_argument('--log_dir', type=str, default=os.getcwd(), help='directory to store logs and checkpoints')
+
     # Dataset Args
+    parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
+    parser.add_argument('--tile_size', type=int, nargs=2, default=[256, 256],
+                        help='patch size during training in pixels')
+    parser.add_argument('--aval_certainty', type=int, default=None,
+                        help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
+    parser.add_argument('--num_workers', type=int, default=4, help='no. of workers each dataloader uses')
+
+    # Dataset paths
     parser.add_argument('--train_root_dir', type=str, default='/home/patrick/ecovision/data/2018',
                         help='root directory of the training set')
     parser.add_argument('--train_ava_file', type=str, default='avalanches0118_endversion.shp',
@@ -68,20 +85,9 @@ if __name__ == "__main__":
     parser.add_argument('--train_val_split', type=float, default=0.95,
                         help='fraction of data from training area to be used for validation in the range 0-1')
 
-    parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
-    parser.add_argument('--tile_size', type=int, nargs=2, default=[256, 256],
-                        help='patch size during training in pixels')
-    parser.add_argument('--aval_certainty', type=int, default=None,
-                        help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
-    parser.add_argument('--num_workers', type=int, default=4, help='no. of workers each dataloader uses')
-
     # Model specific args
     parser = EasyExperiment.add_model_specific_args(parser)
 
-    # Trainer args
-    parser.add_argument('--seed', type=int, default=42, help='seed to init all random generators for reproducibility')
-    parser.add_argument('--date', type=str, default='None', help='date when experiment was run')
-    parser.add_argument('--time', type=str, default='None', help='time when experiment was run')
     parser = Trainer.add_argparse_args(parser)
     hparams = parser.parse_args()
 

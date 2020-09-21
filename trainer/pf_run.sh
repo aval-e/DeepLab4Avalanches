@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+exp_name="my_experiment"
 
 # Dataset hyperparameters
 train_root_dir="/home/pf/pfstud/bartonp/slf_avalanches/2018"
@@ -19,15 +20,16 @@ batch_size=2
 max_epochs=10
 row_log_interval=5
 log_save_interval=20
-default_root_dir="/scratch/bartonp"
+log_dir="/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
-lr=1e-4
+lr=5e-5
 in_channels=4
-train_viz_interval=100
-val_viz_idx=1
+train_viz_interval=20
+val_viz_idx=2
 
 python -m trainer.train \
+--exp_name $exp_name \
 --date "$(date +"%d.%m.%y")" \
 --time "$(date +"%T")" \
 --train_root_dir $train_root_dir \
@@ -45,11 +47,11 @@ python -m trainer.train \
 --max_epochs $max_epochs \
 --row_log_interval $row_log_interval \
 --log_save_interval $log_save_interval \
---default_root_dir $default_root_dir \
+--log_dir $log_dir \
 --lr $lr \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \
 --val_viz_idx $val_viz_idx \
---limit_train_batches 20 \
---limit_val_batches 5 \
+--limit_train_batches 50 \
+--limit_val_batches 10 \
 --profiler True \
