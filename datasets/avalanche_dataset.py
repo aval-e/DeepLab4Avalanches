@@ -26,7 +26,7 @@ class AvalancheDataset(Dataset):
 
     def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), certainty=None,
                  random=True, transform=None):
-        self.tile_size = tile_size
+        self.tile_size = np.array(tile_size)
         self.random = random
         self.transform = transform
 
@@ -76,29 +76,35 @@ class AvalancheDataset(Dataset):
         bbox = aval.geometry.bounds
 
         # calculate pixel coords, width and height of patch
-        res_aval_px = (ceil((bbox[2] - bbox[0]) / self.pixel_w), ceil((bbox[3] - bbox[1]) / self.pixel_w))
-        size_diff = (self.tile_size[0] - res_aval_px[0], self.tile_size[1] - res_aval_px[1])
+        res_aval_px = np.array((bbox[2] - bbox[0], bbox[3] - bbox[1]))
+        res_aval_px = np.ceil(res_aval_px / self.pixel_w)
+        size_diff = self.tile_size - res_aval_px
 
         # move avalanche to center or augment position around center if random enabled
-        px_offset = (0, 0)
+        px_offset = np.array([0, 0])
         if self.random:
-            if res_aval_px[0] < self.tile_size[0] and res_aval_px[1] < self.tile_size[1]:
-                px_offset = (randint(0, size_diff[0]), randint(0, size_diff[1]))
+            if size_diff[0] > 0:
+                px_offset[0] = randint(0, size_diff[0])
+            else:
+                px_offset[0] = randint(size_diff[0], 0)
+            if size_diff[1] > 0:
+                px_offset[1] = randint(0, size_diff[1])
+            else:
+                px_offset[1] = randint(size_diff[1], 0)
         else:
-            px_offset = (size_diff[0] // 2, size_diff[1] // 2)
-        vrt_offset = ((bbox[0] - self.ulx) / self.pixel_w, (self.uly - bbox[3]) / self.pixel_w)
-        vrt_offset = (vrt_offset[0] - px_offset[0], vrt_offset[1] - px_offset[1])
-        offset_gpd = (bbox[0] - px_offset[0] * self.pixel_w, bbox[3] + px_offset[1] * self.pixel_w)
-        aval_offset = ((bbox[0] - self.aval_ulx) / self.pixel_w, (self.aval_uly - bbox[3]) / self.pixel_w)
-        aval_offset = (aval_offset[0] - px_offset[0], aval_offset[1] - px_offset[1])
+            px_offset = size_diff // 2
+        vrt_offset = np.array([bbox[0] - self.ulx, self.uly - bbox[3]])
+        vrt_offset = vrt_offset / self.pixel_w - px_offset
+        aval_offset = np.array([bbox[0] - self.aval_ulx, self.aval_uly - bbox[3]])
+        aval_offset = aval_offset / self.pixel_w - px_offset
 
-        image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size, normalise=True)
-        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size, normalise=False)
+        image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size.tolist(), normalise=True)
+        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist(), normalise=False)
 
         if self.dem:
-            dem_offset = ((bbox[0] - self.dem_ulx) / self.pixel_w, (self.dem_uly - bbox[3]) / self.pixel_w)
-            dem_offset = (dem_offset[0] - px_offset[0], dem_offset[1] - px_offset[1])
-            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size, normalise=False)
+            dem_offset = np.array([bbox[0] - self.dem_ulx, self.dem_uly - bbox[3]])
+            dem_offset = dem_offset / self.pixel_w - px_offset
+            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist(), normalise=False)
             dem_image = dem_image / 5000  # normalisation for alps - max <5000 meters
             image = np.concatenate([image, dem_image], axis=2)
 
@@ -121,7 +127,7 @@ if __name__ == '__main__':
     data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
     ava_file = 'avalanches0118_endversion.shp'
     region_file = 'Val_area_2018.shp'
-    dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
+    dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
     my_dataset = AvalancheDataset(data_folder, ava_file, region_file, dem_path=dem_path)
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=2)
