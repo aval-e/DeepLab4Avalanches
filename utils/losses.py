@@ -2,14 +2,14 @@ import torch
 
 
 def calc_pred_stats(gt, pred):
-    """ Calculate the true positive, true negative, false positive and false negative ratios of a mask of 0s ans 1s.
-        The statistics of interest are with regard to the 1 label
+    """ Calculate the true positive, true negative, false positive and false negative ratios.
+        Only a binary mask is considered - zero and nonzero
 
         :param gt: ground truth values
         :param pred: predicated values
         :return: list of [tp, tn, fp, fn]
     """
-    t = gt == pred
+    t = pred == (gt != 0)
     f = ~t
     n = float(gt.numel())
     tp = torch.sum(pred[t]) / n
@@ -19,13 +19,24 @@ def calc_pred_stats(gt, pred):
     return tp, tn, fp, fn
 
 
+def recall_for_label(gt, pred, label):
+    """ Get the recall for specific label or avalanche certainty only
+        :param gt: ground truth labels
+        :param pred: prediction mask - consist only of 0s and 1s
+        :return: recall - fraction of label that was was predicted as 1
+    """
+    mask = gt == label
+    masked_pred = pred[mask]
+    n = float(masked_pred.numel())
+    tp = torch.sum(masked_pred == 1)
+    return tp / n
+
+
 def precision(tp, fp):
     """ Calculate the precision
         :param tp: true positive ratio
         :param fp: false positive ratio
     """
-    if tp + fp == 0:
-        return torch.tensor(1.0).type_as(tp)
     return tp / (tp + fp)
 
 
@@ -34,8 +45,6 @@ def recall(tp, fn):
         :param tp: true positive ratio
         :param fn: false negative ratio
     """
-    if tp + fn == 0:
-        return torch.tensor(1.0).type_as(tp)
     return tp / (tp + fn)
 
 
@@ -45,8 +54,6 @@ def f1(precision, recall):
         :param recall: recall of prediction
         :return: F1 score
     """
-    if precision + recall == 0:
-        return torch.tensor(0.0).type_as(recall)
     return 2 * (precision * recall) / (precision + recall)
 
 
@@ -65,8 +72,8 @@ def get_precision_recall_f1(gt, pred):
 
 if __name__ == '__main__':
     # small test
-    a = torch.tensor([[0, 1, 1],
-                      [0, 1, 1],
+    a = torch.tensor([[0, 1, 2],
+                      [0, 5, 3],
                       [0, 0, 0]])
 
     b = torch.tensor([[0, 1, 1],

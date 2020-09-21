@@ -166,3 +166,8 @@ def get_avalanches_in_region(avalanches, region):
 
     return avalanches[selection]
 
+
+def labels_to_mask(labels):
+    """ Convert image labels to mask of zeros and ones"""
+    return (labels != 0).float()
+

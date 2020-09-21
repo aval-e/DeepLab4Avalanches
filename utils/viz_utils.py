@@ -60,7 +60,7 @@ def viz_training(x, y, y_hat, pred=None):
     """
     with torch.no_grad():
         x_only = x[:, 0:3, :, :]
-        y_over = overlay_avalanches(x_only, y)
+        y_over = overlay_avalanches_by_certainty(x_only, y)
         y_hat_over = overlay_avalanches(x_only, y_hat)
         if pred is not None:
             pred_over = overlay_avalanches(x_only, pred)
@@ -108,3 +108,30 @@ def overlay_avalanches(image, aval_image):
             i[:, :, :, 1] -= 0.4 * aval_image
             i[:, :, :, 2] -= 0.4 * aval_image
     return i
+
+
+def overlay_avalanches_by_certainty(image, aval_image):
+    """ Overlay avalanches onto image for batch of torch tensors
+        :param image: optical satellite image
+        :param aval_image: rasterised avalanches consistent of 1 layer with value corresponding to avalanche certainty
+        :returns: image
+    """
+    with torch.no_grad():
+        green = aval_image == 1
+        yellow = aval_image == 2
+        red = aval_image == 3
+
+        i = image[:, 0:3, :, :].clone()
+        i[:, 0:1, :, :] -= 0.4 * green
+        i[:, 1:2, :, :] += 0.4 * green
+        i[:, 2:3, :, :] -= 0.4 * green
+
+        i[:, 0:1, :, :] += 0.4 * yellow
+        i[:, 1:2, :, :] += 0.1 * yellow
+        i[:, 2:3, :, :] -= 0.4 * yellow
+
+        i[:, 0:1, :, :] += 0.4 * red
+        i[:, 1:2, :, :] -= 0.4 * red
+        i[:, 2:3, :, :] -= 0.4 * red
+
+        return i

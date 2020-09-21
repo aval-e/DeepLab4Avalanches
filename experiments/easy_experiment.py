@@ -3,8 +3,8 @@ from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
 import pytorch_lightning as pl
 from pytorch_lightning import TrainResult, EvalResult
-from utils.losses import get_precision_recall_f1
-from utils import viz_utils
+from utils.losses import get_precision_recall_f1, recall_for_label
+from utils import viz_utils, data_utils
 from argparse import ArgumentParser
 
 
@@ -29,45 +29,40 @@ class EasyExperiment(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = self.bce_loss(y_hat, y)
+        loss = self.bce_loss(y_hat, data_utils.labels_to_mask(y))
 
         result = TrainResult(loss)
-        result.log('train_loss', loss, on_epoch=True, sync_dist=True)
+        result.log('train loss', loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             image = viz_utils.viz_training(x, y, y_hat)
             self.logger.experiment.add_image("Training Sample", image, self.global_step)
         return result
 
-    def validation_step(self, batch, batch_idx, val_set_no):
+    def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         pred = torch.round(y_hat) # rounds probability to 0 or 1
 
-        bce_loss = self.bce_loss(y_hat, y)
-        l2_loss = self.mse(y_hat, y)
-        pred_loss = self.l1(pred, y)
+        bce_loss = self.bce_loss(y_hat, data_utils.labels_to_mask(y))
         precision, recall, f1 = get_precision_recall_f1(y, pred)
+        recall1 = recall_for_label(y, pred, 1)
+        recall2 = recall_for_label(y, pred, 2)
+        recall3 = recall_for_label(y, pred, 3)
 
-        # Logging
+
+        # Logging metrics
         result = EvalResult(checkpoint_on=bce_loss)
-        if (val_set_no == 0):
-            result.log('val bce loss', bce_loss, sync_dist=True)
-            result.log('val l2 loss', l2_loss, sync_dist=True)
-            result.log('val pred loss', pred_loss, sync_dist=True)
-            result.log('precision', precision, sync_dist=True)
-            result.log('recall', recall, sync_dist=True)
-            result.log('f1 Score', f1, sync_dist=True)
-        else:
-            result.log('geo val bce loss', bce_loss, sync_dist=True)
-            result.log('geo val l2 loss', l2_loss, sync_dist=True)
-            result.log('geo val pred loss', pred_loss, sync_dist=True)
-            result.log('geo precision', precision, sync_dist=True)
-            result.log('geo recall', recall, sync_dist=True)
-            result.log('geo f1 Score', f1, sync_dist=True)
-            if batch_idx == self.hparams.val_viz_idx:
-                image = viz_utils.viz_training(x, y, y_hat, pred)
-                self.logger.experiment.add_image("Validation Sample", image, self.global_step)
+        result.log('val bce loss', bce_loss, sync_dist=True)
+        result.log('precision', precision, sync_dist=True, reduce_fx=nanmean)
+        result.log('recall', recall, sync_dist=True, reduce_fx=nanmean)
+        result.log('f1 Score', f1, sync_dist=True, reduce_fx=nanmean)
+        result.log('recall exact', recall1, sync_dist=True, reduce_fx=nanmean)
+        result.log('recall estimated', recall2, sync_dist=True, reduce_fx=nanmean)
+        result.log('recall created', recall3, sync_dist=True, reduce_fx=nanmean)
+        if batch_idx == self.hparams.val_viz_idx:
+            image = viz_utils.viz_training(x, y, y_hat, pred)
+            self.logger.experiment.add_image("Validation Sample", image, self.global_step)
         return result
 
     @staticmethod
@@ -78,6 +73,9 @@ class EasyExperiment(pl.LightningModule):
         parser.add_argument('--in_channels', type=int, default=4, help="no. of input channels to network")
         parser.add_argument('--train_viz_interval', type=int, default=100, help="image save interval during training")
         parser.add_argument('--val_viz_idx', type=int, default=0, help="batch index to be plotted during validation")
-
-
         return parser
+
+
+def nanmean(x):
+    """ Calculate mean ignoring nan values"""
+    return x[~torch.isnan(x)].mean()

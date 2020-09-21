@@ -11,10 +11,11 @@ val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
 dem_dir="" # '/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 tile_size="256 256"
-aval_certainty=1
+aval_certainty=3
 
 # Training hyperparameters
 seed=42
+deterministic=True
 gpus=1
 batch_size=2
 max_epochs=10
@@ -42,6 +43,7 @@ python -m trainer.train \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \
 --seed $seed \
+--deterministic $deterministic \
 --gpus $gpus \
 --batch_size $batch_size \
 --max_epochs $max_epochs \
@@ -52,6 +54,6 @@ python -m trainer.train \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \
 --val_viz_idx $val_viz_idx \
---limit_train_batches 50 \
---limit_val_batches 10 \
+--limit_train_batches 0.01 \
+--limit_val_batches 0.05 \
 --profiler True \
