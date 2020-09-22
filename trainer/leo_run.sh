@@ -39,6 +39,8 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
 lr=5e-5
+momentum=0.9
+weight_decay=0.01
 in_channels=4
 train_viz_interval=400
 val_viz_idx=4
@@ -67,6 +69,8 @@ python -m trainer.train \
 --distributed_backend $distributed_backend \
 --log_dir $log_dir \
 --lr $lr \
+--momentum $momentum \
+--weight_decay $weight_decay \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \
 --val_viz_idx $val_viz_idx \

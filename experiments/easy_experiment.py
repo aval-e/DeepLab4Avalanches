@@ -23,7 +23,8 @@ class EasyExperiment(pl.LightningModule):
         return self.model(x)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr, momentum=self.hparams.momentum,
+                                    weight_decay=self.hparams.weight_decay)
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -70,6 +71,8 @@ class EasyExperiment(pl.LightningModule):
         # allows adding model specific args via command line and logging them
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument('--lr', type=float, default=1e-3, help="learning rate of optimisation algorithm")
+        parser.add_argument('--momentum', type=float, default=0.9, help="momentum of optimisation algorithm")
+        parser.add_argument('--weight_decay', type=float, default=0.01, help="weight decay of optimisation algorithm")
         parser.add_argument('--in_channels', type=int, default=4, help="no. of input channels to network")
         parser.add_argument('--train_viz_interval', type=int, default=100, help="image save interval during training")
         parser.add_argument('--val_viz_idx', type=int, default=0, help="batch index to be plotted during validation")
