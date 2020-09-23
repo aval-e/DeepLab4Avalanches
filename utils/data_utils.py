@@ -28,7 +28,7 @@ def list_paths_in_dir(root_dir, file_endings=None):
 def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, means=None, stds=None):
     """
     Fetches bands from a raster, stacks them and returns normalised numpy array.
-    A list of means and standard deviations the same length as the number of bands can be passed to standaradise each
+    A list of means and standard deviations the same length as the number of bands can be passed to standardise each
     one individually. To standardise all bands with the same mean and std pass a list of length 1
 
     :param raster: gdal raster object

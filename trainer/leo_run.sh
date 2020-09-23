@@ -33,6 +33,7 @@ deterministic=True
 gpus=2
 batch_size=2
 max_epochs=10
+val_check_interval=0.25
 row_log_interval=50
 log_save_interval=100
 distributed_backend="ddp"
@@ -40,6 +41,7 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 
 # Model hyperparameters
+optimiser="adam"
 lr=5e-5
 momentum=0.9
 weight_decay=0.01
@@ -68,10 +70,12 @@ python -m trainer.train \
 --gpus $gpus \
 --batch_size $batch_size \
 --max_epochs $max_epochs \
+--val_check_interval $val_check_interval \
 --row_log_interval $row_log_interval \
 --log_save_interval $log_save_interval \
 --distributed_backend $distributed_backend \
 --log_dir $log_dir \
+--optimiser $optimiser \
 --lr $lr \
 --momentum $momentum \
 --weight_decay $weight_decay \

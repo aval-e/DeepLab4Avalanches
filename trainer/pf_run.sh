@@ -21,11 +21,13 @@ deterministic=True
 gpus=1
 batch_size=2
 max_epochs=10
+val_check_interval=0.5
 row_log_interval=5
 log_save_interval=20
 log_dir="/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
+optimiser="adam"
 lr=5e-5
 in_channels=4
 train_viz_interval=20
@@ -51,9 +53,11 @@ python -m trainer.train \
 --gpus $gpus \
 --batch_size $batch_size \
 --max_epochs $max_epochs \
+--val_check_interval $val_check_interval \
 --row_log_interval $row_log_interval \
 --log_save_interval $log_save_interval \
 --log_dir $log_dir \
+--optimiser $optimiser \
 --lr $lr \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \

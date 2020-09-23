@@ -23,8 +23,13 @@ class EasyExperiment(pl.LightningModule):
         return self.model(x)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr, momentum=self.hparams.momentum,
-                                    weight_decay=self.hparams.weight_decay)
+        if self.hparams.optimiser == 'adam':
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        elif self.hparams.optimiser == 'sgd':
+            optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr, momentum=self.hparams.momentum,
+                                        weight_decay=self.hparams.weight_decay)
+        else:
+            raise Exception('Optimiser not recognised: ' + self.hparams.optimiser)
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -70,6 +75,7 @@ class EasyExperiment(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         # allows adding model specific args via command line and logging them
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument('--optimiser', type=str, default='adam', help="optimisation algorithm. 'adam' or 'sgd'")
         parser.add_argument('--lr', type=float, default=1e-3, help="learning rate of optimisation algorithm")
         parser.add_argument('--momentum', type=float, default=0.9, help="momentum of optimisation algorithm")
         parser.add_argument('--weight_decay', type=float, default=0.01, help="weight decay of optimisation algorithm")
