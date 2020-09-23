@@ -1,11 +1,26 @@
 import os
 from argparse import ArgumentParser
-from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning import Trainer, seed_everything, Callback
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset import AvalancheDataset
 from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor
+
+
+class run_validation_on_start(Callback):
+    def __init__(self):
+        pass
+
+    def on_train_start(self, trainer: Trainer, pl_module):
+        # set temp checkpoint path and name
+        trainer.checkpoint_callback.filename="deleteme"
+        trainer.checkpoint_callback.dirpath='/tmp'
+        ret_val = trainer.run_evaluation(test_mode=False)
+        trainer.checkpoint_callback.filename = None
+        trainer.checkpoint_callback.dirpath = None
+        return ret_val
 
 
 def main(hparams):
@@ -18,6 +33,8 @@ def main(hparams):
                                  random=True,
                                  tile_size=hparams.tile_size,
                                  certainty=hparams.aval_certainty,
+                                 means=hparams.means,
+                                 stds=hparams.stds,
                                  transform=ToTensor(),
                                  )
 
@@ -28,6 +45,8 @@ def main(hparams):
                                random=False,
                                tile_size=hparams.tile_size,
                                certainty=None,
+                               means=hparams.means,
+                               stds=hparams.stds,
                                transform=ToTensor(),
                                )
 
@@ -38,7 +57,7 @@ def main(hparams):
 
     model = EasyExperiment(hparams)
     mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
-    trainer = Trainer.from_argparse_args(hparams, logger=mylogger)
+    trainer = Trainer.from_argparse_args(hparams, logger=mylogger, callbacks=[run_validation_on_start()])
 
     trainer.fit(model, train_loader, val_loader)
 
@@ -60,6 +79,9 @@ if __name__ == "__main__":
     parser.add_argument('--aval_certainty', type=int, default=None,
                         help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
     parser.add_argument('--num_workers', type=int, default=4, help='no. of workers each dataloader uses')
+    parser.add_argument('--means', type=float, nargs='+', default=None, help='list of means to standardise optical images')
+    parser.add_argument('--stds', type=float, nargs='+', default=None, help='list of standard deviations to standardise optical images')
+
 
     # Dataset paths
     parser.add_argument('--train_root_dir', type=str, default='/home/patrick/ecovision/data/2018',

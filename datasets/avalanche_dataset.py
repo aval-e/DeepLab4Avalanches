@@ -20,14 +20,18 @@ class AvalancheDataset(Dataset):
     :param tile_size: patch size to use for training
     :param certainty: Which avalanches to consider. Default: all, 1: exact, 2: estimated, 3: guessed
     :param random: whether extracted patches should be shifted randomly or centered on the avalanche
+    :param means: list of means for each band in the optical imagery used for standardisation
+    :param stds: list of standard deviations for each band in the optical imagery for standardisation
     :param transform: transform to apply to data. Eg. rotation, toTensor, etc.
     :return pytorch dataset to be used with dataloader
     """
 
     def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), certainty=None,
-                 random=True, transform=None):
+                 random=True, means=None, stds=None, transform=None):
         self.tile_size = np.array(tile_size)
         self.random = random
+        self.means = means
+        self.stds = stds
         self.transform = transform
 
         aval_raster_path = os.path.join(root_dir, os.path.splitext(aval_file)[0] + '.tif')
@@ -98,14 +102,15 @@ class AvalancheDataset(Dataset):
         aval_offset = np.array([bbox[0] - self.aval_ulx, self.aval_uly - bbox[3]])
         aval_offset = aval_offset / self.pixel_w - px_offset
 
-        image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size.tolist(), normalise=True)
-        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist(), normalise=False)
+        image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size.tolist(),
+                                                  means=self.means, stds=self.stds)
+        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist())
 
         if self.dem:
             dem_offset = np.array([bbox[0] - self.dem_ulx, self.dem_uly - bbox[3]])
             dem_offset = dem_offset / self.pixel_w - px_offset
-            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist(), normalise=False)
-            dem_image = dem_image / 5000  # normalisation for alps - max <5000 meters
+            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist())
+            dem_image = dem_image / 2000  # normalisation for alps
             image = np.concatenate([image, dem_image], axis=2)
 
         if self.transform:

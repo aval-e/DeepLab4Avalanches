@@ -12,6 +12,8 @@ val_region_file="Val_area_2018.shp"
 dem_dir="" # '/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 tile_size="256 256"
 aval_certainty=3
+means="986.3 1028.3 1023.9 949.9"
+stds="1014.3 955.9 823.4 975.5"
 
 # Training hyperparameters
 seed=42
@@ -42,6 +44,8 @@ python -m trainer.train \
 --dem_dir "$dem_dir" \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \
+--means $means \
+--stds $stds \
 --seed $seed \
 --deterministic $deterministic \
 --gpus $gpus \

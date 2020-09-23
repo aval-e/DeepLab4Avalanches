@@ -25,15 +25,18 @@ def list_paths_in_dir(root_dir, file_endings=None):
     return files
 
 
-def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, normalise=False):
+def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, means=None, stds=None):
     """
     Fetches bands from a raster, stacks them and returns normalised numpy array.
+    A list of means and standard deviations the same length as the number of bands can be passed to standaradise each
+    one individually. To standardise all bands with the same mean and std pass a list of length 1
 
     :param raster: gdal raster object
     :param offset: offset tuple (x,y) in pixels from top left corner
     :param res: output size (x,y) in pixels (crops input). Default is to use the whole raster.
     :param bands: list of bands to extract. Default is all.
-    :param normalise: bool whether to normalise array or not
+    :param means: list of means for each band to standardise
+    :param stds: list of standard deviations for each band to standardise
     :return: normalised numpy array
      """
 
@@ -43,17 +46,32 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, normalis
     if bands is None:
         bands = range(1, raster.RasterCount + 1)
 
+    # standardise all bands the same if only one value is given
+    if means and len(means) == 1:
+        means = raster.RasterCount * means
+    if stds and len(stds) == 1:
+        stds = raster.RasterCount * stds
+
     band_list = []
+    i = 0
     for band in bands:
         rb = raster.GetRasterBand(band)
         rb.SetNoDataValue(0)
-        band_list.append(rb.ReadAsArray(offset[0], offset[1], res[0], res[1], buf_type=gdal.GDT_Float32))
+        arr = rb.ReadAsArray(offset[0], offset[1], res[0], res[1], buf_type=gdal.GDT_Float32)
+
+        # Standardise
+        if means:
+            arr -= means[i]
+        if stds:
+            arr /= stds[i]
+
+        band_list.append(arr)
+        arr = None
         rb = None
+        i += 1
 
     image = np.stack(band_list, axis=2)
 
-    if normalise and image.max() != 0:
-        image /= image.max()
     return image
 
 
