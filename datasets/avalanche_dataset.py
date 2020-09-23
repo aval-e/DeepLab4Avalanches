@@ -136,4 +136,4 @@ if __name__ == '__main__':
     batch = next(dataiter)
 
     batch = [elem.squeeze() for elem in batch]
-    viz_utils.viz_sample(batch)
+    viz_utils.overlay_and_plot_avalanches_by_certainty(*batch)

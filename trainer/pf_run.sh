@@ -55,5 +55,6 @@ python -m trainer.train \
 --train_viz_interval $train_viz_interval \
 --val_viz_idx $val_viz_idx \
 --limit_train_batches 0.01 \
---limit_val_batches 0.05 \
+--limit_val_batches 0.02 \
 --profiler True \
+--num_sanity_val_steps 2 \

@@ -20,31 +20,41 @@ def viz_sample(sample):
         plt.show()
 
 
-def overlay_and_plot_avalanches_by_certainty(image, aval_images):
+def overlay_and_plot_avalanches_by_certainty(image, aval_image):
     """ Plots image and overlays avalanches in different colors according to their certainty
 
     :param image: background satellite image as numpy array
     :param aval_images: list of 3 rasterised avalanche shapes from certain to uncertain
     """
-    i = image[:, :, 0:3]
+    i = image[:, :, 0:3].clone()
+
+    green = aval_image == 1
+    yellow = aval_image == 2
+    red = aval_image == 3
 
     # overlay certain avalanches in green
-    i[:, :, 0] -= 0.4 * aval_images[0]
-    i[:, :, 1] += 0.4 * aval_images[0]
-    i[:, :, 2] -= 0.4 * aval_images[0]
+    i[:, :, 0] -= 0.4 * green
+    i[:, :, 1] += 0.4 * green
+    i[:, :, 2] -= 0.4 * green
 
     # overlay estimated avalanches in orange
-    i[:, :, 0] += 0.4 * aval_images[1]
-    i[:, :, 1] += 0.1 * aval_images[1]
-    i[:, :, 2] -= 0.4 * aval_images[1]
+    i[:, :, 0] += 0.4 * yellow
+    i[:, :, 1] += 0.1 * yellow
+    i[:, :, 2] -= 0.4 * yellow
 
     # overlay guessed avalanches in red
-    i[:, :, 0] += 0.4 * aval_images[2]
-    i[:, :, 1] -= 0.4 * aval_images[2]
-    i[:, :, 2] -= 0.4 * aval_images[2]
+    i[:, :, 0] += 0.4 * red
+    i[:, :, 1] -= 0.4 * red
+    i[:, :, 2] -= 0.4 * red
 
-    plt.imshow(image)
+    plt.imshow(i)
     plt.show()
+
+    # also plot DEM if available
+    if (image.shape[2] == 5):
+        dem = image[:, :, 4]
+        plt.imshow(dem)
+        plt.show()
 
 
 def viz_training(x, y, y_hat, pred=None):
@@ -55,11 +65,12 @@ def viz_training(x, y, y_hat, pred=None):
     :param x: satellite image
     :param y: ground truth
     :param y_hat: probability output
-    :param pred: predicition - y_hat rounded to zero or one
+    :param pred: prediction - y_hat rounded to zero or one
     :return: image grid of comparisons for all samples in batch
     """
     with torch.no_grad():
         x_only = x[:, 0:3, :, :]
+        x_only = (x_only - x_only.min()) / (x_only.max() - x_only.min())
         y_over = overlay_avalanches_by_certainty(x_only, y)
         y_hat_over = overlay_avalanches(x_only, y_hat)
         if pred is not None:
@@ -88,25 +99,25 @@ def overlay_avalanches(image, aval_image):
         with torch.no_grad():
             if image.dim() == 3:
                 i = image[0:3, :, :].clone()
-                i[0:1, :, :] += 0.4 * aval_image
-                i[1:2, :, :] -= 0.4 * aval_image
-                i[2:3, :, :] -= 0.4 * aval_image
+                i[0:1, :, :] += 0.5 * aval_image
+                i[1:2, :, :] -= 0.5 * aval_image
+                i[2:3, :, :] -= 0.5 * aval_image
             else:
                 i = image[:, 0:3, :, :].clone()
-                i[:, 0:1, :, :] += 0.4 * aval_image
-                i[:, 1:2, :, :] -= 0.4 * aval_image
-                i[:, 2:3, :, :] -= 0.4 * aval_image
+                i[:, 0:1, :, :] += 0.5 * aval_image
+                i[:, 1:2, :, :] -= 0.5 * aval_image
+                i[:, 2:3, :, :] -= 0.5 * aval_image
     else:
         if image.ndim == 3:
             i = image[:, :, 0:3].clone()
-            i[:, :, 0] += 0.4 * aval_image
-            i[:, :, 1] -= 0.4 * aval_image
-            i[:, :, 2] -= 0.4 * aval_image
+            i[:, :, 0] += 0.5 * aval_image
+            i[:, :, 1] -= 0.5 * aval_image
+            i[:, :, 2] -= 0.5 * aval_image
         else:
             i = image[:, :, :, 0:3].clone()
-            i[:, :, :, 0] += 0.4 * aval_image
-            i[:, :, :, 1] -= 0.4 * aval_image
-            i[:, :, :, 2] -= 0.4 * aval_image
+            i[:, :, :, 0] += 0.5 * aval_image
+            i[:, :, :, 1] -= 0.5 * aval_image
+            i[:, :, :, 2] -= 0.5 * aval_image
     return i
 
 
