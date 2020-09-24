@@ -6,12 +6,12 @@ export PYTHONPATH=$PWD
 
 # Parameters for bsub command
 #BSUB -n 8
-#BSUB -W 1400
+#BSUB -W 239
 #BSUB -R "rusage[ngpus_excl_p=2]"
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="my_experiment"
+exp_name="sgd_5e-2"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -41,8 +41,8 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 
 # Model hyperparameters
-optimiser="adam"
-lr=5e-5
+optimiser="sgd"
+lr=5e-2
 momentum=0.9
 weight_decay=0.01
 in_channels=4
@@ -63,8 +63,8 @@ python -m trainer.train \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \
 --num_workers $num_workers \
---means "$means" \
---stds "$stds" \
+--means $means \
+--stds $stds \
 --seed $seed \
 --deterministic $deterministic \
 --gpus $gpus \
