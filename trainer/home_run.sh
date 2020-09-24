@@ -13,6 +13,7 @@ log_save_interval=20
 train_viz_interval=5
 limit_train_batches=20
 limit_val_batches=10
+log_dir="$(pwd)/lightning_logs"
 
 # model hyperparameters
 lr=1e-4
@@ -30,4 +31,5 @@ python -m trainer.train \
 --lr $lr \
 --limit_train_batches $limit_train_batches \
 --limit_val_batches $limit_val_batches \
+--log_dir $log_dir \
 

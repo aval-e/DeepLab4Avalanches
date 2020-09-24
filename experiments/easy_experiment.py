@@ -1,6 +1,7 @@
 import torch
 from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
+from jvanvugt_unet.unet import UNet
 import pytorch_lightning as pl
 from pytorch_lightning import TrainResult, EvalResult
 from utils.losses import get_precision_recall_f1, recall_for_label
@@ -14,13 +15,14 @@ class EasyExperiment(pl.LightningModule):
         super().__init__()
         self.hparams = hparams
 
-        self.model = DeepLabv4(in_channels=hparams.in_channels)
+        self.model = UNet(hparams.in_channels, n_classes=1, depth=3, wf=6, padding=True)
+        # self.model = DeepLabv4(in_channels=hparams.in_channels)
         self.bce_loss = BCELoss()
         self.l1 = L1Loss()
         self.mse = MSELoss()
 
     def forward(self, x):
-        return self.model(x)
+        return torch.nn.functional.sigmoid(self.model(x))
 
     def configure_optimizers(self):
         if self.hparams.optimiser == 'adam':
