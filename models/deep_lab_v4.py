@@ -12,5 +12,4 @@ class DeepLabv4(torch.nn.Module):
 
     def forward(self, x):
         x = self.deeplabv3(x)['out']
-        x = self.sigmoid(x)
         return x

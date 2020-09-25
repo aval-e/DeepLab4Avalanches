@@ -27,7 +27,7 @@ class EasyExperiment(pl.LightningModule):
             raise('Model not found: ' + hparams.model)
 
     def forward(self, x):
-        return torch.nn.functional.sigmoid(self.model(x))
+        return torch.sigmoid(self.model(x))
 
     def configure_optimizers(self):
         if self.hparams.optimiser == 'adam':
