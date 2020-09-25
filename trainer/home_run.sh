@@ -4,6 +4,7 @@
 # dataset hyperparameters
 train_root_dir="/home/patrick/ecovision/data/2018"
 aval_certainty=1
+bands="1 2 3 4"
 
 # training hyperparameters
 seed=42
@@ -17,18 +18,22 @@ log_dir="$(pwd)/lightning_logs"
 
 # model hyperparameters
 lr=1e-4
+in_channels=4
+
 
 python -m trainer.train \
 --date "$(date +"%d.%m.%y")" \
 --time "$(date +"%T")" \
 --train_root_dir $train_root_dir \
 --aval_certainty $aval_certainty \
+--bands $bands \
 --seed $seed \
 --gpus $gpus \
 --row_log_interval $row_log_interval \
 --log_save_interval $log_save_interval \
 --train_viz_interval $train_viz_interval \
 --lr $lr \
+--in_channels $in_channels \
 --limit_train_batches $limit_train_batches \
 --limit_val_batches $limit_val_batches \
 --log_dir $log_dir \

@@ -69,7 +69,14 @@ def viz_training(x, y, y_hat, pred=None):
     :return: image grid of comparisons for all samples in batch
     """
     with torch.no_grad():
-        x_only = x[:, 0:3, :, :]
+        # if less than 3 channels, duplicate first channel for rgb image
+        if x.shape[1] >= 3:
+            x_only = x[:, 0:3, :, :]
+        elif x.shape[1] == 2:
+            x_only = torch.cat([x, x[:, 0:1, :, :]], dim=1)
+        else:
+            x_only = torch.cat([x, x[:, 0:1, :, :], x[:, 0:1, :, :]], dim=1)
+
         x_only = (x_only - x_only.min()) / (x_only.max() - x_only.min())
         y_over = overlay_avalanches_by_certainty(x_only, y)
         y_hat_over = overlay_avalanches(x_only, y_hat)

@@ -6,6 +6,7 @@ from utils import data_utils, viz_utils
 from math import log, ceil
 from random import randint
 import numpy as np
+import torch
 from torchvision.transforms import ToTensor
 
 
@@ -18,6 +19,7 @@ class AvalancheDataset(Dataset):
     :param region_file: shapefile containing polygon specifying which area will be considered by the Dataset
     :param dem_path: file path of digital elevation model if it is to be used. Default: None
     :param tile_size: patch size to use for training
+    :param bands: list of band indexes to read from optical images. Default None gets all
     :param certainty: Which avalanches to consider. Default: all, 1: exact, 2: estimated, 3: guessed
     :param random: whether extracted patches should be shifted randomly or centered on the avalanche
     :param means: list of means for each band in the optical imagery used for standardisation
@@ -26,9 +28,10 @@ class AvalancheDataset(Dataset):
     :return pytorch dataset to be used with dataloader
     """
 
-    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), certainty=None,
+    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), bands=None, certainty=None,
                  random=True, means=None, stds=None, transform=None):
         self.tile_size = np.array(tile_size)
+        self.bands = bands
         self.random = random
         self.means = means
         self.stds = stds
@@ -103,7 +106,7 @@ class AvalancheDataset(Dataset):
         aval_offset = aval_offset / self.pixel_w - px_offset
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size.tolist(),
-                                                  means=self.means, stds=self.stds)
+                                                  means=self.means, stds=self.stds, bands=self.bands)
         shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist())
 
         if self.dem:
@@ -114,8 +117,15 @@ class AvalancheDataset(Dataset):
             image = np.concatenate([image, dem_image], axis=2)
 
         if self.transform:
-            image = self.transform(image)
-            shp_image = self.transform(shp_image)
+            array = np.concatenate([image, shp_image], axis=2)
+            array = self.transform(array)
+
+            if torch.is_tensor(array):
+                image = array[:-1, :, :]
+                shp_image = array[-1:, :, :]
+            else:
+                image = array[:, :, :-1]
+                shp_image = array[:, :, -1]
 
         return [image, shp_image]
 

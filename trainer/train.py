@@ -6,7 +6,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset import AvalancheDataset
 from torch.utils.data import DataLoader, random_split
-from torchvision.transforms import ToTensor
+from torchvision.transforms import ToTensor, Compose, RandomHorizontalFlip
 
 
 class run_validation_on_start(Callback):
@@ -32,10 +32,11 @@ def main(hparams):
                                  dem_path=hparams.dem_dir,
                                  random=True,
                                  tile_size=hparams.tile_size,
+                                 bands=hparams.bands,
                                  certainty=hparams.aval_certainty,
                                  means=hparams.means,
                                  stds=hparams.stds,
-                                 transform=ToTensor(),
+                                 transform=Compose([ToTensor(), RandomHorizontalFlip(hparams.hflip_p)])
                                  )
 
     val_set = AvalancheDataset(hparams.val_root_dir,
@@ -44,6 +45,7 @@ def main(hparams):
                                dem_path=hparams.dem_dir,
                                random=False,
                                tile_size=hparams.tile_size,
+                               bands=hparams.bands,
                                certainty=None,
                                means=hparams.means,
                                stds=hparams.stds,
@@ -78,9 +80,11 @@ if __name__ == "__main__":
                         help='patch size during training in pixels')
     parser.add_argument('--aval_certainty', type=int, default=None,
                         help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
-    parser.add_argument('--num_workers', type=int, default=4, help='no. of workers each dataloader uses')
+    parser.add_argument('--bands', type=int, nargs='+', default=None, help='bands from optical imagery to be used')
     parser.add_argument('--means', type=float, nargs='+', default=None, help='list of means to standardise optical images')
     parser.add_argument('--stds', type=float, nargs='+', default=None, help='list of standard deviations to standardise optical images')
+    parser.add_argument('--num_workers', type=int, default=4, help='no. of workers each dataloader uses')
+    parser.add_argument('--hflip_p', type=float, default=0, help='probability of horizontal flip')
 
 
     # Dataset paths
