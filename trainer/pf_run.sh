@@ -15,7 +15,10 @@ aval_certainty=3
 bands="1 2 3 4"
 means="986.3 1028.3 1023.9 949.9"
 stds="1014.3 955.9 823.4 975.5"
-hflip_p=0.5
+
+# data augmentation
+hflip_p=0.0
+rand_rotation=20
 
 # Training hyperparameters
 seed=42
@@ -29,6 +32,7 @@ log_save_interval=20
 log_dir="/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
+model='deeplab'
 optimiser="adam"
 lr=5e-5
 in_channels=4
@@ -52,6 +56,7 @@ python -m trainer.train \
 --means $means \
 --stds $stds \
 --hflip_p $hflip_p \
+--rand_rotation $rand_rotation \
 --seed $seed \
 --deterministic $deterministic \
 --gpus $gpus \
@@ -61,6 +66,7 @@ python -m trainer.train \
 --row_log_interval $row_log_interval \
 --log_save_interval $log_save_interval \
 --log_dir $log_dir \
+--model $model \
 --optimiser $optimiser \
 --lr $lr \
 --in_channels $in_channels \

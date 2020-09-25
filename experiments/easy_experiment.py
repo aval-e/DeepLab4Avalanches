@@ -15,11 +15,16 @@ class EasyExperiment(pl.LightningModule):
         super().__init__()
         self.hparams = hparams
 
-        self.model = UNet(hparams.in_channels, n_classes=1, depth=3, wf=6, padding=True)
-        # self.model = DeepLabv4(in_channels=hparams.in_channels)
         self.bce_loss = BCELoss()
         self.l1 = L1Loss()
         self.mse = MSELoss()
+
+        if hparams.model == 'unet':
+            self.model = UNet(hparams.in_channels, n_classes=1, depth=3, wf=6, padding=True)
+        elif hparams.model == 'deeplab':
+            self.model = DeepLabv4(in_channels=hparams.in_channels)
+        else:
+            raise('Model not found: ' + hparams.model)
 
     def forward(self, x):
         return torch.nn.functional.sigmoid(self.model(x))
@@ -77,6 +82,7 @@ class EasyExperiment(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         # allows adding model specific args via command line and logging them
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument('--model', type=str, default='deeplab', help='Model arcitecture. One of "deeplab", "unet"')
         parser.add_argument('--optimiser', type=str, default='adam', help="optimisation algorithm. 'adam' or 'sgd'")
         parser.add_argument('--lr', type=float, default=1e-3, help="learning rate of optimisation algorithm")
         parser.add_argument('--momentum', type=float, default=0.9, help="momentum of optimisation algorithm")

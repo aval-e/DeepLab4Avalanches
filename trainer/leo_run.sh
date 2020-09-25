@@ -27,7 +27,10 @@ bands="1 2 3 4"
 num_workers=2
 means="986.3 1028.3 1023.9 949.9"
 stds="1014.3 955.9 823.4 975.5"
-hflip_p=0.5
+
+# Data augmentation
+hflip_p=0.0
+rand_rotation=20
 
 # Training hyperparameters
 seed=42
@@ -43,6 +46,7 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 
 # Model hyperparameters
+model='deeplab'
 optimiser="sgd"
 lr=5e-2
 momentum=0.9
@@ -69,6 +73,7 @@ python -m trainer.train \
 --means $means \
 --stds $stds \
 --hflip_p $hflip_p \
+--rand_rotation $rand_rotation \
 --seed $seed \
 --deterministic $deterministic \
 --gpus $gpus \
@@ -79,6 +84,7 @@ python -m trainer.train \
 --log_save_interval $log_save_interval \
 --distributed_backend $distributed_backend \
 --log_dir $log_dir \
+--model $model \
 --optimiser $optimiser \
 --lr $lr \
 --momentum $momentum \

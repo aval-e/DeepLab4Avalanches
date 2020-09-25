@@ -6,6 +6,10 @@ train_root_dir="/home/patrick/ecovision/data/2018"
 aval_certainty=1
 bands="1 2 3 4"
 
+# data augmentation
+hflip_p=0.5
+rand_rotation=20
+
 # training hyperparameters
 seed=42
 gpus=1
@@ -27,6 +31,8 @@ python -m trainer.train \
 --train_root_dir $train_root_dir \
 --aval_certainty $aval_certainty \
 --bands $bands \
+--hflip_p $hflip_p \
+--rand_rotation $rand_rotation \
 --seed $seed \
 --gpus $gpus \
 --row_log_interval $row_log_interval \

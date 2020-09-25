@@ -7,6 +7,7 @@ from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset import AvalancheDataset
 from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor, Compose, RandomHorizontalFlip
+from utils.data_augmentation import RandomRotation
 
 
 class run_validation_on_start(Callback):
@@ -26,6 +27,13 @@ class run_validation_on_start(Callback):
 def main(hparams):
     seed_everything(hparams.seed)
 
+    transform_list = []
+    if hparams.rand_rotation != 0:
+        transform_list.append(RandomRotation(hparams.rand_rotation))
+    transform_list.append(ToTensor())
+    if hparams.hflip_p != 0:
+        transform_list.append(RandomHorizontalFlip(hparams.hflip_p))
+
     train_set = AvalancheDataset(hparams.train_root_dir,
                                  hparams.train_ava_file,
                                  hparams.train_region_file,
@@ -36,7 +44,7 @@ def main(hparams):
                                  certainty=hparams.aval_certainty,
                                  means=hparams.means,
                                  stds=hparams.stds,
-                                 transform=Compose([ToTensor(), RandomHorizontalFlip(hparams.hflip_p)])
+                                 transform=Compose(transform_list)
                                  )
 
     val_set = AvalancheDataset(hparams.val_root_dir,
@@ -84,7 +92,10 @@ if __name__ == "__main__":
     parser.add_argument('--means', type=float, nargs='+', default=None, help='list of means to standardise optical images')
     parser.add_argument('--stds', type=float, nargs='+', default=None, help='list of standard deviations to standardise optical images')
     parser.add_argument('--num_workers', type=int, default=4, help='no. of workers each dataloader uses')
+
+    # data augmentation
     parser.add_argument('--hflip_p', type=float, default=0, help='probability of horizontal flip')
+    parser.add_argument('--rand_rotation', type=float, default=0, help='max random rotation in degrees')
 
 
     # Dataset paths
