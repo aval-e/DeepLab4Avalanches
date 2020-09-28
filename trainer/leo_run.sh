@@ -6,12 +6,12 @@ export PYTHONPATH=$PWD
 
 # Parameters for bsub command
 #BSUB -n 8
-#BSUB -W 239
+#BSUB -W 1400
 #BSUB -R "rusage[ngpus_excl_p=2]"
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="sgd_5e-2"
+exp_name="unet_d4_wf6_bn_bigpatch"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -20,17 +20,17 @@ train_region_file="Train_area_2018.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
-dem_dir="" #"/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif"
-tile_size="256 256"
+dem_dir="" #"/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
+tile_size="512 512"
 aval_certainty=1
-bands="1 2 3 4"
+bands="3 4"
 num_workers=2
-means="986.3 1028.3 1023.9 949.9"
-stds="1014.3 955.9 823.4 975.5"
+means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
+stds="823.4 975.5" #"1014.3 955.9 823.4 975.5"
 
 # Data augmentation
 hflip_p=0.0
-rand_rotation=20
+rand_rotation=30
 
 # Training hyperparameters
 seed=42
@@ -46,12 +46,12 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 
 # Model hyperparameters
-model='deeplab'
-optimiser="sgd"
-lr=5e-2
+model='unet'
+optimiser="adam"
+lr=5e-5
 momentum=0.9
 weight_decay=0.01
-in_channels=4
+in_channels=2
 train_viz_interval=400
 val_viz_idx=4
 

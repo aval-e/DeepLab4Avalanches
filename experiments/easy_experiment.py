@@ -20,7 +20,7 @@ class EasyExperiment(pl.LightningModule):
         self.mse = MSELoss()
 
         if hparams.model == 'unet':
-            self.model = UNet(hparams.in_channels, n_classes=1, depth=3, wf=6, padding=True)
+            self.model = UNet(hparams.in_channels, n_classes=1, depth=4, wf=6, padding=True, batch_norm=True)
         elif hparams.model == 'deeplab':
             self.model = DeepLabv4(in_channels=hparams.in_channels)
         else:
