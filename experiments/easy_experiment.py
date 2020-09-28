@@ -4,7 +4,7 @@ from models.deep_lab_v4 import DeepLabv4
 from jvanvugt_unet.unet import UNet
 import pytorch_lightning as pl
 from pytorch_lightning import TrainResult, EvalResult
-from utils.losses import get_precision_recall_f1, recall_for_label
+from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
 from argparse import ArgumentParser
 
@@ -42,10 +42,13 @@ class EasyExperiment(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = self.bce_loss(y_hat, data_utils.labels_to_mask(y))
+        y_mask = data_utils.labels_to_mask(y)
+        loss = self.bce_loss(y_hat, y_mask)
+        dice_loss = soft_dice(y_mask, y_hat)
 
         result = TrainResult(loss)
         result.log('train loss', loss, on_epoch=True, sync_dist=True)
+        result.log('train dice', dice_loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             image = viz_utils.viz_training(x, y, y_hat)
@@ -56,8 +59,10 @@ class EasyExperiment(pl.LightningModule):
         x, y = batch
         y_hat = self(x)
         pred = torch.round(y_hat) # rounds probability to 0 or 1
+        y_mask = data_utils.labels_to_mask(y)
 
-        bce_loss = self.bce_loss(y_hat, data_utils.labels_to_mask(y))
+        bce_loss = self.bce_loss(y_hat, y_mask)
+        dice_loss = soft_dice(y_mask, y_hat)
         precision, recall, f1 = get_precision_recall_f1(y, pred)
         recall1 = recall_for_label(y, pred, 1)
         recall2 = recall_for_label(y, pred, 2)
@@ -67,6 +72,7 @@ class EasyExperiment(pl.LightningModule):
         # Logging metrics
         result = EvalResult(checkpoint_on=bce_loss)
         result.log('val bce loss', bce_loss, sync_dist=True)
+        result.log('val dice', dice_loss, sync_dist=True, reduce_fx=nanmean)
         result.log('precision', precision, sync_dist=True, reduce_fx=nanmean)
         result.log('recall', recall, sync_dist=True, reduce_fx=nanmean)
         result.log('f1 Score', f1, sync_dist=True, reduce_fx=nanmean)

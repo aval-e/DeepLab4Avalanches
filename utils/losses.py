@@ -70,6 +70,14 @@ def get_precision_recall_f1(gt, pred):
     return prec, rec, f1_score
 
 
+def soft_dice(gt, y_hat):
+    """ Soft dice coefficient
+        :param gt: ground truth label (binary 0,1 mask of avalanche or not)
+        :param y_hat: predicted probablity
+    """
+    return 2 * torch.sum(gt * y_hat) / (torch.sum(gt) + torch.sum(y_hat))
+
+
 if __name__ == '__main__':
     # small test
     a = torch.tensor([[0, 1, 2],

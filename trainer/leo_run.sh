@@ -11,7 +11,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="unet_d4_wf6_bn_bigpatch"
+exp_name="deeplab_dice"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -21,7 +21,7 @@ val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
 dem_dir="" #"/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
-tile_size="512 512"
+tile_size="256 256"
 aval_certainty=1
 bands="3 4"
 num_workers=2
@@ -46,7 +46,7 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 
 # Model hyperparameters
-model='unet'
+model='deeplab'
 optimiser="adam"
 lr=5e-5
 momentum=0.9
