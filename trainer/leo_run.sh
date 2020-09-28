@@ -6,7 +6,7 @@ export PYTHONPATH=$PWD
 
 # Parameters for bsub command
 #BSUB -n 8
-#BSUB -W 1400
+#BSUB -W 230
 #BSUB -R "rusage[ngpus_excl_p=2]"
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"

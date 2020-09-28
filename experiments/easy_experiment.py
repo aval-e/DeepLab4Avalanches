@@ -44,9 +44,9 @@ class EasyExperiment(pl.LightningModule):
         y_hat = self(x)
         y_mask = data_utils.labels_to_mask(y)
         loss = self.bce_loss(y_hat, y_mask)
-        dice_loss = soft_dice(y_mask, y_hat)
+        dice_loss = 1 - soft_dice(y_mask, y_hat)
 
-        result = TrainResult(loss)
+        result = TrainResult(dice_loss)
         result.log('train loss', loss, on_epoch=True, sync_dist=True)
         result.log('train dice', dice_loss, on_epoch=True, sync_dist=True)
         # Log random images
@@ -62,7 +62,7 @@ class EasyExperiment(pl.LightningModule):
         y_mask = data_utils.labels_to_mask(y)
 
         bce_loss = self.bce_loss(y_hat, y_mask)
-        dice_loss = soft_dice(y_mask, y_hat)
+        dice_loss = 1 - soft_dice(y_mask, y_hat)
         precision, recall, f1 = get_precision_recall_f1(y, pred)
         recall1 = recall_for_label(y, pred, 1)
         recall2 = recall_for_label(y, pred, 2)
