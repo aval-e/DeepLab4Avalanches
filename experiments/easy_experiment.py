@@ -37,6 +37,11 @@ class EasyExperiment(pl.LightningModule):
                                         weight_decay=self.hparams.weight_decay)
         else:
             raise Exception('Optimiser not recognised: ' + self.hparams.optimiser)
+        
+        #lr_scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, 1e-6, 1e-3, 1000)
+        #scheduler = {'scheduler': lr_scheduler,
+        #             'interval': 'step'}
+        #return [optimizer], [scheduler]
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -44,11 +49,9 @@ class EasyExperiment(pl.LightningModule):
         y_hat = self(x)
         y_mask = data_utils.labels_to_mask(y)
         loss = self.bce_loss(y_hat, y_mask)
-        dice_loss = 1 - soft_dice(y_mask, y_hat)
 
-        result = TrainResult(dice_loss)
+        result = TrainResult(loss)
         result.log('train loss', loss, on_epoch=True, sync_dist=True)
-        result.log('train dice', dice_loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             image = viz_utils.viz_training(x, y, y_hat)

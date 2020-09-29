@@ -8,6 +8,7 @@ from datasets.avalanche_dataset import AvalancheDataset
 from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor, Compose, RandomHorizontalFlip
 from utils.data_augmentation import RandomRotation
+from pytorch_lightning.callbacks.lr_logger import LearningRateLogger
 
 
 class run_validation_on_start(Callback):
@@ -67,7 +68,7 @@ def main(hparams):
 
     model = EasyExperiment(hparams)
     mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
-    trainer = Trainer.from_argparse_args(hparams, logger=mylogger, callbacks=[run_validation_on_start()])
+    trainer = Trainer.from_argparse_args(hparams, logger=mylogger, callbacks=[run_validation_on_start(), LearningRateLogger('step')])
 
     trainer.fit(model, train_loader, val_loader)
 
