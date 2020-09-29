@@ -7,6 +7,8 @@ def viz_sample(sample):
     """ Visualise single sample of the Avalanche dataset"""
     image, aval = sample
     i = image[:, :, 0:3]
+    i = (i - i.min()) / (i.max() - i.min())
+
     i[:, :, 0] += 0.4 * aval
     i[:, :, 1] -= 0.4 * aval
     i[:, :, 2] -= 0.4 * aval
@@ -27,6 +29,7 @@ def overlay_and_plot_avalanches_by_certainty(image, aval_image):
     :param aval_images: list of 3 rasterised avalanche shapes from certain to uncertain
     """
     i = image[:, :, 0:3].clone()
+    i = (i - i.min()) / (i.max() - i.min())
 
     green = aval_image == 1
     yellow = aval_image == 2
