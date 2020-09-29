@@ -20,7 +20,7 @@ train_region_file="Train_area_2018.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
-dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
+dem_dir="" #"/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size="256 256"
 aval_certainty=2
 bands="3 4"
@@ -29,14 +29,14 @@ means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
 stds="823.4 975.5" #"1014.3 955.9 823.4 975.5"
 
 # Data augmentation
-hflip_p=0.0
-rand_rotation=30
+hflip_p=0.5
+rand_rotation=180
 
 # Training hyperparameters
 seed=42
 deterministic=True
 gpus=2
-batch_size=2
+batch_size=4
 max_epochs=10
 val_check_interval=0.25
 row_log_interval=50
@@ -47,11 +47,11 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
 model='deeplab'
-optimiser="adam"
-lr=5e-5
+optimiser="sgd"
+lr=1
 momentum=0.9
 weight_decay=0.01
-in_channels=4
+in_channels=2
 train_viz_interval=400
 val_viz_idx=4
 
