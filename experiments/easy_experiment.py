@@ -38,9 +38,9 @@ class EasyExperiment(pl.LightningModule):
         else:
             raise Exception('Optimiser not recognised: ' + self.hparams.optimiser)
         
-        lr_scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, 1e-4, 5e-4, 200, 800, mode='exp_range', gamma=0.5, scale_mode='cycle')
+        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [1, 2, 4, 7, 10, 11, 12], gamma=0.5)
         scheduler = {'scheduler': lr_scheduler,
-                    'interval': 'step'}
+                     'interval': 'epoch'}
         return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):

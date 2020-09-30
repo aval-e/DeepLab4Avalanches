@@ -11,7 +11,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="exp_range"
+exp_name="multistep_gamma05_1247101112"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -39,18 +39,18 @@ gpus=2
 batch_size=8
 max_epochs=20
 val_check_interval=0.25
-row_log_interval=20
+row_log_interval=25
 log_save_interval=100
 distributed_backend="ddp"
-log_dir="/cluster/scratch/bartonp/lightning_logs"
+log_dir="/cluster/scratch/bartonp/hyper_tuning"
 
 
 # Model hyperparameters
 model='deeplab'
 optimiser="sgd"
-lr=1
+lr=1e-4
 momentum=0.9
-weight_decay=0.01
+weight_decay=0.1
 in_channels=2
 train_viz_interval=400
 val_viz_idx=4
