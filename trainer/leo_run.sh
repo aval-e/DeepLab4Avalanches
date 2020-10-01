@@ -11,7 +11,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="multistep_gamma05_1247101112"
+exp_name="multiStep_g05_commit"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -48,7 +48,7 @@ log_dir="/cluster/scratch/bartonp/hyper_tuning"
 # Model hyperparameters
 model='deeplab'
 optimiser="sgd"
-lr=1e-4
+lr=1e-3
 momentum=0.9
 weight_decay=0.1
 in_channels=2
