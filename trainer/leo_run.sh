@@ -6,12 +6,12 @@ export PYTHONPATH=$PWD
 
 # Parameters for bsub command
 #BSUB -n 8
-#BSUB -W 1230
+#BSUB -W 230
 #BSUB -R "rusage[ngpus_excl_p=2]"
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="multiStep_g05_commit"
+exp_name="adam_t256_new_validation"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -36,19 +36,19 @@ rand_rotation=180
 seed=42
 deterministic=True
 gpus=2
-batch_size=8
-max_epochs=20
+batch_size=2
+max_epochs=10
 val_check_interval=0.25
 row_log_interval=25
 log_save_interval=100
 distributed_backend="ddp"
-log_dir="/cluster/scratch/bartonp/hyper_tuning"
+log_dir="/cluster/scratch/bartonp/tile_size"
 
 
 # Model hyperparameters
 model='deeplab'
-optimiser="sgd"
-lr=1e-3
+optimiser="adam"
+lr=5e-5
 momentum=0.9
 weight_decay=0.1
 in_channels=2

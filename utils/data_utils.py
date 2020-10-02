@@ -191,7 +191,7 @@ def labels_to_mask(labels):
     return (labels != 0).float()
 
 
-def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05):
+def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=200):
     """ Inteligently choose samples such that there is no overlap but large avalanches are covered
         Also add samples with no avalanche present
 
@@ -199,13 +199,14 @@ def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05):
         :param region: region in which samples are contained as geoseries
         :param tile_size: size of one sample [x, y]
         :param no_aval_ratio: ratio of samples to add with no avalanche [0-1]
+        :param n: number of neighbour avalanches (in geoseries order) to consider when checking distance
         :returns: geoseries of sample Points
     """
     dist = tile_size.min()
     sample_points = gpd.GeoSeries()
 
     # add point for each avalanche, multiple points for large avalanches
-    for i in range(0,len(avalanches)):
+    for i in range(0, len(avalanches)):
         aval = avalanches.iloc[i]
         diff = aval.geometry
         while not diff.is_empty:
@@ -216,7 +217,7 @@ def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05):
             diff = diff.difference(p.buffer(dist, cap_style=3))
 
             # only add point if it is not too close to another (could be too close to another avalanche)
-            if not (sample_points.distance(p) < dist).any():
+            if not (sample_points.iloc[-n:].distance(p) < dist).any():
                 sample_points = sample_points.append(gpd.GeoSeries(p))
 
     # add points with no avalanche
