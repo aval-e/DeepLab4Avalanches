@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import affine
 import rasterio
 import rasterio.features
+import random
 
 
 def list_paths_in_dir(root_dir, file_endings=None):
@@ -188,4 +189,57 @@ def get_avalanches_in_region(avalanches, region):
 def labels_to_mask(labels):
     """ Convert image labels to mask of zeros and ones"""
     return (labels != 0).float()
+
+
+def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05):
+    """ Inteligently choose samples such that there is no overlap but large avalanches are covered
+        Also add samples with no avalanche present
+
+        :param avalanches: geopandas geoseries of avalanche polygons
+        :param region: region in which samples are contained as geoseries
+        :param tile_size: size of one sample [x, y]
+        :param no_aval_ratio: ratio of samples to add with no avalanche [0-1]
+        :returns: geoseries of sample Points
+    """
+    dist = tile_size.min()
+    sample_points = gpd.GeoSeries()
+
+    # add point for each avalanche, multiple points for large avalanches
+    for i in range(0,len(avalanches)):
+        aval = avalanches.iloc[i]
+        diff = aval.geometry
+        while not diff.is_empty:
+            # get point inside avalanche - not random but not centroid either
+            p = diff.representative_point()
+
+            # get difference of avalanche and square around sample point
+            diff = diff.difference(p.buffer(dist, cap_style=3))
+
+            # only add point if it is not too close to another (could be too close to another avalanche)
+            if not (sample_points.distance(p) < dist).any():
+                sample_points = sample_points.append(gpd.GeoSeries(p))
+
+    # add points with no avalanche
+    for i in range(0, int(no_aval_ratio * len(avalanches))):
+        for j in range(0, 100): # max 100 tries
+            p = get_random_point_in_region(region)
+
+            # only add point if far enough from all avalanches
+            if not (sample_points.distance(p) < dist).any():
+                sample_points = sample_points.append(gpd.GeoSeries(p))
+                break
+
+    return sample_points
+
+
+def get_random_point_in_region(region):
+    """ Sample a random point within a region
+        :param region: geoseries with one or multiple polygons
+        :returns: random point within region
+    """
+    minx, miny, maxx, maxy = region.total_bounds
+    while True:
+        p = Point(random.uniform(minx, maxx), random.uniform(miny, maxy))
+        if region.contains(p).any():
+            return p
 

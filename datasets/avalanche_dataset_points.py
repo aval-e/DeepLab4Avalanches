@@ -3,14 +3,13 @@ import geopandas as gpd
 from torch.utils.data import Dataset, DataLoader
 from osgeo import gdal
 from utils import data_utils, viz_utils
-from random import randint
 import numpy as np
 import torch
 
 
-class AvalancheDataset(Dataset):
+class AvalancheDatasetPoints(Dataset):
     """
-    SLF Avalanche Dataset. Samples are taken from avalanches within specified region
+    SLF Avalanche Dataset. Samples chosen intelligently to avoid overlaps and cover larger avalanches
 
     :param root_dir: directory in which all data is located
     :param aval_file: shapefile name located in root_dir of the avalanches
@@ -53,13 +52,13 @@ class AvalancheDataset(Dataset):
         aval_path = os.path.join(root_dir, aval_file)
         self.avalanches = gpd.read_file(aval_path)
         self.avalanches = data_utils.get_avalanches_in_region(self.avalanches, region)
+        if certainty:
+            self.avalanches = self.avalanches[self.avalanches.aval_shape <= certainty]
+        self.sample_points = data_utils.generate_sample_points(self.avalanches, region, self.tile_size)
 
         # get rasterised avalanches
         self.aval_raster = gdal.BuildVRT('', aval_raster_path)
         self.aval_ulx, self.aval_uly, _, _ = data_utils.get_raster_extent(self.aval_raster)
-
-        if certainty:
-            self.avalanches = self.avalanches[self.avalanches.aval_shape <= certainty]
 
         # get DEM if specified
         self.dem = None
@@ -69,7 +68,7 @@ class AvalancheDataset(Dataset):
             self.dem_ulx, self.dem_uly, _, _ = data_utils.get_raster_extent(self.dem)
 
     def __len__(self):
-        return len(self.avalanches)
+        return len(self.sample_points)
 
     def __getitem__(self, idx):
         """
@@ -77,30 +76,16 @@ class AvalancheDataset(Dataset):
         :param idx: index
         :return: [image, rasterised avalanches] as list
         """
-        aval = self.avalanches.iloc[idx]
-        bbox = aval.geometry.bounds
+        p = self.sample_points.iloc[idx]
 
-        # calculate pixel coords, width and height of patch
-        res_aval_px = np.array((bbox[2] - bbox[0], bbox[3] - bbox[1]))
-        res_aval_px = np.ceil(res_aval_px / self.pixel_w)
-        size_diff = self.tile_size - res_aval_px
+        px_offset = self.tile_size // 2
 
-        # move avalanche to center or augment position around center if random enabled
-        px_offset = np.array([0, 0])
         if self.random:
-            if size_diff[0] > 0:
-                px_offset[0] = randint(0, size_diff[0])
-            else:
-                px_offset[0] = randint(size_diff[0], 0)
-            if size_diff[1] > 0:
-                px_offset[1] = randint(0, size_diff[1])
-            else:
-                px_offset[1] = randint(size_diff[1], 0)
-        else:
-            px_offset = size_diff // 2
-        vrt_offset = np.array([bbox[0] - self.ulx, self.uly - bbox[3]])
+            max_diff = self.tile_size.min() // 2
+            px_offset += np.random.randint(-max_diff, max_diff, 2)
+        vrt_offset = np.array([p.x - self.ulx, self.uly - p.y])
         vrt_offset = vrt_offset / self.pixel_w - px_offset
-        aval_offset = np.array([bbox[0] - self.aval_ulx, self.aval_uly - bbox[3]])
+        aval_offset = np.array([p.x - self.aval_ulx, self.aval_uly - p.y])
         aval_offset = aval_offset / self.pixel_w - px_offset
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size.tolist(),
@@ -108,7 +93,7 @@ class AvalancheDataset(Dataset):
         shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist())
 
         if self.dem:
-            dem_offset = np.array([bbox[0] - self.dem_ulx, self.dem_uly - bbox[3]])
+            dem_offset = np.array([p.x - self.dem_ulx, self.dem_uly - p.y])
             dem_offset = dem_offset / self.pixel_w - px_offset
             dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist())
             dem_image = np.concatenate(np.gradient(dem_image, axis=(0,1)), axis=2) # get gradients
@@ -132,21 +117,20 @@ if __name__ == '__main__':
     # run test
 
     # home
-    # data_folder = '/home/patrick/ecovision/data/2019'
-    # ava_file = 'avalanches0119_endversion.shp'
-    # region_file = 'Multiple_regions.shp'
+    data_folder = '/home/patrick/ecovision/data/2018'
+    ava_file = 'avalanches0118_endversion.shp'
+    region_file = 'Region_Selection.shp'
 
     # pfpc
-    data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
-    ava_file = 'avalanches0118_endversion.shp'
-    region_file = 'Val_area_2018.shp'
-    dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
+    # data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
+    # ava_file = 'avalanches0118_endversion.shp'
+    # region_file = 'Val_area_2018.shp'
+    # dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
-    my_dataset = AvalancheDataset(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=dem_path)
-    dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=2)
+    my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=None, random=False)
+    dataloader = DataLoader(my_dataset, batch_size=1, shuffle=False, num_workers=2)
 
-    dataiter = iter(dataloader)
-    batch = next(dataiter)
-
-    batch = [elem.squeeze() for elem in batch]
-    viz_utils.overlay_and_plot_avalanches_by_certainty(*batch)
+    for batch in iter(dataloader):
+        batch = [elem.squeeze() for elem in batch]
+        viz_utils.overlay_and_plot_avalanches_by_certainty(*batch)
+        input('Press key for another sample')
