@@ -3,6 +3,7 @@
 
 # dataset hyperparameters
 train_root_dir="/home/patrick/ecovision/data/2018"
+tile_size="64 64"
 aval_certainty=1
 bands="1 2 3 4"
 
@@ -29,6 +30,7 @@ python -m trainer.train \
 --date "$(date +"%d.%m.%y")" \
 --time "$(date +"%T")" \
 --train_root_dir $train_root_dir \
+--tile_size $tile_size \
 --aval_certainty $aval_certainty \
 --bands $bands \
 --hflip_p $hflip_p \

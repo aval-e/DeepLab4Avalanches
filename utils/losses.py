@@ -75,7 +75,7 @@ def soft_dice(gt, y_hat):
         :param gt: ground truth label (binary 0,1 mask of avalanche or not)
         :param y_hat: predicted probablity
     """
-    return 2 * torch.sum(gt * y_hat) / (torch.sum(gt) + torch.sum(y_hat))
+    return 2 * torch.sum(gt * y_hat) / (torch.sum(gt + y_hat))
 
 
 if __name__ == '__main__':

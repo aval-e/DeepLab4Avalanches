@@ -81,7 +81,7 @@ class AvalancheDatasetPoints(Dataset):
         px_offset = self.tile_size // 2
 
         if self.random:
-            max_diff = self.tile_size.min() // 2
+            max_diff = self.tile_size.min() // 3
             px_offset += np.random.randint(-max_diff, max_diff, 2)
         vrt_offset = np.array([p.x - self.ulx, self.uly - p.y])
         vrt_offset = vrt_offset / self.pixel_w - px_offset

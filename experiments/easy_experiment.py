@@ -4,6 +4,7 @@ from models.deep_lab_v4 import DeepLabv4
 from jvanvugt_unet.unet import UNet
 import pytorch_lightning as pl
 from pytorch_lightning import TrainResult, EvalResult
+from pytorch_lightning.metrics.functional.classification import auroc
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
 from argparse import ArgumentParser
@@ -71,6 +72,8 @@ class EasyExperiment(pl.LightningModule):
         recall2 = recall_for_label(y, pred, 2)
         recall3 = recall_for_label(y, pred, 3)
 
+        _,_,f1_no_aval = get_precision_recall_f1(y_mask==0, pred==0)
+        f1_average = 0.5 * (f1_no_aval + f1)
 
         # Logging metrics
         result = EvalResult(checkpoint_on=bce_loss)
@@ -82,6 +85,7 @@ class EasyExperiment(pl.LightningModule):
         result.log('recall exact', recall1, sync_dist=True, reduce_fx=nanmean)
         result.log('recall estimated', recall2, sync_dist=True, reduce_fx=nanmean)
         result.log('recall created', recall3, sync_dist=True, reduce_fx=nanmean)
+        result.log('f1 average', f1_average, sync_dist=True, reduce_fx=nanmean)
         if batch_idx == self.hparams.val_viz_idx:
             image = viz_utils.viz_training(x, y, y_hat, pred)
             self.logger.experiment.add_image("Validation Sample", image, self.global_step)
