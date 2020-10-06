@@ -55,7 +55,7 @@ class AvalancheDatasetPoints(Dataset):
         if certainty:
             self.avalanches = self.avalanches[self.avalanches.aval_shape <= certainty]
         self.sample_points = data_utils.generate_sample_points(self.avalanches, region, self.tile_size)
-
+        
         # get rasterised avalanches
         self.aval_raster = gdal.BuildVRT('', aval_raster_path)
         self.aval_ulx, self.aval_uly, _, _ = data_utils.get_raster_extent(self.aval_raster)
@@ -132,5 +132,5 @@ if __name__ == '__main__':
 
     for batch in iter(dataloader):
         batch = [elem.squeeze() for elem in batch]
-        viz_utils.overlay_and_plot_avalanches_by_certainty(*batch)
+        viz_utils.plot_avalanches_by_certainty(*batch)
         input('Press key for another sample')
