@@ -164,22 +164,30 @@ def overlay_avalanches_by_certainty(image, aval_image):
         i[:, 1:2, :, :] -= 0.4 * red
         i[:, 2:3, :, :] -= 0.4 * red
 
-        return i
+        return i.clamp(0, 1)
 
 
-def plot_prediction(image, y_hat):
+def plot_prediction(image, y, y_hat):
     with torch.no_grad():
         image = (image - image.min()) / (image.max() - image.min())
-
-        # image = overlay_avalanches(image, y_hat)
         image = select_rgb_channels_from_batch(image)
-        image = image.squeeze()
-        image = image.permute(1, 2, 0).numpy()
+        y_over = overlay_avalanches_by_certainty(image, y)
 
+        # convert to numpy format for plotting
+        image = image.squeeze().permute(1, 2, 0).numpy()
+        y_over = y_over.squeeze().permute(1, 2, 0).numpy()
         y_hat = y_hat.squeeze().numpy()
+
         alpha_map = 0.5 * y_hat
 
-        # fig, axs = plt.subplats(3, sharex=True)
-        plt.imshow(image)
-        plt.imshow(y_hat, cmap=plt.cm.jet, alpha=alpha_map)
-        plt.show()
+        fig, axs = plt.subplots(1, 3, sharey=True, gridspec_kw={'wspace': 0.01})
+        axs[0].imshow(image)
+        axs[1].imshow(y_over)
+        axs[2].imshow(image)
+        axs[2].imshow(y_hat, cmap=plt.cm.jet, alpha=alpha_map)
+        for ax in axs:
+            ax.axis('off')
+        fig.set_size_inches(12,4)
+        fig.subplots_adjust(0,0,1,1)
+        fig.show()
+        return fig

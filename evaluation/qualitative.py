@@ -1,14 +1,16 @@
-import torch
+import os
 from argparse import ArgumentParser
 from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 from utils.viz_utils import plot_prediction
-from matplotlib import pyplot as plt
 
 
 def main(hparams):
+    if not os.path.exists(hparams.save_dir):
+        os.makedirs(hparams.save_dir)
+
     model = EasyExperiment.load_from_checkpoint(hparams.checkpoint)
     model.eval()
 
@@ -34,9 +36,15 @@ def main(hparams):
         x, y = batch
         y_hat = model(x)
 
-        plot_prediction(x, y_hat)
+        fig = plot_prediction(x, y, y_hat)
 
-        # input('Press enter for another sample')
+        name = input("Enter name to save under or press enter to skip:\n")
+        if name:
+            print('saving...')
+            fig_path = os.path.join(hparams.save_dir, name)
+            fig.savefig(fig_path, bbox_inches='tight', pad_inches=0)
+        else:
+            print('skipping...')
 
 
 if __name__ == "__main__":
@@ -44,6 +52,7 @@ if __name__ == "__main__":
 
     # checkpoint path
     parser.add_argument('checkpoint', type=str, help='Path to checkpoint to be loaded')
+    parser.add_argument('--save_dir', type=str, help='directory under which to save figures')
 
     # Dataset Args
     parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')

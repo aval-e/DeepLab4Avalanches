@@ -2,6 +2,8 @@
 
 checkpoint="/scratch/bartonp/checkpoints/deeplab_adam_b4_bigvalarea.ckpt"
 
+save_dir="/scratch/bartonp/images/deeplab_adam_b4_bigvalarea"
+
 # Dataset hyperparameters
 train_root_dir="/home/pf/pfstud/bartonp/slf_avalanches/2018"
 train_ava_file="avalanches0118_endversion.shp"
@@ -18,6 +20,7 @@ stds="823.4 975.5"
 
 python -m evaluation.qualitative \
 $checkpoint \
+--save_dir $save_dir \
 --train_root_dir $train_root_dir \
 --train_ava_file $train_ava_file \
 --train_region_file $train_region_file \
