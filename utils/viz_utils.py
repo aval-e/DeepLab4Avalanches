@@ -22,7 +22,7 @@ def viz_sample(sample):
         plt.show()
 
 
-def overlay_and_plot_avalanches_by_certainty(image, aval_image):
+def plot_avalanches_by_certainty(image, aval_image):
     """ Plots image and overlays avalanches in different colors according to their certainty
 
     :param image: background satellite image as numpy array
@@ -60,6 +60,20 @@ def overlay_and_plot_avalanches_by_certainty(image, aval_image):
         plt.show()
 
 
+def select_rgb_channels_from_batch(x):
+    """ Selects first 3 channels from batch to be uses as rgb values
+    If less than two channels present the first channel is duplicated to make 3
+
+    :param x: torch tensor of shape [B,C,W,H]
+    """
+    x = x.clone()
+    while x.shape[1] < 3:
+        x = torch.cat([x, x[:,0:1,:,:]], dim=1)
+    if x.shape[1] > 3:
+        x = x[:,0:3,:,:]
+    return x
+
+
 def viz_training(x, y, y_hat, pred=None):
     """
     Show input, ground truth and prediction next to each other.
@@ -73,12 +87,7 @@ def viz_training(x, y, y_hat, pred=None):
     """
     with torch.no_grad():
         # if less than 3 channels, duplicate first channel for rgb image
-        if x.shape[1] >= 3:
-            x_only = x[:, 0:3, :, :]
-        elif x.shape[1] == 2:
-            x_only = torch.cat([x, x[:, 0:1, :, :]], dim=1)
-        else:
-            x_only = torch.cat([x, x[:, 0:1, :, :], x[:, 0:1, :, :]], dim=1)
+        x_only = select_rgb_channels_from_batch(x)
 
         x_only = (x_only - x_only.min()) / (x_only.max() - x_only.min())
         y_over = overlay_avalanches_by_certainty(x_only, y)
@@ -155,4 +164,30 @@ def overlay_avalanches_by_certainty(image, aval_image):
         i[:, 1:2, :, :] -= 0.4 * red
         i[:, 2:3, :, :] -= 0.4 * red
 
-        return i
+        return i.clamp(0, 1)
+
+
+def plot_prediction(image, y, y_hat):
+    with torch.no_grad():
+        image = (image - image.min()) / (image.max() - image.min())
+        image = select_rgb_channels_from_batch(image)
+        y_over = overlay_avalanches_by_certainty(image, y)
+
+        # convert to numpy format for plotting
+        image = image.squeeze().permute(1, 2, 0).numpy()
+        y_over = y_over.squeeze().permute(1, 2, 0).numpy()
+        y_hat = y_hat.squeeze().numpy()
+
+        alpha_map = 0.5 * y_hat
+
+        fig, axs = plt.subplots(1, 3, sharey=True, gridspec_kw={'wspace': 0.01})
+        axs[0].imshow(image)
+        axs[1].imshow(y_over)
+        axs[2].imshow(image)
+        axs[2].imshow(y_hat, cmap=plt.cm.jet, alpha=alpha_map)
+        for ax in axs:
+            ax.axis('off')
+        fig.set_size_inches(12,4)
+        fig.subplots_adjust(0,0,1,1)
+        fig.show()
+        return fig

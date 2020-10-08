@@ -1,4 +1,5 @@
 import torch
+import argparse
 from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
 from jvanvugt_unet.unet import UNet
@@ -14,6 +15,10 @@ class EasyExperiment(pl.LightningModule):
 
     def __init__(self, hparams):
         super().__init__()
+
+        # bug in lightning returns hparams as dict when loading from checkpoint
+        if isinstance(hparams, dict):
+            hparams = argparse.Namespace(**hparams)
         self.hparams = hparams
 
         self.bce_loss = BCELoss()
