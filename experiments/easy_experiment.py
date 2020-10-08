@@ -32,17 +32,23 @@ class EasyExperiment(pl.LightningModule):
 
     def configure_optimizers(self):
         if self.hparams.optimiser == 'adam':
-            optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.params.weight_decay)
         elif self.hparams.optimiser == 'sgd':
             optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr, momentum=self.hparams.momentum,
                                         weight_decay=self.hparams.weight_decay)
         else:
             raise Exception('Optimiser not recognised: ' + self.hparams.optimiser)
         
-        # lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [200, 600, 1400, 3000, 6000, 10000], gamma=0.5)
-        # scheduler = {'scheduler': lr_scheduler,
-        #              'interval': 'step'}
-        # return [optimizer], [scheduler]
+        #lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [1200, 3000, 6000, 9000], gamma=0.5)
+        #scheduler = {'scheduler': lr_scheduler,
+        #             'interval': 'step'}
+        #scheduler = {
+        #    'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=5e-6),
+        #    'interval': 'step',
+        #    'frequency': 250,
+        #    'monitor': 'val_checkpoint_on',
+        #}
+        #return [optimizer], [scheduler]
         return optimizer
 
     def training_step(self, batch, batch_idx):
