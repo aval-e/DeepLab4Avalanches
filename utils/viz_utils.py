@@ -60,21 +60,25 @@ def plot_avalanches_by_certainty(image, aval_image):
         plt.show()
 
 
-def select_rgb_channels_from_batch(x):
+def select_rgb_channels_from_batch(x, dem=None):
     """ Selects first 3 channels from batch to be uses as rgb values
     If less than two channels present the first channel is duplicated to make 3
 
     :param x: torch tensor of shape [B,C,W,H]
+    :param dem: whether DEM is in x
     """
     x = x.clone()
-    while x.shape[1] < 3:
+    min_no_channels = 3
+    if dem:
+        min_no_channels += 2
+    while x.shape[1] < min_no_channels:
         x = torch.cat([x, x[:,0:1,:,:]], dim=1)
     if x.shape[1] > 3:
         x = x[:,0:3,:,:]
     return x
 
 
-def viz_training(x, y, y_hat, pred=None):
+def viz_training(x, y, y_hat, pred=None, dem=None):
     """
     Show input, ground truth and prediction next to each other.
 
@@ -83,11 +87,12 @@ def viz_training(x, y, y_hat, pred=None):
     :param y: ground truth
     :param y_hat: probability output
     :param pred: prediction - y_hat rounded to zero or one
+    :param dem: whether DEM is in x
     :return: image grid of comparisons for all samples in batch
     """
     with torch.no_grad():
         # if less than 3 channels, duplicate first channel for rgb image
-        x_only = select_rgb_channels_from_batch(x)
+        x_only = select_rgb_channels_from_batch(x, dem)
 
         x_only = (x_only - x_only.min()) / (x_only.max() - x_only.min())
         y_over = overlay_avalanches_by_certainty(x_only, y)

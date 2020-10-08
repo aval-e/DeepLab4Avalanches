@@ -37,7 +37,7 @@ class EasyExperiment(pl.LightningModule):
 
     def configure_optimizers(self):
         if self.hparams.optimiser == 'adam':
-            optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.params.weight_decay)
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         elif self.hparams.optimiser == 'sgd':
             optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr, momentum=self.hparams.momentum,
                                         weight_decay=self.hparams.weight_decay)
