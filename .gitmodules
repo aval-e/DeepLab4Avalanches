@@ -1,3 +1,0 @@
-[submodule "jvanvugt_unet"]
-	path = jvanvugt_unet
-	url = https://github.com/jvanvugt/pytorch-unet

@@ -2,16 +2,16 @@ import torch
 import argparse
 from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
-from jvanvugt_unet.unet import UNet
-import pytorch_lightning as pl
-from pytorch_lightning import TrainResult, EvalResult
+from models.deeplabv3_plus import DeepLab as DeepLabv3plus
+from models.self_attention_unet import SelfAttentionUNet
+from pytorch_lightning import TrainResult, EvalResult, LightningModule
 from pytorch_lightning.metrics.functional.classification import auroc
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
 from argparse import ArgumentParser
 
 
-class EasyExperiment(pl.LightningModule):
+class EasyExperiment(LightningModule):
 
     def __init__(self, hparams):
         super().__init__()
@@ -25,10 +25,12 @@ class EasyExperiment(pl.LightningModule):
         self.l1 = L1Loss()
         self.mse = MSELoss()
 
-        if hparams.model == 'unet':
-            self.model = UNet(hparams.in_channels, n_classes=1, depth=4, wf=6, padding=True, batch_norm=True)
-        elif hparams.model == 'deeplab':
+        if hparams.model == 'deeplab':
             self.model = DeepLabv4(in_channels=hparams.in_channels)
+        elif hparams.model == 'deeplabv3+':
+            self.model = DeepLabv3plus(1, hparams.in_channels, backbone=hparams.backbone)
+        elif hparams.model == 'sa_unet':
+            self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         else:
             raise('Model not found: ' + hparams.model)
 
@@ -43,18 +45,21 @@ class EasyExperiment(pl.LightningModule):
                                         weight_decay=self.hparams.weight_decay)
         else:
             raise Exception('Optimiser not recognised: ' + self.hparams.optimiser)
-        
-        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [10000, 17000], gamma=0.1)
-        scheduler = {'scheduler': lr_scheduler,
-                     'interval': 'step'}
-        #scheduler = {
-        #    'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=5e-6),
-        #    'interval': 'step',
-        #    'frequency': 250,
-        #    'monitor': 'val_checkpoint_on',
-        #}
-        return [optimizer], [scheduler]
-        #return optimizer
+
+        if self.hparams.lr_scheduler == 'multistep':
+            lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, self.hparams.scheduler_steps, gamma=self.hparams.scheduler_gamma)
+            scheduler = {'scheduler': lr_scheduler,
+                         'interval': 'step'}
+            return [optimizer], [scheduler]
+        elif self.hparams.lr_scheduler == 'plateau':
+            scheduler = {
+               'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=self.hparams.scheduler_gamma, patience=2, min_lr=5e-6),
+               'interval': 'step',
+               'frequency': 250,
+               'monitor': 'val_checkpoint_on',
+            }
+            return [optimizer], [scheduler]
+        return optimizer
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -106,11 +111,18 @@ class EasyExperiment(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         # allows adding model specific args via command line and logging them
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
-        parser.add_argument('--model', type=str, default='deeplab', help='Model arcitecture. One of "deeplab", "unet"')
+        parser.add_argument('--model', type=str, default='deeplab', help='Model arcitecture. One of "deeplab", "deeplabv3+" or "sa_unet"')
+        parser.add_argument('--backbone', type=str, default='xception', help='backbone to use in deeplabv3+. "xception", "resnetxx"')
+
+        # optimisation
         parser.add_argument('--optimiser', type=str, default='adam', help="optimisation algorithm. 'adam' or 'sgd'")
         parser.add_argument('--lr', type=float, default=1e-3, help="learning rate of optimisation algorithm")
+        parser.add_argument('--lr_scheduler', type=str, default=None, help="lr scheduler to be used. ['None', 'multistep', 'plateau']")
+        parser.add_argument('--scheduler_gamma', type=float, default=0.1, help='amount by which to decay scheduler lr')
+        parser.add_argument('--scheduler_steps', type=int, nargs='+', help='list of steps at which to decrease lr with multistep scheduler')
         parser.add_argument('--momentum', type=float, default=0.9, help="momentum of optimisation algorithm")
         parser.add_argument('--weight_decay', type=float, default=0.01, help="weight decay of optimisation algorithm")
+
         parser.add_argument('--in_channels', type=int, default=4, help="no. of input channels to network")
         parser.add_argument('--train_viz_interval', type=int, default=100, help="image save interval during training")
         parser.add_argument('--val_viz_idx', type=int, default=0, help="batch index to be plotted during validation")

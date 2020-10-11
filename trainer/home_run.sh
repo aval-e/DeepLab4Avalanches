@@ -24,6 +24,7 @@ log_dir="$(pwd)/lightning_logs"
 # model hyperparameters
 lr=1e-4
 in_channels=4
+model='sa_unet'
 
 
 python -m trainer.train \
@@ -41,6 +42,7 @@ python -m trainer.train \
 --log_save_interval $log_save_interval \
 --train_viz_interval $train_viz_interval \
 --lr $lr \
+--model $model \
 --in_channels $in_channels \
 --limit_train_batches $limit_train_batches \
 --limit_val_batches $limit_val_batches \
