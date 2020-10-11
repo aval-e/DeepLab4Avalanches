@@ -44,17 +44,17 @@ class EasyExperiment(pl.LightningModule):
         else:
             raise Exception('Optimiser not recognised: ' + self.hparams.optimiser)
         
-        #lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [1200, 3000, 6000, 9000], gamma=0.5)
-        #scheduler = {'scheduler': lr_scheduler,
-        #             'interval': 'step'}
+        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [10000, 17000], gamma=0.1)
+        scheduler = {'scheduler': lr_scheduler,
+                     'interval': 'step'}
         #scheduler = {
         #    'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=5e-6),
         #    'interval': 'step',
         #    'frequency': 250,
         #    'monitor': 'val_checkpoint_on',
         #}
-        #return [optimizer], [scheduler]
-        return optimizer
+        return [optimizer], [scheduler]
+        #return optimizer
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -66,7 +66,7 @@ class EasyExperiment(pl.LightningModule):
         result.log('train loss', loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
-            image = viz_utils.viz_training(x, y, y_hat)
+            image = viz_utils.viz_training(x, y, y_hat, dem=self.hparams.dem_dir)
             self.logger.experiment.add_image("Training Sample", image, self.global_step)
         return result
 
@@ -98,7 +98,7 @@ class EasyExperiment(pl.LightningModule):
         result.log('recall created', recall3, sync_dist=True, reduce_fx=nanmean)
         result.log('f1 average', f1_average, sync_dist=True, reduce_fx=nanmean)
         if batch_idx == self.hparams.val_viz_idx:
-            image = viz_utils.viz_training(x, y, y_hat, pred)
+            image = viz_utils.viz_training(x, y, y_hat, pred, dem=self.hparams.dem_dir)
             self.logger.experiment.add_image("Validation Sample", image, self.global_step)
         return result
 

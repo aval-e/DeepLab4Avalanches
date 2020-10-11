@@ -11,7 +11,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="dem_b4_adam_lr5e-5_decay"
+exp_name="dem_b4_sgd_multistep"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -47,10 +47,10 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
 model='deeplab'
-optimiser="adam"
-lr=5e-5
+optimiser="sgd"
+lr=1e-1
 momentum=0.9
-weight_decay=0.1
+weight_decay=0.0
 in_channels=4
 train_viz_interval=400
 val_viz_idx=4

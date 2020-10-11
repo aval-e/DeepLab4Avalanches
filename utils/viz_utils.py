@@ -72,7 +72,7 @@ def select_rgb_channels_from_batch(x, dem=None):
     if dem:
         min_no_channels += 2
     while x.shape[1] < min_no_channels:
-        x = torch.cat([x, x[:,0:1,:,:]], dim=1)
+        x = torch.cat([x[:,0:1,:,:], x], dim=1)
     if x.shape[1] > 3:
         x = x[:,0:3,:,:]
     return x
