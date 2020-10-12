@@ -11,7 +11,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="segm_deeplab_adam_5e-5"
+exp_name="segm_deeplabv3+_adam_5e-5_pretrained"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -39,20 +39,20 @@ gpus=2
 batch_size=4
 max_epochs=20
 val_check_interval=0.25
-row_log_interval=25
+row_log_interval=100
 log_save_interval=100
 distributed_backend="ddp"
 log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 
 # Model hyperparameters
-model='deeplab'
+model='deeplabv3+'
 optimiser="adam"
 lr=5e-5
 momentum=0.9
 weight_decay=0.0
 in_channels=2
-train_viz_interval=400
+train_viz_interval=1000
 val_viz_idx=4
 
 python -m trainer.train \

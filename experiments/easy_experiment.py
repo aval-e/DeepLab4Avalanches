@@ -26,9 +26,9 @@ class EasyExperiment(LightningModule):
         self.mse = MSELoss()
 
         if hparams.model == 'deeplab':
-            self.model = DeepLabV3('resnet50', in_channels=hparams.in_channels, encoder_weights=None)
+            self.model = DeepLabV3('resnet50', in_channels=hparams.in_channels, encoder_weights='imagenet')
         elif hparams.model == 'deeplabv3+':
-            self.model = DeepLabV3Plus('resnet50', in_channels=hparams.in_channels, encoder_weights=None)
+            self.model = DeepLabV3Plus('resnet50', in_channels=hparams.in_channels, encoder_weights='imagenet')
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         else:
