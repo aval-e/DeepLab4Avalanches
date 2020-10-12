@@ -11,7 +11,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="deeplabv3+_adam_5e-5"
+exp_name="segm_deeplab_adam_5e-5"
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -46,7 +46,7 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 
 # Model hyperparameters
-model='deeplabv3+'
+model='deeplab'
 optimiser="adam"
 lr=5e-5
 momentum=0.9
