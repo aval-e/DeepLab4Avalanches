@@ -3,6 +3,9 @@ import geopandas as gpd
 from torch.utils.data import Dataset, DataLoader
 from osgeo import gdal
 from utils import data_utils, viz_utils
+from torchvision.transforms import ToTensor
+from utils.data_augmentation import RandomScaling, RandomShift
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
@@ -34,6 +37,9 @@ class AvalancheDatasetPoints(Dataset):
         self.means = means
         self.stds = stds
         self.transform = transform
+
+        self.rand_shift = RandomShift(0.2)
+        self.rand_scale = RandomScaling(0.3)
 
         aval_raster_path = os.path.join(root_dir, os.path.splitext(aval_file)[0] + '.tif')
 
@@ -93,6 +99,12 @@ class AvalancheDatasetPoints(Dataset):
                                                   means=self.means, stds=self.stds, bands=self.bands)
         shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist())
 
+        # augment one of brightness and contrast
+        if self.random:
+            image = self.rand_shift(image)
+            image = self.rand_scale(image)
+
+        # add DEM after changing brightness etc but before rotating and flipping
         if self.dem:
             dem_offset = np.array([p.x - self.dem_ulx, self.dem_uly - p.y])
             dem_offset = dem_offset / self.pixel_w - px_offset
@@ -118,17 +130,18 @@ if __name__ == '__main__':
     # run test
 
     # home
-    data_folder = '/home/patrick/ecovision/data/2018'
-    ava_file = 'avalanches0118_endversion.shp'
-    region_file = 'Region_Selection.shp'
+    # data_folder = '/home/patrick/ecovision/data/2018'
+    # ava_file = 'avalanches0118_endversion.shp'
+    # region_file = 'Region_Selection.shp'
 
     # pfpc
-    # data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
-    # ava_file = 'avalanches0118_endversion.shp'
-    # region_file = 'Val_area_2018.shp'
-    # dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
+    data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
+    ava_file = 'avalanches0118_endversion.shp'
+    region_file = 'Val_area_2018.shp'
+    dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
-    my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=None, random=False)
+    my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=None,
+                                        random=True)
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=False, num_workers=2)
 
     for batch in iter(dataloader):

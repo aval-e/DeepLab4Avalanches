@@ -26,9 +26,9 @@ class EasyExperiment(LightningModule):
         self.mse = MSELoss()
 
         if hparams.model == 'deeplab':
-            self.model = DeepLabV3('resnet50', in_channels=hparams.in_channels, encoder_weights='imagenet')
+            self.model = DeepLabV3(self.hparams.backbone, in_channels=hparams.in_channels, encoder_weights='imagenet')
         elif hparams.model == 'deeplabv3+':
-            self.model = DeepLabV3Plus('resnet50', in_channels=hparams.in_channels, encoder_weights='imagenet')
+            self.model = DeepLabV3Plus(self.hparams.backbone, in_channels=hparams.in_channels, encoder_weights='imagenet')
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         else:
@@ -112,7 +112,7 @@ class EasyExperiment(LightningModule):
         # allows adding model specific args via command line and logging them
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument('--model', type=str, default='deeplab', help='Model arcitecture. One of "deeplab", "deeplabv3+" or "sa_unet"')
-        parser.add_argument('--backbone', type=str, default='xception', help='backbone to use in deeplabv3+. "xception", "resnetxx"')
+        parser.add_argument('--backbone', type=str, default='resnet50', help='backbone to use in deeplabv3+. "xception", "resnetxx"')
 
         # optimisation
         parser.add_argument('--optimiser', type=str, default='adam', help="optimisation algorithm. 'adam' or 'sgd'")

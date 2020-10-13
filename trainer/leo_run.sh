@@ -47,6 +47,7 @@ log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
 model='deeplabv3+'
+backbone='resnet50'
 optimiser="adam"
 lr=5e-5
 momentum=0.9
@@ -85,6 +86,7 @@ python -m trainer.train \
 --distributed_backend $distributed_backend \
 --log_dir $log_dir \
 --model $model \
+--backbone $backbone \
 --optimiser $optimiser \
 --lr $lr \
 --momentum $momentum \

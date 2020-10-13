@@ -3,6 +3,36 @@ import random
 import numbers
 
 
+class RandomScaling:
+    """ Random scaling of a torch tensor. Simulates something like a change in contrast
+    :param max_scale: scale chosen from a triangular distribution between 1-max_scale and 1+max_scale"""
+
+    def __init__(self, max_scale):
+        self.max_scale = max_scale
+
+    @staticmethod
+    def get_params(max_scale):
+        return random.triangular(1 - max_scale, 1 + max_scale, 1)
+
+    def __call__(self, img):
+        return img * self.get_params(self.max_scale)
+
+
+class RandomShift:
+    """ Random shifting of a torch tensor. Simulates something like a change in brightness
+    :param max_shift: shift chosen from a triangular distribution between -max_shift and max_shift"""
+
+    def __init__(self, max_shift):
+        self.max_shift = max_shift
+
+    @staticmethod
+    def get_params(max_shift):
+        return random.triangular(-max_shift, max_shift, 0)
+
+    def __call__(self, img):
+        return img - self.get_params(self.max_shift)
+
+
 class RandomRotation:
     """ Random rotation of numpy ndarray
 

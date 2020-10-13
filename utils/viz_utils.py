@@ -97,6 +97,7 @@ def viz_training(x, y, y_hat, pred=None, dem=None):
         x_only = (x_only - x_only.min()) / (x_only.max() - x_only.min())
         y_over = overlay_avalanches_by_certainty(x_only, y)
         y_hat_over = overlay_avalanches(x_only, y_hat)
+
         if pred is not None:
             pred_over = overlay_avalanches(x_only, pred)
             image_list = [x_only, y_over, pred_over, y_hat_over]

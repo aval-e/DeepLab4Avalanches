@@ -1,5 +1,4 @@
 import torch
-from torch.nn import Sigmoid
 from torchvision.models.segmentation import deeplabv3_resnet50
 
 

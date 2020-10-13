@@ -8,6 +8,7 @@ dependencies:
   - _pytorch_select=0.1=cpu_0
   - absl-py=0.9.0=py37_0
   - affine=2.3.0=py_0
+  - astroid=2.4.2=py37_0
   - attrs=20.1.0=py_0
   - blas=1.0=mkl
   - blinker=1.4=py37_0
@@ -50,11 +51,13 @@ dependencies:
   - icu=58.2=he6710b0_3
   - idna=2.10=py_0
   - intel-openmp=2020.2=254
+  - isort=5.4.2=py37_0
   - jpeg=9b=h024ee3a_2
   - json-c=0.13.1=h1bed415_0
   - kealib=1.4.7=hd0c454d_6
   - kiwisolver=1.2.0=py37hfd86e86_0
   - krb5=1.16.4=h173b8e3_0
+  - lazy-object-proxy=1.4.3=py37h7b6447c_0
   - lcms2=2.11=h396b838_0
   - ld_impl_linux-64=2.33.1=h53a641e_7
   - libboost=1.67.0=h46d08c1_4
@@ -82,6 +85,7 @@ dependencies:
   - markdown=3.1.1=py37_0
   - matplotlib=3.3.1=0
   - matplotlib-base=3.3.1=py37h817c723_0
+  - mccabe=0.6.1=py37_1
   - mkl=2020.2=256
   - mkl-service=2.3.0=py37he904b0f_0
   - mkl_fft=1.1.0=py37h23d657b_0
@@ -109,6 +113,7 @@ dependencies:
   - pyasn1-modules=0.2.7=py_0
   - pycparser=2.20=py_2
   - pyjwt=1.7.1=py37_0
+  - pylint=2.6.0=py37_0
   - pyopenssl=19.1.0=py_1
   - pyparsing=2.4.7=py_0
   - pyproj=1.9.6=py37h14380d9_0
@@ -137,16 +142,24 @@ dependencies:
   - tensorboard=2.2.0=py_0
   - tensorboard-plugin-wit=1.6.0=py_0
   - tk=8.6.10=hbc83047_0
+  - toml=0.10.1=py_0
   - torchvision=0.7.0=py37_cu102
   - tornado=6.0.4=py37h7b6447c_1
   - tqdm=4.48.2=py_0
+  - typed-ast=1.4.1=py37h7b6447c_0
   - urllib3=1.25.10=py_0
   - werkzeug=1.0.1=py_0
   - wheel=0.35.1=py_0
+  - wrapt=1.11.2=py37h7b6447c_0
   - xerces-c=3.2.2=h780794e_0
   - xz=5.2.5=h7b6447c_0
   - yaml=0.2.5=h7b6447c_0
   - zipp=3.1.0=py_0
   - zlib=1.2.11=h7b6447c_3
   - zstd=1.4.5=h9ceee32_0
-prefix: /home/patrick/miniconda3/envs/eco
+  - pip:
+    - efficientnet-pytorch==0.6.3
+    - pretrainedmodels==0.7.4
+    - segmentation-models-pytorch==0.1.2
+    - timm==0.1.20
+prefix: /scratch/bartonp/miniconda/envs/eco
