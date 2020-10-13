@@ -3,6 +3,7 @@ import numpy as np
 from osgeo import gdal, ogr
 import geopandas as gpd
 from shapely.geometry import Point
+from tqdm import tqdm
 from matplotlib import pyplot as plt
 import affine
 import rasterio
@@ -206,7 +207,7 @@ def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=
     sample_points = gpd.GeoSeries()
 
     # add point for each avalanche, multiple points for large avalanches
-    for i in range(0, len(avalanches)):
+    for i in tqdm(range(0, len(avalanches)), desc="Generating Points in avalanches"):
         aval = avalanches.iloc[i]
         diff = aval.geometry
         while not diff.is_empty:
@@ -221,7 +222,7 @@ def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=
                 sample_points = sample_points.append(gpd.GeoSeries(p))
 
     # add points with no avalanche
-    for i in range(0, int(no_aval_ratio * len(avalanches))):
+    for i in tqdm(range(0, int(no_aval_ratio * len(avalanches))), desc='Generating points with no avalanches'):
         for j in range(0, 100): # max 100 tries
             p = get_random_point_in_region(region)
 

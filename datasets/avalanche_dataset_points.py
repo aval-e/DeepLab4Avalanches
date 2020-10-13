@@ -27,6 +27,7 @@ class AvalancheDatasetPoints(Dataset):
 
     def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), bands=None, certainty=None,
                  random=True, means=None, stds=None, transform=None):
+        print('Creating Avalanche Dataset...')
         self.tile_size = np.array(tile_size)
         self.bands = bands
         self.random = random
