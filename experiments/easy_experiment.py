@@ -2,7 +2,7 @@ import torch
 import argparse
 from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
-from models.deeplabv3_plus import DeepLab as DeepLabv3plus
+from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
 from models.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import TrainResult, EvalResult, LightningModule
 from pytorch_lightning.metrics.functional.classification import auroc
@@ -26,9 +26,9 @@ class EasyExperiment(LightningModule):
         self.mse = MSELoss()
 
         if hparams.model == 'deeplab':
-            self.model = DeepLabv4(in_channels=hparams.in_channels)
+            self.model = DeepLabV3('resnet50', in_channels=hparams.in_channels, encoder_weights='imagenet')
         elif hparams.model == 'deeplabv3+':
-            self.model = DeepLabv3plus(1, hparams.in_channels, backbone=hparams.backbone)
+            self.model = DeepLabV3Plus('resnet50', in_channels=hparams.in_channels, encoder_weights='imagenet')
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         else:
