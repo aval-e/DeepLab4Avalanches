@@ -14,17 +14,17 @@ rand_rotation=20
 # training hyperparameters
 seed=42
 gpus=1
-row_log_interval=5
-log_save_interval=20
+log_every_n_steps=5
+flush_logs_every_n_steps=20
 train_viz_interval=5
-limit_train_batches=20
+limit_train_batches=10
 limit_val_batches=10
 log_dir="$(pwd)/lightning_logs"
 
 # model hyperparameters
 lr=1e-4
 in_channels=4
-model='sa_unet'
+model='deeplabv3+'
 
 
 python -m trainer.train \
@@ -38,8 +38,8 @@ python -m trainer.train \
 --rand_rotation $rand_rotation \
 --seed $seed \
 --gpus $gpus \
---row_log_interval $row_log_interval \
---log_save_interval $log_save_interval \
+--log_every_n_steps $log_every_n_steps \
+--flush_logs_every_n_steps $flush_logs_every_n_steps \
 --train_viz_interval $train_viz_interval \
 --lr $lr \
 --model $model \
@@ -47,4 +47,4 @@ python -m trainer.train \
 --limit_train_batches $limit_train_batches \
 --limit_val_batches $limit_val_batches \
 --log_dir $log_dir \
-
+--profiler True \

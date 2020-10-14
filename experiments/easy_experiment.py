@@ -4,7 +4,7 @@ from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
 from models.self_attention_unet import SelfAttentionUNet
-from pytorch_lightning import TrainResult, EvalResult, LightningModule
+from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.functional.classification import auroc
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
@@ -67,13 +67,12 @@ class EasyExperiment(LightningModule):
         y_mask = data_utils.labels_to_mask(y)
         loss = self.bce_loss(y_hat, y_mask)
 
-        result = TrainResult(loss)
-        result.log('train loss', loss, on_epoch=True, sync_dist=True)
+        self.log('train loss', loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             image = viz_utils.viz_training(x, y, y_hat, dem=self.hparams.dem_dir)
             self.logger.experiment.add_image("Training Sample", image, self.global_step)
-        return result
+        return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -92,20 +91,19 @@ class EasyExperiment(LightningModule):
         f1_average = 0.5 * (f1_no_aval + f1)
 
         # Logging metrics
-        result = EvalResult(checkpoint_on=bce_loss)
-        result.log('val bce loss', bce_loss, sync_dist=True)
-        result.log('val dice', dice_loss, sync_dist=True, reduce_fx=nanmean)
-        result.log('precision', precision, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall', recall, sync_dist=True, reduce_fx=nanmean)
-        result.log('f1 Score', f1, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall exact', recall1, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall estimated', recall2, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall created', recall3, sync_dist=True, reduce_fx=nanmean)
-        result.log('f1 average', f1_average, sync_dist=True, reduce_fx=nanmean)
+        self.log('val bce loss', bce_loss, sync_dist=True)
+        self.log('val dice', dice_loss, sync_dist=True, reduce_fx=nanmean)
+        self.log('precision', precision, sync_dist=True, reduce_fx=nanmean)
+        self.log('recall', recall, sync_dist=True, reduce_fx=nanmean)
+        self.log('f1 Score', f1, sync_dist=True, reduce_fx=nanmean)
+        self.log('recall exact', recall1, sync_dist=True, reduce_fx=nanmean)
+        self.log('recall estimated', recall2, sync_dist=True, reduce_fx=nanmean)
+        self.log('recall created', recall3, sync_dist=True, reduce_fx=nanmean)
+        self.log('f1 average', f1_average, sync_dist=True, reduce_fx=nanmean)
         if batch_idx == self.hparams.val_viz_idx:
             image = viz_utils.viz_training(x, y, y_hat, pred, dem=self.hparams.dem_dir)
             self.logger.experiment.add_image("Validation Sample", image, self.global_step)
-        return result
+        return bce_loss
 
     @staticmethod
     def add_model_specific_args(parent_parser):

@@ -27,8 +27,8 @@ gpus=1
 batch_size=2
 max_epochs=10
 val_check_interval=0.5
-row_log_interval=5
-log_save_interval=20
+log_every_n_steps=5
+flush_logs_every_n_steps=20
 log_dir="/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
@@ -63,8 +63,8 @@ python -m trainer.train \
 --batch_size $batch_size \
 --max_epochs $max_epochs \
 --val_check_interval $val_check_interval \
---row_log_interval $row_log_interval \
---log_save_interval $log_save_interval \
+--log_every_n_steps $log_every_n_steps \
+--flush_logs_every_n_steps $flush_logs_every_n_steps \
 --log_dir $log_dir \
 --model $model \
 --optimiser $optimiser \

@@ -9,20 +9,19 @@ from datasets.avalanche_dataset_points import AvalancheDatasetPoints
 from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor, Compose, RandomHorizontalFlip
 from utils.data_augmentation import RandomRotation
-from pytorch_lightning.callbacks.lr_logger import LearningRateLogger
+from pytorch_lightning.callbacks.lr_monitor import LearningRateMonitor
 
 
-class run_validation_on_start(Callback):
+class RunValidationOnStart(Callback):
+    """ Run complete evaluation step to check metrics before training
+    Todo: Checkpointing does not work anymore when used. Probably registering 0 loss here which is never improved upon
+    """
+
     def __init__(self):
         pass
 
     def on_train_start(self, trainer: Trainer, pl_module):
-        # set temp checkpoint path and name
-        trainer.checkpoint_callback.filename = "deleteme"
-        trainer.checkpoint_callback.dirpath = '/tmp'
         ret_val = trainer.run_evaluation(test_mode=False)
-        trainer.checkpoint_callback.filename = None
-        trainer.checkpoint_callback.dirpath = None
         return ret_val
 
 
@@ -69,8 +68,9 @@ def main(hparams):
 
     model = EasyExperiment(hparams)
     mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
-    trainer = Trainer.from_argparse_args(hparams, logger=mylogger,
-                                         callbacks=[run_validation_on_start(), LearningRateLogger('step')])
+    checkpoint = ModelCheckpoint(monitor='val dice', mode='min')
+    trainer = Trainer.from_argparse_args(hparams, logger=mylogger, checkpoint_callback=checkpoint,
+                                         callbacks=[LearningRateMonitor('step')])
 
     trainer.fit(model, train_loader, val_loader)
 

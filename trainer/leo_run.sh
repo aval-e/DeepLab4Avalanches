@@ -39,9 +39,9 @@ gpus=2
 batch_size=4
 max_epochs=20
 val_check_interval=0.25
-row_log_interval=100
-log_save_interval=100
-distributed_backend="ddp"
+log_every_n_steps=100
+flush_logs_every_n_steps=100
+accelerator="ddp"
 log_dir="/cluster/scratch/bartonp/lightning_logs"
 
 
@@ -81,9 +81,9 @@ python -m trainer.train \
 --batch_size $batch_size \
 --max_epochs $max_epochs \
 --val_check_interval $val_check_interval \
---row_log_interval $row_log_interval \
---log_save_interval $log_save_interval \
---distributed_backend $distributed_backend \
+--log_every_n_steps $log_every_n_steps \
+--flush_logs_every_n_steps $flush_logs_every_n_steps \
+--accelerator $accelerator \
 --log_dir $log_dir \
 --model $model \
 --backbone $backbone \
