@@ -8,6 +8,7 @@ from pytorch_lightning import TrainResult, EvalResult, LightningModule
 from pytorch_lightning.metrics.functional.classification import auroc
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
+from utils.data_augmentation import center_crop_batch
 from argparse import ArgumentParser
 
 
@@ -64,8 +65,13 @@ class EasyExperiment(LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
+
         y_mask = data_utils.labels_to_mask(y)
-        loss = self.bce_loss(y_hat, y_mask)
+
+        # crop to ignore loss near edges
+        y_hat_crop = center_crop_batch(y_hat)
+        y_mask_crop  = center_crop_batch(y_mask)
+        loss = self.bce_loss(y_hat_crop, y_mask_crop)
 
         result = TrainResult(loss)
         result.log('train loss', loss, on_epoch=True, sync_dist=True)
