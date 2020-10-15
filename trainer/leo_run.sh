@@ -42,7 +42,9 @@ val_check_interval=0.25
 row_log_interval=100
 log_save_interval=100
 distributed_backend="ddp"
+sync_batchnorm=True
 log_dir="/cluster/scratch/bartonp/lightning_logs"
+benchmark=True
 
 
 # Model hyperparameters
@@ -84,7 +86,9 @@ python -m trainer.train \
 --row_log_interval $row_log_interval \
 --log_save_interval $log_save_interval \
 --distributed_backend $distributed_backend \
+--sync_batchnorm $sync_batchnorm \
 --log_dir $log_dir \
+--benchmark $benchmark \
 --model $model \
 --backbone $backbone \
 --optimiser $optimiser \
