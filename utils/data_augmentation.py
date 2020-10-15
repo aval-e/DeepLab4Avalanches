@@ -1,5 +1,4 @@
 from scipy import ndimage
-import torch
 import random
 import numbers
 
@@ -67,25 +66,3 @@ class RandomRotation:
         angle = self.get_params(self.degrees)
 
         return ndimage.rotate(img, angle, reshape=False, order=1)
-
-
-def center_crop_batch(batch, fac=0.8):
-    """ crop each element in batch tensor at the center
-    :param fac: size with respect to original 1: return original, 0: return nothing
-    """
-    assert(batch.ndim == 4)
-
-    cropped = []
-    for img in batch:
-        cropped.append(center_crop(img, fac))
-    return torch.stack(cropped, dim=0)
-
-
-def center_crop(img, fac=0.8):
-    """ crop tensor at the center
-    :param fac: size with respect to original 1: return original, 0: return nothing
-    """
-    s = torch.tensor(img.shape[1:3])
-    w, h = (s * 0.5 * (1 - fac)).int()
-    return img[:, w:-w, h:-h]
-
