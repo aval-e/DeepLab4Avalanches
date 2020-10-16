@@ -27,6 +27,19 @@ def list_paths_in_dir(root_dir, file_endings=None):
     return files
 
 
+def build_padded_vrt(sources, padding=1000):
+    """ Creates an inmemory gdal VRT from a list of sources with additional padding
+    :param sources: list of paths to raster files
+    :param padding: amount of padding in meters around the vrt to avoid read errors
+    :returns: a gdal vrt object
+    """
+    vrt = gdal.BuildVRT('', sources)
+    extent = get_raster_extent(vrt)
+    extent = extent[0] - padding, extent[3] + padding, extent[2] + padding, extent[1] - padding
+    vrt = gdal.BuildVRT('', sources, options=gdal.BuildVRTOptions(outputBounds=extent))
+    return vrt
+
+
 def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, means=None, stds=None):
     """
     Fetches bands from a raster, stacks them and returns normalised numpy array.
@@ -39,7 +52,7 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, means=No
     :param bands: list of bands to extract. Default is all.
     :param means: list of means for each band to standardise
     :param stds: list of standard deviations for each band to standardise
-    :return: normalised numpy array
+    :return: standardised numpy array
      """
 
     if res is None:

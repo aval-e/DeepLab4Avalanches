@@ -42,11 +42,12 @@ class AvalancheDatasetPoints(Dataset):
         self.rand_scale = RandomScaling(0.3)
 
         aval_raster_path = os.path.join(root_dir, os.path.splitext(aval_file)[0] + '.tif')
+        vrt_padding = 1.5 * self.tile_size.max() # padding around vrts [m] to avoid index error when reading near edge
 
         # open satellite images - all tiffs found in root directory
         all_tiffs = data_utils.list_paths_in_dir(root_dir, ('.tif', '.TIF', '.img', '.IMG'))
         all_tiffs.remove(aval_raster_path)
-        self.vrt = gdal.BuildVRT('', all_tiffs)
+        self.vrt = data_utils.build_padded_vrt(all_tiffs, vrt_padding)
 
         geo_transform = self.vrt.GetGeoTransform()
         self.pixel_w = geo_transform[1]  # pixel width eg. 1 pixel => 1.5m
@@ -64,14 +65,14 @@ class AvalancheDatasetPoints(Dataset):
         self.sample_points = data_utils.generate_sample_points(self.avalanches, region, self.tile_size)
         
         # get rasterised avalanches
-        self.aval_raster = gdal.BuildVRT('', aval_raster_path)
+        self.aval_raster = data_utils.build_padded_vrt(aval_raster_path, vrt_padding)
         self.aval_ulx, self.aval_uly, _, _ = data_utils.get_raster_extent(self.aval_raster)
 
         # get DEM if specified
         self.dem = None
         if dem_path:
             # read DEM through vrt because of errors when using multiple workers without vrt
-            self.dem = gdal.BuildVRT('', dem_path)
+            self.dem = data_utils.build_padded_vrt(dem_path, vrt_padding)
             self.dem_ulx, self.dem_uly, _, _ = data_utils.get_raster_extent(self.dem)
 
     def __len__(self):
@@ -130,15 +131,15 @@ if __name__ == '__main__':
     # run test
 
     # home
-    # data_folder = '/home/patrick/ecovision/data/2018'
-    # ava_file = 'avalanches0118_endversion.shp'
-    # region_file = 'Region_Selection.shp'
+    data_folder = '/home/patrick/ecovision/data/2018'
+    ava_file = 'avalanches0118_endversion.shp'
+    region_file = 'Region_Selection.shp'
 
     # pfpc
-    data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
-    ava_file = 'avalanches0118_endversion.shp'
-    region_file = 'Val_area_2018.shp'
-    dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
+    # data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
+    # ava_file = 'avalanches0118_endversion.shp'
+    # region_file = 'Val_area_2018.shp'
+    # dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
     my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=None,
                                         random=True)
