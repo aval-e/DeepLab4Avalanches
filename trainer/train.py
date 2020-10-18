@@ -6,6 +6,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset import AvalancheDataset
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
+from datasets.davos_gt_dataset import DavosGtDataset
 from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor, Compose, RandomHorizontalFlip
 from utils.data_augmentation import RandomRotation
@@ -28,6 +29,11 @@ class run_validation_on_start(Callback):
 
 def main(hparams):
     seed_everything(hparams.seed)
+
+    model = EasyExperiment(hparams)
+    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
+    trainer = Trainer.from_argparse_args(hparams, logger=mylogger,
+                                         callbacks=[run_validation_on_start(), LearningRateLogger('step')])
 
     transform_list = []
     if hparams.rand_rotation != 0:
@@ -67,13 +73,22 @@ def main(hparams):
     val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
                             drop_last=False, pin_memory=True)
 
-    model = EasyExperiment(hparams)
-    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
-    trainer = Trainer.from_argparse_args(hparams, logger=mylogger,
-                                         callbacks=[run_validation_on_start(), LearningRateLogger('step')])
-
     trainer.fit(model, train_loader, val_loader)
 
+    test_set = DavosGtDataset(hparams.val_root_dir,
+                              hparams.val_gt_file,
+                              hparams.val_ava_file,
+                              dem_path=hparams.dem_dir,
+                              tile_size=[512, 512],
+                              bands=hparams.bands,
+                              means=hparams.means,
+                              stds=hparams.stds,
+                              transform=ToTensor()
+                              )
+    test_loader = DataLoader(test_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
+                             drop_last=False, pin_memory=True)
+
+    trainer.test(test_dataloaders=test_loader)
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='train avalanche mapping network')
@@ -117,6 +132,8 @@ if __name__ == "__main__":
                         help='File name of shapefile in root directory defining validation area')
     parser.add_argument('--dem_dir', type=str, default=None,
                         help='directory of the DEM within root_dir')
+    parser.add_argument('--val_gt_file', type=str, default='Methodenvergleich2018.shp',
+                        help='File name of gt comparison data in davos')
 
     # Model specific args
     parser = EasyExperiment.add_model_specific_args(parser)

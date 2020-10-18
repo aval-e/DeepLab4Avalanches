@@ -6,6 +6,7 @@ from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLab
 from models.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import TrainResult, EvalResult, LightningModule
 from pytorch_lightning.metrics.functional.classification import auroc
+from utils.data_augmentation import center_crop_batch
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
 from argparse import ArgumentParser
@@ -68,7 +69,7 @@ class EasyExperiment(LightningModule):
         loss = self.bce_loss(y_hat, y_mask)
 
         result = TrainResult(loss)
-        result.log('train loss', loss, on_epoch=True, sync_dist=True)
+        result.log('train_loss', loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             image = viz_utils.viz_training(x, y, y_hat, dem=self.hparams.dem_dir)
@@ -82,7 +83,7 @@ class EasyExperiment(LightningModule):
         y_mask = data_utils.labels_to_mask(y)
 
         bce_loss = self.bce_loss(y_hat, y_mask)
-        dice_loss = 1 - soft_dice(y_mask, y_hat)
+        dice_score = soft_dice(y_mask, y_hat)
         precision, recall, f1 = get_precision_recall_f1(y, pred)
         recall1 = recall_for_label(y, pred, 1)
         recall2 = recall_for_label(y, pred, 2)
@@ -93,19 +94,59 @@ class EasyExperiment(LightningModule):
 
         # Logging metrics
         result = EvalResult(checkpoint_on=bce_loss)
-        result.log('val bce loss', bce_loss, sync_dist=True)
-        result.log('val dice', dice_loss, sync_dist=True, reduce_fx=nanmean)
-        result.log('precision', precision, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall', recall, sync_dist=True, reduce_fx=nanmean)
-        result.log('f1 Score', f1, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall exact', recall1, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall estimated', recall2, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall created', recall3, sync_dist=True, reduce_fx=nanmean)
-        result.log('f1 average', f1_average, sync_dist=True, reduce_fx=nanmean)
+        result.log('loss/bce', bce_loss, sync_dist=True)
+        result.log('f1/a_soft_dice', dice_score, sync_dist=True, reduce_fx=nanmean)
+        result.log('f1/avalanche', f1, sync_dist=True, reduce_fx=nanmean)
+        result.log('f1/average', f1_average, sync_dist=True, reduce_fx=nanmean)
+        result.log('pr/precision', precision, sync_dist=True, reduce_fx=nanmean)
+        result.log('pr/recall', recall, sync_dist=True, reduce_fx=nanmean)
+        result.log('recall/exact', recall1, sync_dist=True, reduce_fx=nanmean)
+        result.log('recall/estimated', recall2, sync_dist=True, reduce_fx=nanmean)
+        result.log('recall/created', recall3, sync_dist=True, reduce_fx=nanmean)
         if batch_idx == self.hparams.val_viz_idx:
             image = viz_utils.viz_training(x, y, y_hat, pred, dem=self.hparams.dem_dir)
             self.logger.experiment.add_image("Validation Sample", image, self.global_step)
         return result
+
+    def test_step(self, batch, batch_idx):
+        """ Check against ground truth obtained by other means - 'Methodenvergleich' """
+        img, mapped, status = batch
+        y_hat = self(img)
+
+        # aval detected if average in 10px patch around point is bigger than 0.5 threshold
+        y_hat = center_crop_batch(y_hat, crop_size=10)
+        pred = y_hat.mean(dim=[1, 2, 3]) > 0.5
+
+        # check which predictions are the same
+        different = pred != mapped
+        correct_true = pred == (status == 1)
+        correct_false = ~pred == (status == 3)
+        wrong_true = ~pred == (status == 1)
+        wrong_false = pred == (status == 3)
+        correct = correct_true + correct_false
+        wrong = wrong_true + wrong_false
+        diff_unkown = (status == 2) * different
+        diff_old = (status == 5) * different
+
+        result = EvalResult()
+        result.same = torch.mean((~different).float())
+        result.correct_score = (torch.sum(correct * different) - torch.sum(wrong * different)).float() / torch.sum((correct + wrong) * different)
+        result.unkown_score = (torch.sum(diff_unkown * pred) - torch.sum(diff_unkown * ~pred)).float() / torch.sum(diff_unkown)
+        result.old_score = (torch.sum(diff_old * pred) - torch.sum(diff_old * ~pred)).float() / torch.sum(diff_old)
+        return result
+
+    def test_epoch_end(self, outputs):
+        # same = outputs['same'].mean().item()
+        # outputs['same'] = outputs['same'].mean()
+        metrics = {'hparam/same': outputs.same.mean(),
+                   'hparam/correct_diff': nanmean(outputs.correct_score),
+                   'hparam/unkown_diff': nanmean(outputs.unkown_score),
+                   'hparam/old_diff': nanmean(outputs.old_score),
+                   }
+        # self.logger.experiment.add_hparams(metric_dict=metrics, hparam_dict={})
+        # self.logger.log_hyperparams(params=None, metrics=metrics)
+        self.logger.log_metrics(metrics)
+        return outputs
 
     @staticmethod
     def add_model_specific_args(parent_parser):
