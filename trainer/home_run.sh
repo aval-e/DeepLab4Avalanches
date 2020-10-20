@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # used when running on personal laptop
 
+checkpoint=""
+resume_training=False
+
 # dataset hyperparameters
 train_root_dir="/home/patrick/ecovision/data/2018"
 tile_size="64 64"
@@ -34,6 +37,8 @@ python -m trainer.train \
 --date "$(date +"%d.%m.%y")" \
 --time "$(date +"%T")" \
 --train_root_dir $train_root_dir \
+--checkpoint "$checkpoint" \
+--resume_training $resume_training \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \
 --bands $bands \

@@ -2,6 +2,9 @@
 
 exp_name="my_experiment"
 
+checkpoint=""
+resume_training=False
+
 # Dataset hyperparameters
 train_root_dir="/home/pf/pfstud/bartonp/slf_avalanches/2018"
 train_ava_file="avalanches0118_endversion.shp"
@@ -43,6 +46,8 @@ python -m trainer.train \
 --exp_name $exp_name \
 --date "$(date +"%d.%m.%y")" \
 --time "$(date +"%T")" \
+--checkpoint "$checkpoint" \
+--resume_training $resume_training \
 --train_root_dir $train_root_dir \
 --train_ava_file $train_ava_file \
 --train_region_file $train_region_file \

@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor, Compose, RandomHorizontalFlip
 from utils.data_augmentation import RandomRotation
 from pytorch_lightning.callbacks.lr_logger import LearningRateLogger
+from utils.utils import str2bool
 
 
 class run_validation_on_start(Callback):
@@ -30,11 +31,21 @@ class run_validation_on_start(Callback):
 def main(hparams):
     seed_everything(hparams.seed)
 
-    model = EasyExperiment(hparams)
-    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
-    trainer = Trainer.from_argparse_args(hparams, logger=mylogger,
-                                         callbacks=[run_validation_on_start(), LearningRateLogger('step')])
+    # load model
+    if hparams.checkpoint and not hparams.resume_training:
+        model = EasyExperiment.load_from_checkpoint(hparams.checkpoint, hparams=hparams)
+    else:
+        model = EasyExperiment(hparams)
 
+    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
+    if hparams.checkpoint and hparams.resume_training:
+        trainer = Trainer.from_argparse_args(hparams, logger=mylogger, resume_from_checkpoint=hparams.checkpoint,
+                                             callbacks=[run_validation_on_start(), LearningRateLogger('step')])
+    else:
+        trainer = Trainer.from_argparse_args(hparams, logger=mylogger,
+                                             callbacks=[run_validation_on_start(), LearningRateLogger('step')])
+
+    # build transform list since some transforms can only be applied to numpy arrays or torch tensors
     transform_list = []
     if hparams.rand_rotation != 0:
         transform_list.append(RandomRotation(hparams.rand_rotation))
@@ -75,11 +86,12 @@ def main(hparams):
 
     trainer.fit(model, train_loader, val_loader)
 
+    # Test and compare on davos ground truth data
     test_set = DavosGtDataset(hparams.val_root_dir,
                               hparams.val_gt_file,
                               hparams.val_ava_file,
                               dem_path=hparams.dem_dir,
-                              tile_size=[512, 512],
+                              tile_size=[256, 256],
                               bands=hparams.bands,
                               means=hparams.means,
                               stds=hparams.stds,
@@ -87,8 +99,8 @@ def main(hparams):
                               )
     test_loader = DataLoader(test_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
                              drop_last=False, pin_memory=True)
-
     trainer.test(test_dataloaders=test_loader)
+
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='train avalanche mapping network')
@@ -99,6 +111,9 @@ if __name__ == "__main__":
     parser.add_argument('--exp_name', type=str, default="default", help='experiment name')
     parser.add_argument('--seed', type=int, default=42, help='seed to init all random generators for reproducibility')
     parser.add_argument('--log_dir', type=str, default=os.getcwd(), help='directory to store logs and checkpoints')
+    parser.add_argument('--checkpoint', type=str, default='', help='path to checkpoint if one is to be used')
+    parser.add_argument('--resume_training', type=str2bool, default=False,
+                        help='whether to resume training or only load model weights from checkpoint')
 
     # Dataset Args
     parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
