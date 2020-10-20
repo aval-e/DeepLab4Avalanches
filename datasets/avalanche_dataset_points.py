@@ -110,7 +110,6 @@ class AvalancheDatasetPoints(Dataset):
             dem_offset = np.array([p.x - self.dem_ulx, self.dem_uly - p.y])
             dem_offset = dem_offset / self.pixel_w - px_offset
             dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist())
-            dem_image = np.concatenate(np.gradient(dem_image, axis=(0,1)), axis=2) # get gradients
             image = np.concatenate([image, dem_image], axis=2)
 
         if self.transform:
@@ -123,6 +122,15 @@ class AvalancheDatasetPoints(Dataset):
             else:
                 image = array[:, :, :-1]
                 shp_image = array[:, :, -1]
+
+        # precompute DEM gradients after transformation
+        if self.dem:
+            if torch.is_tensor(image):
+                dem_grads = torch.from_numpy(np.concatenate(np.gradient(image[-1, :, :].numpy(), axis=(1, 2)), axis=0))
+                image = torch.cat([image[:-1, :, :], dem_grads], dim=0)
+            else:
+                dem_grads = np.concatenate(np.gradient(image[:, :, -2:-1], axis=(0, 1)), axis=2)
+                image = np.concatenate([image[:, :, :-1], dem_grads], axis=2)
 
         return [image, shp_image]
 
