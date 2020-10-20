@@ -11,7 +11,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="segm_deeplabv3+_adam_5e-5_pretrained"
+exp_name="deeplabv3+_dem_grads"
 
 checkpoint=''
 resume_training=False
@@ -23,7 +23,7 @@ train_region_file="Train_area_2018.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
-dem_dir="" #"/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
+dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size="256 256"
 aval_certainty=2
 bands="3 4"
@@ -57,7 +57,7 @@ optimiser="adam"
 lr=5e-5
 momentum=0.9
 weight_decay=0.0
-in_channels=2
+in_channels=4
 train_viz_interval=1000
 val_viz_idx=4
 

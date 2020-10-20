@@ -126,7 +126,7 @@ class AvalancheDatasetPoints(Dataset):
         # precompute DEM gradients after transformation
         if self.dem:
             if torch.is_tensor(image):
-                dem_grads = torch.from_numpy(np.concatenate(np.gradient(image[-1, :, :].numpy(), axis=(1, 2)), axis=0))
+                dem_grads = torch.from_numpy(np.concatenate(np.gradient(image[-2:-1, :, :].numpy(), axis=(1, 2)), axis=0))
                 image = torch.cat([image[:-1, :, :], dem_grads], dim=0)
             else:
                 dem_grads = np.concatenate(np.gradient(image[:, :, -2:-1], axis=(0, 1)), axis=2)
