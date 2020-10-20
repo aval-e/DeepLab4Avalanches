@@ -8,7 +8,9 @@ resume_training=False
 train_root_dir="/home/patrick/ecovision/data/2018"
 tile_size="64 64"
 aval_certainty=1
-bands="1 2 3 4"
+bands="3 4"
+means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
+stds="823.4 975.5" #"1014.3 955.9 823.4 975.5"
 
 # data augmentation
 hflip_p=0.5
@@ -28,7 +30,7 @@ benchmark=True
 
 # model hyperparameters
 lr=1e-4
-in_channels=4
+in_channels=2
 model='deeplabv3+'
 backbone='resnet50'
 
@@ -42,6 +44,8 @@ python -m trainer.train \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \
 --bands $bands \
+--means $means \
+--stds $stds \
 --hflip_p $hflip_p \
 --rand_rotation $rand_rotation \
 --seed $seed \
