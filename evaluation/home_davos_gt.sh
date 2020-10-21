@@ -6,13 +6,12 @@ ckpt_path='best'
 # dataset hyperparameters
 test_root_dir="/home/patrick/ecovision/data/2018"
 tile_size="64 64"
-aval_certainty=1
 bands="1 2 3 4"
 
 # training hyperparameters
 gpus=1
 max_epochs=3
-limit_test_batches=10
+limit_test_batches=1000
 log_dir="$(pwd)/lightning_logs"
 benchmark=True
 
@@ -28,7 +27,6 @@ python -m evaluation.davos_gt_eval \
 --time "$(date +"%T")" \
 --test_root_dir $test_root_dir \
 --tile_size $tile_size \
---aval_certainty $aval_certainty \
 --bands $bands \
 --gpus $gpus \
 --max_epochs $max_epochs \

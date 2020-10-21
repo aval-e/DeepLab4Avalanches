@@ -6,6 +6,7 @@ resume_training=False
 
 # dataset hyperparameters
 train_root_dir="/home/patrick/ecovision/data/2018"
+dem_dir="/home/patrick/ecovision/data/2018/avalanches0118_endversion.tif"
 tile_size="64 64"
 aval_certainty=1
 bands="3 4"
@@ -30,7 +31,7 @@ benchmark=True
 
 # model hyperparameters
 lr=1e-4
-in_channels=2
+in_channels=4
 model='deeplabv3+'
 backbone='resnet50'
 
@@ -43,6 +44,7 @@ python -m trainer.train \
 --resume_training $resume_training \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \
+--dem_dir $dem_dir \
 --bands $bands \
 --means $means \
 --stds $stds \
