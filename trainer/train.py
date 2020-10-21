@@ -42,7 +42,7 @@ def main(hparams):
         model = EasyExperiment(hparams)
         resume_ckpt = None
 
-    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
+    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name, default_hp_metric=False)
     mycheckpoint = ModelCheckpoint(monitor='f1/a_soft_dice', mode='max')
     trainer = Trainer.from_argparse_args(hparams, logger=mylogger, checkpoint_callback=mycheckpoint,
                                          resume_from_checkpoint=resume_ckpt,

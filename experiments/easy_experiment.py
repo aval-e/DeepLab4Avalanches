@@ -35,6 +35,15 @@ class EasyExperiment(LightningModule):
         else:
             raise('Model not found: ' + hparams.model)
 
+    # set up 'test_loss' metric before fit routine starts
+    def on_fit_start(self):
+        metric_placeholder = {'hparam/same': 0,
+                              'hparam/correct_diff': 0,
+                              'hparam/unkown_diff': 0,
+                              'hparam/old_diff': 0,
+                              }
+        self.logger.log_hyperparams(self.hparams, metrics=metric_placeholder)
+
     def forward(self, x):
         return torch.sigmoid(self.model(x))
 
