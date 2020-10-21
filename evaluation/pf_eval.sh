@@ -18,6 +18,8 @@ bands="3 4"
 means="1023.9 949.9"
 stds="823.4 975.5"
 
+benchmark=True
+
 python -m evaluation.qualitative \
 $checkpoint \
 --save_dir $save_dir \
@@ -33,3 +35,4 @@ $checkpoint \
 --bands $bands \
 --means $means \
 --stds $stds \
+--benchmark $benchmark \
