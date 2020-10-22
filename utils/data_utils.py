@@ -205,56 +205,40 @@ def labels_to_mask(labels):
     return (labels != 0).float()
 
 
-def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=200):
-    """ Inteligently choose samples such that there is no overlap but large avalanches are covered
+def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05):
+    """ Intelligently choose samples such that there is no overlap but large avalanches are covered
         Also add samples with no avalanche present
 
         :param avalanches: geopandas geoseries of avalanche polygons
         :param region: region in which samples are contained as geoseries
         :param tile_size: size of one sample [x, y]
         :param no_aval_ratio: ratio of samples to add with no avalanche [0-1]
-        :param n: number of neighbour avalanches (in geoseries order) to consider when checking distance
         :returns: geoseries of sample Points
     """
     dist = tile_size.min()
     sample_points = gpd.GeoSeries()
 
     # add point for each avalanche, multiple points for large avalanches
+    covered_area = Point() # empty area
     for i in tqdm(range(0, len(avalanches)), desc="Generating Points in avalanches"):
         aval = avalanches.iloc[i]
-        diff = aval.geometry
+        diff = aval.geometry.difference(covered_area)
         while not diff.is_empty:
             # get point inside avalanche - not random but not centroid either
             p = diff.representative_point()
+            sample_points = sample_points.append(gpd.GeoSeries(p))
 
             # get difference of avalanche and square around sample point
-            diff = diff.difference(p.buffer(dist, cap_style=3))
-
-            # only add point if it is not too close to another (could be too close to another avalanche)
-            if not (sample_points.iloc[-n:].distance(p) < dist).any():
-                sample_points = sample_points.append(gpd.GeoSeries(p))
+            box = p.buffer(dist, cap_style=3)
+            covered_area = covered_area.union(box)
+            diff = diff.difference(box)
 
     # add points with no avalanche
-    for i in tqdm(range(0, int(no_aval_ratio * len(avalanches))), desc='Generating points with no avalanches'):
-        for j in range(0, 100): # max 100 tries
-            p = get_random_point_in_region(region)
-
-            # only add point if far enough from all avalanches
-            if not (sample_points.distance(p) < dist).any():
-                sample_points = sample_points.append(gpd.GeoSeries(p))
-                break
+    free_area = region.difference(covered_area)
+    for _ in tqdm(range(0, int(no_aval_ratio * len(avalanches))), desc='Generating points with no avalanches'):
+        p = free_area.representative_point()
+        sample_points = sample_points.append(gpd.GeoSeries(p))
+        free_area = free_area.difference(p.buffer(dist, cap_style=3))
 
     return sample_points
-
-
-def get_random_point_in_region(region):
-    """ Sample a random point within a region
-        :param region: geoseries with one or multiple polygons
-        :returns: random point within region
-    """
-    minx, miny, maxx, maxy = region.total_bounds
-    while True:
-        p = Point(random.uniform(minx, maxx), random.uniform(miny, maxy))
-        if region.contains(p).any():
-            return p
 
