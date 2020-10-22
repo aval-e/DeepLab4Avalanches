@@ -28,7 +28,8 @@ class AvalancheDatasetPoints(Dataset):
     :return pytorch dataset to be used with dataloader
     """
 
-    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), bands=None, certainty=None,
+    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), bands=None,
+                 certainty=None,
                  random=True, means=None, stds=None, transform=None):
         print('Creating Avalanche Dataset...')
         self.tile_size = np.array(tile_size)
@@ -40,9 +41,10 @@ class AvalancheDatasetPoints(Dataset):
 
         self.rand_shift = RandomShift(0.2)
         self.rand_scale = RandomScaling(0.3)
+        self.rand_shift_dem = RandomShift(1.0)
 
         aval_raster_path = os.path.join(root_dir, os.path.splitext(aval_file)[0] + '.tif')
-        vrt_padding = 1.5 * self.tile_size.max() # padding around vrts [m] to avoid index error when reading near edge
+        vrt_padding = 1.5 * self.tile_size.max()  # padding around vrts [m] to avoid index error when reading near edge
 
         # open satellite images - all tiffs found in root directory
         all_tiffs = data_utils.list_paths_in_dir(root_dir, ('.tif', '.TIF', '.img', '.IMG'))
@@ -63,7 +65,7 @@ class AvalancheDatasetPoints(Dataset):
         if certainty:
             self.avalanches = self.avalanches[self.avalanches.aval_shape <= certainty]
         self.sample_points = data_utils.generate_sample_points(self.avalanches, region, self.tile_size)
-        
+
         # get rasterised avalanches
         self.aval_raster = data_utils.build_padded_vrt(aval_raster_path, vrt_padding)
         self.aval_ulx, self.aval_uly, _, _ = data_utils.get_raster_extent(self.aval_raster)
@@ -109,7 +111,10 @@ class AvalancheDatasetPoints(Dataset):
         if self.dem:
             dem_offset = np.array([p.x - self.dem_ulx, self.dem_uly - p.y])
             dem_offset = dem_offset / self.pixel_w - px_offset
-            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist())
+            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist(),
+                                                          means=[2800], stds=[1000])
+            if self.random:
+                dem_image = self.rand_shift_dem(dem_image)
             image = np.concatenate([image, dem_image], axis=2)
 
         if self.transform:
@@ -122,15 +127,6 @@ class AvalancheDatasetPoints(Dataset):
             else:
                 image = array[:, :, :-1]
                 shp_image = array[:, :, -1]
-
-        # precompute DEM gradients after transformation
-        if self.dem:
-            if torch.is_tensor(image):
-                dem_grads = torch.from_numpy(np.concatenate(np.gradient(image[-2:-1, :, :].numpy(), axis=(1, 2)), axis=0))
-                image = torch.cat([image[:-1, :, :], dem_grads], dim=0)
-            else:
-                dem_grads = np.concatenate(np.gradient(image[:, :, -2:-1], axis=(0, 1)), axis=2)
-                image = np.concatenate([image[:, :, :-1], dem_grads], axis=2)
 
         return [image, shp_image]
 

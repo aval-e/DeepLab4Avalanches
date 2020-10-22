@@ -31,7 +31,7 @@ benchmark=True
 
 # model hyperparameters
 lr=1e-4
-in_channels=4
+in_channels=3
 model='deeplabv3+'
 backbone='resnet50'
 

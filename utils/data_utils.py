@@ -71,7 +71,7 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, means=No
     i = 0
     for band in bands:
         rb = raster.GetRasterBand(band)
-        rb.SetNoDataValue(0)
+        rb.SetNoDataValue(means[i] if means else 0)
         arr = rb.ReadAsArray(offset[0], offset[1], res[0], res[1], buf_type=gdal.GDT_Float32)
 
         # Standardise

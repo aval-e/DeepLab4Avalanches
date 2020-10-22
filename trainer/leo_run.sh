@@ -5,16 +5,16 @@ export PYTHONPATH=$PWD
 	
 
 # Parameters for bsub command
-#BSUB -n 8
+#BSUB -n 12
 #BSUB -W 230
 #BSUB -R "rusage[ngpus_excl_p=2]"
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="deeplabv3+_lightning103"
+exp_name="deeplabv3+_dem"
 
-checkpoint='/cluster/scratch/bartonp/lightning_logs/deeplabv3+_lightning103/version_0/checkpoints/epoch=16.ckpt'
-resume_training=True
+checkpoint=""
+resume_training=False
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -23,7 +23,7 @@ train_region_file="Train_area_2018.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
-dem_dir="" #"/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
+dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size="256 256"
 aval_certainty=2
 bands="3 4"
@@ -57,7 +57,7 @@ optimiser="adam"
 lr=5e-5
 momentum=0.9
 weight_decay=0.0
-in_channels=2
+in_channels=3
 train_viz_interval=2000
 val_viz_idx=4
 
