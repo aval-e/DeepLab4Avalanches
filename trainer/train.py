@@ -10,21 +10,20 @@ from datasets.davos_gt_dataset import DavosGtDataset
 from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor, Compose, RandomHorizontalFlip
 from utils.data_augmentation import RandomRotation
-from pytorch_lightning.callbacks.lr_logger import LearningRateLogger
+from pytorch_lightning.callbacks.lr_monitor import LearningRateMonitor
 from utils.utils import str2bool
 
 
-class run_validation_on_start(Callback):
+class RunValidationOnStart(Callback):
+    """ Run complete evaluation step to check metrics before training
+    Todo: Checkpointing does not work anymore when used. Probably registering 0 loss here which is never improved upon
+    """
+
     def __init__(self):
         pass
 
     def on_train_start(self, trainer: Trainer, pl_module):
-        # set temp checkpoint path and name
-        trainer.checkpoint_callback.filename = "deleteme"
-        trainer.checkpoint_callback.dirpath = '/tmp'
         ret_val = trainer.run_evaluation(test_mode=False)
-        trainer.checkpoint_callback.filename = None
-        trainer.checkpoint_callback.dirpath = None
         return ret_val
 
 
@@ -32,18 +31,22 @@ def main(hparams):
     seed_everything(hparams.seed)
 
     # load model
-    if hparams.checkpoint and not hparams.resume_training:
-        model = EasyExperiment.load_from_checkpoint(hparams.checkpoint, hparams=hparams)
+    if hparams.checkpoint:
+        if hparams.resume_training:
+            model = EasyExperiment(hparams)
+            resume_ckpt = hparams.checkpoint
+        else:
+            model = EasyExperiment.load_from_checkpoint(hparams.checkpoint, hparams=hparams)
+            resume_ckpt = None
     else:
         model = EasyExperiment(hparams)
+        resume_ckpt = None
 
-    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
-    if hparams.checkpoint and hparams.resume_training:
-        trainer = Trainer.from_argparse_args(hparams, logger=mylogger, resume_from_checkpoint=hparams.checkpoint,
-                                             callbacks=[run_validation_on_start(), LearningRateLogger('step')])
-    else:
-        trainer = Trainer.from_argparse_args(hparams, logger=mylogger,
-                                             callbacks=[run_validation_on_start(), LearningRateLogger('step')])
+    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name, default_hp_metric=False)
+    mycheckpoint = ModelCheckpoint(monitor='f1/a_soft_dice', mode='max')
+    trainer = Trainer.from_argparse_args(hparams, logger=mylogger, checkpoint_callback=mycheckpoint,
+                                         resume_from_checkpoint=resume_ckpt,
+                                         callbacks=[LearningRateMonitor('step')])
 
     # build transform list since some transforms can only be applied to numpy arrays or torch tensors
     transform_list = []

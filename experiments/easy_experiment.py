@@ -4,7 +4,7 @@ from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
 from models.self_attention_unet import SelfAttentionUNet
-from pytorch_lightning import TrainResult, EvalResult, LightningModule
+from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.functional.classification import auroc
 from utils.data_augmentation import center_crop_batch
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
@@ -34,6 +34,15 @@ class EasyExperiment(LightningModule):
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         else:
             raise('Model not found: ' + hparams.model)
+
+    # set up 'test_loss' metric before fit routine starts
+    def on_fit_start(self):
+        metric_placeholder = {'hparam/same': 0,
+                              'hparam/correct_diff': 0,
+                              'hparam/unkown_diff': 0,
+                              'hparam/old_diff': 0,
+                              }
+        self.logger.log_hyperparams(self.hparams, metrics=metric_placeholder)
 
     def forward(self, x):
         return torch.sigmoid(self.model(x))
@@ -68,13 +77,12 @@ class EasyExperiment(LightningModule):
         y_mask = data_utils.labels_to_mask(y)
         loss = self.bce_loss(y_hat, y_mask)
 
-        result = TrainResult(loss)
-        result.log('train_loss', loss, on_epoch=True, sync_dist=True)
+        self.log('train_loss', loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             image = viz_utils.viz_training(x, y, y_hat, dem=self.hparams.dem_dir)
             self.logger.experiment.add_image("Training Sample", image, self.global_step)
-        return result
+        return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -93,20 +101,19 @@ class EasyExperiment(LightningModule):
         f1_average = 0.5 * (f1_no_aval + f1)
 
         # Logging metrics
-        result = EvalResult(checkpoint_on=bce_loss)
-        result.log('loss/bce', bce_loss, sync_dist=True)
-        result.log('f1/a_soft_dice', dice_score, sync_dist=True, reduce_fx=nanmean)
-        result.log('f1/avalanche', f1, sync_dist=True, reduce_fx=nanmean)
-        result.log('f1/average', f1_average, sync_dist=True, reduce_fx=nanmean)
-        result.log('pr/precision', precision, sync_dist=True, reduce_fx=nanmean)
-        result.log('pr/recall', recall, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall/exact', recall1, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall/estimated', recall2, sync_dist=True, reduce_fx=nanmean)
-        result.log('recall/created', recall3, sync_dist=True, reduce_fx=nanmean)
+        self.log('loss/bce', bce_loss, sync_dist=True)
+        self.log('f1/a_soft_dice', dice_score, sync_dist=True, reduce_fx=nanmean)
+        self.log('f1/avalanche', f1, sync_dist=True, reduce_fx=nanmean)
+        self.log('f1/average', f1_average, sync_dist=True, reduce_fx=nanmean)
+        self.log('pr/precision', precision, sync_dist=True, reduce_fx=nanmean)
+        self.log('pr/recall', recall, sync_dist=True, reduce_fx=nanmean)
+        self.log('recall/exact', recall1, sync_dist=True, reduce_fx=nanmean)
+        self.log('recall/estimated', recall2, sync_dist=True, reduce_fx=nanmean)
+        self.log('recall/created', recall3, sync_dist=True, reduce_fx=nanmean)
         if batch_idx == self.hparams.val_viz_idx:
             image = viz_utils.viz_training(x, y, y_hat, pred, dem=self.hparams.dem_dir)
             self.logger.experiment.add_image("Validation Sample", image, self.global_step)
-        return result
+        return bce_loss
 
     def test_step(self, batch, batch_idx):
         """ Check against ground truth obtained by other means - 'Methodenvergleich' """
@@ -128,25 +135,16 @@ class EasyExperiment(LightningModule):
         diff_unkown = (status == 2) * different
         diff_old = (status == 5) * different
 
-        result = EvalResult()
-        result.same = torch.mean((~different).float())
-        result.correct_score = (torch.sum(correct * different) - torch.sum(wrong * different)).float() / torch.sum((correct + wrong) * different)
-        result.unkown_score = (torch.sum(diff_unkown * pred) - torch.sum(diff_unkown * ~pred)).float() / torch.sum(diff_unkown)
-        result.old_score = (torch.sum(diff_old * pred) - torch.sum(diff_old * ~pred)).float() / torch.sum(diff_old)
-        return result
+        same = torch.mean((~different).float())
+        correct_score = (torch.sum(correct * different) - torch.sum(wrong * different)).float() / torch.sum((correct + wrong) * different)
+        unkown_score = (torch.sum(diff_unkown * pred) - torch.sum(diff_unkown * ~pred)).float() / torch.sum(diff_unkown)
+        old_score = (torch.sum(diff_old * pred) - torch.sum(diff_old * ~pred)).float() / torch.sum(diff_old)
+        self.log('hparam/same', same, sync_dist=True, reduce_fx=nanmean)
+        self.log('hparam/correct_diff', correct_score, sync_dist=True, reduce_fx=nanmean)
+        self.log('hparam/unkown_diff', unkown_score, sync_dist=True, reduce_fx=nanmean)
+        self.log('hparam/old_diff', old_score, sync_dist=True, reduce_fx=nanmean)
 
-    def test_epoch_end(self, outputs):
-        # same = outputs['same'].mean().item()
-        # outputs['same'] = outputs['same'].mean()
-        metrics = {'hparam/same': outputs.same.mean(),
-                   'hparam/correct_diff': nanmean(outputs.correct_score),
-                   'hparam/unkown_diff': nanmean(outputs.unkown_score),
-                   'hparam/old_diff': nanmean(outputs.old_score),
-                   }
-        # self.logger.experiment.add_hparams(metric_dict=metrics, hparam_dict={})
-        # self.logger.log_hyperparams(params=None, metrics=metrics)
-        self.logger.log_metrics(metrics)
-        return outputs
+        return same
 
     @staticmethod
     def add_model_specific_args(parent_parser):
