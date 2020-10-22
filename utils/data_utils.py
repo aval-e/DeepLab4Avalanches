@@ -219,14 +219,6 @@ def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=
     dist = tile_size.min()
     sample_points = gpd.GeoSeries()
 
-    # free_area = region.difference(avalanches)
-    # avalanches.plot()
-    # plt.show()
-    # shape = sample_points.buffer(dist, cap_style=3)
-    # shape = gpd.overlay(region, avalanches, how='difference')
-    # shape.plot()
-    # plt.show()
-
     # add point for each avalanche, multiple points for large avalanches
     for i in tqdm(range(0, len(avalanches)), desc="Generating Points in avalanches"):
         aval = avalanches.iloc[i]
@@ -243,13 +235,14 @@ def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=
                 sample_points = sample_points.append(gpd.GeoSeries(p))
 
     # add points with no avalanche
-    used_area = sample_points.buffer(dist, cap_style=3)
-    used_area = gpd.GeoDataFrame(geometry=used_area)
-    free_area = gpd.overlay(region, used_area, how='difference')
-    for _ in tqdm(range(0, int(no_aval_ratio * len(avalanches))), desc='Generating points with no avalanches'):
-        p = free_area.representative_point()
-        sample_points = sample_points.append(gpd.GeoSeries(p))
-        free_area = free_area.difference(p.buffer(dist, cap_style=3))
+    for i in tqdm(range(0, int(no_aval_ratio * len(avalanches))), desc='Generating points with no avalanches'):
+        for j in range(0, 100): # max 100 tries
+            p = get_random_point_in_region(region)
+
+            # only add point if far enough from all avalanches
+            if not (sample_points.distance(p) < dist).any():
+                sample_points = sample_points.append(gpd.GeoSeries(p))
+                break
 
     return sample_points
 
