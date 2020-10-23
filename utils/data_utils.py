@@ -205,7 +205,7 @@ def labels_to_mask(labels):
     return (labels != 0).float()
 
 
-def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=100):
+def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=200):
     """ Inteligently choose samples such that there is no overlap but large avalanches are covered
         Also add samples with no avalanche present
 
