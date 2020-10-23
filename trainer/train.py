@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor, Compose, RandomHorizontalFlip
 from utils.data_augmentation import RandomRotation
 from pytorch_lightning.callbacks.lr_monitor import LearningRateMonitor
-from utils.utils import str2bool
+from utils.utils import str2bool, ba_collate_fn
 
 
 class RunValidationOnStart(Callback):
@@ -64,6 +64,7 @@ def main(hparams):
                                        tile_size=hparams.tile_size,
                                        bands=hparams.bands,
                                        certainty=hparams.aval_certainty,
+                                       batch_augm=hparams.batch_augm,
                                        means=hparams.means,
                                        stds=hparams.stds,
                                        transform=Compose(transform_list)
@@ -77,15 +78,16 @@ def main(hparams):
                                      tile_size=[512, 512],
                                      bands=hparams.bands,
                                      certainty=None,
+                                     batch_augm=0,
                                      means=hparams.means,
                                      stds=hparams.stds,
                                      transform=ToTensor(),
                                      )
-
-    train_loader = DataLoader(train_set, batch_size=hparams.batch_size, shuffle=True, num_workers=hparams.num_workers,
-                              drop_last=True, pin_memory=True)
+    loader_batch_size = hparams.batch_size / hparams.batch_augm if hparams.batch_augm > 0 else hparams.batch_size
+    train_loader = DataLoader(train_set, batch_size=loader_batch_size, shuffle=True, num_workers=hparams.num_workers,
+                              drop_last=True, pin_memory=True, collate_fn=ba_collate_fn)
     val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
-                            drop_last=False, pin_memory=True)
+                            drop_last=False, pin_memory=True, collate_fn=ba_collate_fn)
 
     trainer.fit(model, train_loader, val_loader)
 
@@ -120,6 +122,7 @@ if __name__ == "__main__":
 
     # Dataset Args
     parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
+    parser.add_argument('--batch_augm', type=int, default=0, help='the amount of batch augmentation to use')
     parser.add_argument('--tile_size', type=int, nargs=2, default=[256, 256],
                         help='patch size during training in pixels')
     parser.add_argument('--aval_certainty', type=int, default=None,

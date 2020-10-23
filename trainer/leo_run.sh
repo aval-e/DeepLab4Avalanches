@@ -40,6 +40,7 @@ seed=42
 deterministic=True
 gpus=2
 batch_size=4
+batch_augm=0
 max_epochs=20
 val_check_interval=0.5
 log_every_n_steps=100
@@ -86,6 +87,7 @@ python -m trainer.train \
 --deterministic $deterministic \
 --gpus $gpus \
 --batch_size $batch_size \
+--batch_augm $batch_augm \
 --max_epochs $max_epochs \
 --val_check_interval $val_check_interval \
 --log_every_n_steps $log_every_n_steps \

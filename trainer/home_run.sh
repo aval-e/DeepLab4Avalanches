@@ -12,6 +12,8 @@ aval_certainty=1
 bands="3 4"
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
 stds="823.4 975.5" #"1014.3 955.9 823.4 975.5"
+batch_size=4
+batch_augm=0
 
 # data augmentation
 hflip_p=0.5
@@ -24,8 +26,8 @@ log_every_n_steps=5
 flush_logs_every_n_steps=20
 max_epochs=5
 train_viz_interval=5
-limit_train_batches=10
-limit_val_batches=10
+limit_train_batches=1000
+limit_val_batches=1000
 log_dir="$(pwd)/lightning_logs"
 benchmark=True
 
@@ -48,6 +50,8 @@ python -m trainer.train \
 --bands $bands \
 --means $means \
 --stds $stds \
+--batch_size $batch_size \
+--batch_augm $batch_augm \
 --hflip_p $hflip_p \
 --rand_rotation $rand_rotation \
 --seed $seed \
