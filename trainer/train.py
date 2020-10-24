@@ -83,7 +83,7 @@ def main(hparams):
                                      stds=hparams.stds,
                                      transform=ToTensor(),
                                      )
-    loader_batch_size = hparams.batch_size / hparams.batch_augm if hparams.batch_augm > 0 else hparams.batch_size
+    loader_batch_size = hparams.batch_size // hparams.batch_augm if hparams.batch_augm > 0 else hparams.batch_size
     train_loader = DataLoader(train_set, batch_size=loader_batch_size, shuffle=True, num_workers=hparams.num_workers,
                               drop_last=True, pin_memory=True, collate_fn=ba_collate_fn)
     val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
