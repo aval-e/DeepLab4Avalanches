@@ -15,6 +15,7 @@ stds="823.4 975.5"
 
 gpus=1
 benchmark=True
+log_dir="$(pwd)/lightning_logs"
 
 # model hyperparameters
 in_channels=2
@@ -33,6 +34,7 @@ python -m evaluation.davos_gt_eval \
 --stds $stds \
 --gpus $gpus \
 --benchmark $benchmark \
+--log_dir $log_dir \
 --model $model \
 --backbone $backbone \
 --in_channels $in_channels \
