@@ -68,9 +68,10 @@ class DavosGtDataset(Dataset):
         """
         Get a sample from the dataset.
         :param idx: index
-        :return: [image, mapped, status] as list.
+        :return: [image, mapped, status, id] as list.
                  mapped (bool): whether it was mapped in satellite image
                  status = [1: avalanche occurred, 2: unkown, 3: no avalanche, 4: old]
+                 id: id of avalanche
         """
         sample = self.gt_points.iloc[idx]
         p = sample.geometry
@@ -99,7 +100,7 @@ class DavosGtDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return [image, mapped, status]
+        return [image, mapped, status, sample['Id']]
 
 
 if __name__ == '__main__':
