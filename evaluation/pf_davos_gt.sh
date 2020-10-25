@@ -13,6 +13,7 @@ bands="3 4"
 means="1023.9 949.9"
 stds="823.4 975.5"
 
+gpus=1
 benchmark=True
 
 # model hyperparameters
@@ -30,6 +31,7 @@ python -m evaluation.davos_gt_eval \
 --bands $bands \
 --means $means \
 --stds $stds \
+--gpus $gpus \
 --benchmark $benchmark \
 --model $model \
 --backbone $backbone \

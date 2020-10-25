@@ -37,7 +37,8 @@ class EasyExperiment(LightningModule):
 
     # set up 'test_loss' metric before fit routine starts
     def on_fit_start(self):
-        metric_placeholder = {'hp/same': 0,
+        metric_placeholder = {'hp/same_davos_gt': 0,
+                              'hp/same_train_gt': 0,
                               'hp/diff_correct': 0,
                               'hp/diff_unkown': 0,
                               'hp/diff_old': 0,
@@ -139,20 +140,22 @@ class EasyExperiment(LightningModule):
         diff_unkown = (status == 2) * different
         diff_old = (status == 5) * different
 
-        same = torch.mean((~different).float())
+        same_davos_gt = torch.sum(correct).float() / torch.sum(correct + wrong)
+        same_train_gt = torch.mean((~different).float())
         correct_score = (torch.sum(correct * different) - torch.sum(wrong * different)).float() / torch.sum((correct + wrong) * different)
         unkown_score = (torch.sum(diff_unkown * pred) - torch.sum(diff_unkown * ~pred)).float() / torch.sum(diff_unkown)
         old_score = (torch.sum(diff_old * pred) - torch.sum(diff_old * ~pred)).float() / torch.sum(diff_old)
-        self.log('hp/same', same, sync_dist=True, reduce_fx=nanmean)
+        self.log('hp/same_davos_gt', same_davos_gt, sync_dist=True, reduce_fx=nanmean)
+        self.log('hp/same_train_gt', same_train_gt, sync_dist=True, reduce_fx=nanmean)
         self.log('hp/diff_correct', correct_score, sync_dist=True, reduce_fx=nanmean)
         self.log('hp/diff_unkown', unkown_score, sync_dist=True, reduce_fx=nanmean)
         self.log('hp/diff_old', old_score, sync_dist=True, reduce_fx=nanmean)
-        self.log('hp/no_correct', torch.sum(correct * different), sync_dist=True)
-        self.log('hp/no_wrong', torch.sum(wrong * different), sync_dist=True)
-        self.log('hp/no_unkown', torch.sum(diff_unkown), sync_dist=True)
-        self.log('hp/no_old', torch.sum(diff_old), sync_dist=True)
+        self.log('hp/no_correct', torch.sum(correct * different), sync_dist=True, reduce_fx=torch.sum, sync_dist_op='sum')
+        self.log('hp/no_wrong', torch.sum(wrong * different), sync_dist=True, reduce_fx=torch.sum, sync_dist_op='sum')
+        self.log('hp/no_unkown', torch.sum(diff_unkown), sync_dist=True, reduce_fx=torch.sum, sync_dist_op='sum')
+        self.log('hp/no_old', torch.sum(diff_old), sync_dist=True, reduce_fx=torch.sum, sync_dist_op='sum')
 
-        return same
+        return same_davos_gt
 
     @staticmethod
     def add_model_specific_args(parent_parser):
