@@ -93,8 +93,8 @@ class DavosGtDataset(Dataset):
         if self.dem:
             dem_offset = np.array([p.x - self.dem_ulx, self.dem_uly - p.y])
             dem_offset = dem_offset / self.pixel_w - px_offset
-            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist())
-            dem_image = np.concatenate(np.gradient(dem_image, axis=(0,1)), axis=2) # get gradients
+            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist(),
+                                                          means=[2800], stds=[1000])
             image = np.concatenate([image, dem_image], axis=2)
 
         if self.transform:

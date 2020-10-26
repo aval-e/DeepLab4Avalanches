@@ -9,7 +9,7 @@ from torchvision.transforms import ToTensor
 
 
 def main(hparams):
-    model = EasyExperiment(hparams)
+    model = EasyExperiment.load_from_checkpoint(hparams.ckpt_path)
     mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
     trainer = Trainer.from_argparse_args(hparams, logger=mylogger)
 
@@ -27,7 +27,7 @@ def main(hparams):
     test_loader = DataLoader(test_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
                              drop_last=False, pin_memory=True)
 
-    trainer.test(model, test_loader, ckpt_path=hparams.ckpt_path)
+    trainer.test(model, test_loader)
 
 
 if __name__ == "__main__":
