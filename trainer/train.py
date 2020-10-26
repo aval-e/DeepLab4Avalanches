@@ -56,7 +56,7 @@ def main(hparams):
     if hparams.hflip_p != 0:
         transform_list.append(RandomHorizontalFlip(hparams.hflip_p))
 
-    train_set = AvalancheDatasetPoints(hparams.train_root_dir,
+    train_set = AvalancheDataset(hparams.train_root_dir,
                                        hparams.train_ava_file,
                                        hparams.train_region_file,
                                        dem_path=hparams.dem_dir,
@@ -64,7 +64,7 @@ def main(hparams):
                                        tile_size=hparams.tile_size,
                                        bands=hparams.bands,
                                        certainty=hparams.aval_certainty,
-                                       batch_augm=hparams.batch_augm,
+                                       #batch_augm=hparams.batch_augm,
                                        means=hparams.means,
                                        stds=hparams.stds,
                                        transform=Compose(transform_list)
@@ -78,7 +78,7 @@ def main(hparams):
                                      tile_size=[512, 512],
                                      bands=hparams.bands,
                                      certainty=None,
-                                     batch_augm=0,
+                                     #batch_augm=0,
                                      means=hparams.means,
                                      stds=hparams.stds,
                                      transform=ToTensor(),

@@ -2,6 +2,7 @@ import torch
 import argparse
 import csv
 import os
+from osgeo import gdal
 from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
@@ -51,7 +52,8 @@ class EasyExperiment(LightningModule):
                               'hp/no_old': 0,
                               }
         self.logger.log_hyperparams(self.hparams, metrics=metric_placeholder)
-
+        print('Max cache:')
+        print(gdal.GetCacheMax())
     def forward(self, x):
         return torch.sigmoid(self.model(x))
 
@@ -86,6 +88,7 @@ class EasyExperiment(LightningModule):
         y_hat = self(x)
         y_mask = data_utils.labels_to_mask(y)
         loss = self.bce_loss(y_hat, y_mask)
+        print(gdal.GetCacheUsed())
 
         self.log('train_loss', loss, on_epoch=True, sync_dist=True)
         # Log random images
