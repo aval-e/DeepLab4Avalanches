@@ -11,10 +11,10 @@ export PYTHONPATH=$PWD
 #BSUB -R "rusage[mem=16384]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="deeplabv3+_dem"
+exp_name="deeplabv3+_dem_ba2_accgrads2"
 
-checkpoint=""
-resume_training=False
+checkpoint="/cluster/scratch/bartonp/lightning_logs/deeplabv3+_dem_ba2_accgrads2/version_0/checkpoints/epoch=9.ckpt"
+resume_training=True
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -40,7 +40,8 @@ seed=42
 deterministic=True
 gpus=2
 batch_size=4
-batch_augm=0
+batch_augm=2
+accumulate_grad_batches=2
 max_epochs=20
 val_check_interval=0.5
 log_every_n_steps=100
@@ -88,6 +89,7 @@ python -m trainer.train \
 --gpus $gpus \
 --batch_size $batch_size \
 --batch_augm $batch_augm \
+--accumulate_grad_batches $accumulate_grad_batches \
 --max_epochs $max_epochs \
 --val_check_interval $val_check_interval \
 --log_every_n_steps $log_every_n_steps \
