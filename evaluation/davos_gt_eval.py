@@ -6,12 +6,18 @@ from experiments.easy_experiment import EasyExperiment
 from datasets.davos_gt_dataset import DavosGtDataset
 from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor
+from utils.utils import str2bool
+from utils.viz_utils import plot_prediction
+from utils.data_augmentation import center_crop_batch
 
 
 def main(hparams):
+    if not os.path.exists(hparams.save_dir):
+        os.makedirs(hparams.save_dir)
+
+    print('Loading model...')
     model = EasyExperiment.load_from_checkpoint(hparams.ckpt_path)
-    mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
-    trainer = Trainer.from_argparse_args(hparams, logger=mylogger)
+    model.eval()
 
     test_set = DavosGtDataset(hparams.test_root_dir,
                               hparams.test_gt_file,
@@ -24,16 +30,45 @@ def main(hparams):
                               transform=ToTensor()
                               )
 
-    test_loader = DataLoader(test_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
+    test_loader = DataLoader(test_set, batch_size=hparams.batch_size, shuffle=True, num_workers=hparams.num_workers,
                              drop_last=False, pin_memory=True)
 
-    trainer.test(model, test_loader)
+    if not hparams.viz_diffs:
+        mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
+        trainer = Trainer.from_argparse_args(hparams, logger=mylogger)
+        trainer.test(model, test_loader)
+        return
+
+    print('Starting evaluation loop')
+    for batch in iter(test_loader):
+        x, y, mapped, status, id = batch
+        y_hat = model(x)
+
+        # aval detected if average in 10px patch around point is bigger than 0.5 threshold
+        y_hat_crop = center_crop_batch(y_hat, crop_size=10)
+        pred = y_hat_crop.mean(dim=[1, 2, 3]) > 0.5
+
+        # only view samples different from gt
+        if (pred == mapped).all():
+            continue
+
+        fig = plot_prediction(x, y, y_hat, dem=test_set.dem, gt=status.squeeze())
+
+        name = input("Enter name to save under or press enter to skip:\n")
+        if name:
+            print('saving...')
+            fig_path = os.path.join(hparams.save_dir, name)
+            fig.savefig(fig_path, bbox_inches='tight', pad_inches=0)
+        else:
+            print('searching for next difference...')
 
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='test and compare avalanche mapping to gt in davos area')
 
     parser.add_argument('--ckpt_path', type=str, default='best', help='Path to checkpoint to be loaded')
+    parser.add_argument('--viz_diffs', type=str2bool, default=False, help='Whether to plot and show samples that are different')
+    parser.add_argument('--save_dir', type=str, help='directory under which to save figures')
 
     # Trainer args
     parser.add_argument('--date', type=str, default='None', help='date when experiment was run')
@@ -42,7 +77,7 @@ if __name__ == "__main__":
     parser.add_argument('--log_dir', type=str, default=os.getcwd(), help='directory to store logs and checkpoints')
 
     # Dataset Args
-    parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
+    parser.add_argument('--batch_size', type=int, default=1, help='batch size used in training')
     parser.add_argument('--tile_size', type=int, nargs=2, default=[256, 256],
                         help='patch size during training in pixels')
     parser.add_argument('--aval_certainty', type=int, default=None,

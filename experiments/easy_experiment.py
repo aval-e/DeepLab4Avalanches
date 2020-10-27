@@ -127,7 +127,7 @@ class EasyExperiment(LightningModule):
 
     def test_step(self, batch, batch_idx):
         """ Check against ground truth obtained by other means - 'Methodenvergleich' """
-        img, mapped, status, id = batch
+        img, _, mapped, status, id = batch
         y_hat = self(img)
 
         # aval detected if average in 10px patch around point is bigger than 0.5 threshold
