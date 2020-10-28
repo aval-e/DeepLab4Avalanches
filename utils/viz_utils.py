@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from torchvision.utils import make_grid
 import torch
 
@@ -173,10 +174,13 @@ def overlay_avalanches_by_certainty(image, aval_image):
         return i.clamp(0, 1)
 
 
-def plot_prediction(image, y, y_hat):
+def plot_prediction(image, y, y_hat, dem=None, gt=None):
+    status_strs = ['null', 'True', 'Unkown', 'False', '4', 'Old']
+    status_colors = ['b', 'g', 'b', 'r', 'b', 'y']
+
     with torch.no_grad():
         image = (image - image.min()) / (image.max() - image.min())
-        image = select_rgb_channels_from_batch(image)
+        image = select_rgb_channels_from_batch(image, dem=dem)
         y_over = overlay_avalanches_by_certainty(image, y)
 
         # convert to numpy format for plotting
@@ -191,9 +195,14 @@ def plot_prediction(image, y, y_hat):
         axs[1].imshow(y_over)
         axs[2].imshow(image)
         axs[2].imshow(y_hat, cmap=plt.cm.jet, alpha=alpha_map)
+
+        if gt:
+            axs[0].scatter(image.shape[0]/2, image.shape[1]/2, c=status_colors[gt.item()], s=20**2, marker=(5,0), alpha=0.5)
+            fig.suptitle('Gt avalanche status: ' + status_strs[gt.item()])
+
         for ax in axs:
             ax.axis('off')
-        fig.set_size_inches(12,4)
+        fig.set_size_inches(12, 4.5 if gt else 4)
         fig.subplots_adjust(0,0,1,1)
         fig.show()
         return fig

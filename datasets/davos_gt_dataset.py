@@ -51,6 +51,10 @@ class DavosGtDataset(Dataset):
         # get x and y coordinates of upper left corner
         self.ulx, self.uly, _, _ = data_utils.get_raster_extent(self.vrt)
 
+        # get rasterised avalanches
+        self.aval_raster = data_utils.build_padded_vrt(aval_raster_path, vrt_padding)
+        self.aval_ulx, self.aval_uly, _, _ = data_utils.get_raster_extent(self.aval_raster)
+
         # get DEM if specified
         self.dem = None
         if dem_path:
@@ -68,7 +72,8 @@ class DavosGtDataset(Dataset):
         """
         Get a sample from the dataset.
         :param idx: index
-        :return: [image, mapped, status, id] as list.
+        :return: [image, aval, mapped, status, id] as list.
+                 aval: image of ground truth
                  mapped (bool): whether it was mapped in satellite image
                  status = [1: avalanche occurred, 2: unkown, 3: no avalanche, 4: old]
                  id: id of avalanche
@@ -85,9 +90,12 @@ class DavosGtDataset(Dataset):
         px_offset = self.tile_size // 2
         vrt_offset = np.array([p.x - self.ulx, self.uly - p.y])
         vrt_offset = vrt_offset / self.pixel_w - px_offset
+        aval_offset = np.array([p.x - self.aval_ulx, self.aval_uly - p.y])
+        aval_offset = aval_offset / self.pixel_w - px_offset
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size.tolist(),
                                                   means=self.means, stds=self.stds, bands=self.bands)
+        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist())
 
         # add DEM after changing brightness etc but before rotating and flipping
         if self.dem:
@@ -99,8 +107,9 @@ class DavosGtDataset(Dataset):
 
         if self.transform:
             image = self.transform(image)
+            shp_image = self.transform(shp_image)
 
-        return [image, mapped, status, sample['Id']]
+        return [image, shp_image, mapped, status, sample['Id']]
 
 
 if __name__ == '__main__':
