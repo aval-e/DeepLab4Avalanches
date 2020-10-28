@@ -6,15 +6,16 @@ export PYTHONPATH=$PWD
 
 # Parameters for bsub command
 #BSUB -n 12
-#BSUB -W 230
+#BSUB -W 1230
 #BSUB -R "rusage[ngpus_excl_p=2]"
 #BSUB -R "rusage[mem=16384]"
+#BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="deeplabv3+_dem_ba2_accgrads2"
+exp_name="deeplabv3+_sgd_plateau"
 
-checkpoint="/cluster/scratch/bartonp/lightning_logs/deeplabv3+_dem_ba2_accgrads2/version_0/checkpoints/epoch=9.ckpt"
-resume_training=True
+checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/deeplabv3+_sgd_lr1e-2/version_0/checkpoints/epoch=16.ckpt"
+resume_training=False
 
 # Dataset hyperparameters
 train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
@@ -42,7 +43,7 @@ gpus=2
 batch_size=4
 batch_augm=2
 accumulate_grad_batches=2
-max_epochs=20
+max_epochs=40
 val_check_interval=0.5
 log_every_n_steps=100
 flush_logs_every_n_steps=100
@@ -55,8 +56,11 @@ benchmark=True
 # Model hyperparameters
 model='deeplabv3+'
 backbone='resnet50'
-optimiser="adam"
-lr=5e-5
+optimiser="sgd"
+lr=2e-2
+lr_scheduler='plateau'
+scheduler_steps="0"
+scheduler_gamma=0.5
 momentum=0.9
 weight_decay=0.0
 in_channels=3
@@ -107,3 +111,7 @@ python -m trainer.train \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \
 --val_viz_idx $val_viz_idx \
+--scheduler_gamma $scheduler_gamma \
+--scheduler_steps $scheduler_steps \
+--lr_scheduler $lr_scheduler \
+

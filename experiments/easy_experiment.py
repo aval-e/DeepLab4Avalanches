@@ -73,10 +73,10 @@ class EasyExperiment(LightningModule):
         elif self.hparams.lr_scheduler == 'plateau':
             scheduler = {
                 'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=self.hparams.scheduler_gamma,
-                                                                        patience=2, min_lr=5e-6),
-                'interval': 'step',
-                'frequency': 250,
-                'monitor': 'val_checkpoint_on',
+                                                                        patience=2, min_lr=2e-3),
+                'interval': 'epoch',
+                'frequency': 1,
+                'monitor': 'loss/bce',
             }
             return [optimizer], [scheduler]
         return optimizer
@@ -157,10 +157,10 @@ class EasyExperiment(LightningModule):
         self.log('hp/diff_correct', correct_score, sync_dist=True, reduce_fx=nanmean)
         self.log('hp/diff_unkown', unkown_score, sync_dist=True, reduce_fx=nanmean)
         self.log('hp/diff_old', old_score, sync_dist=True, reduce_fx=nanmean)
-        self.log('hp/no_correct', torch.sum(diff_correct), sync_dist=True, reduce_fx=torch.sum, sync_dist_op='sum')
-        self.log('hp/no_wrong', torch.sum(diff_wrong), sync_dist=True, reduce_fx=torch.sum, sync_dist_op='sum')
-        self.log('hp/no_unkown', torch.sum(diff_unkown), sync_dist=True, reduce_fx=torch.sum, sync_dist_op='sum')
-        self.log('hp/no_old', torch.sum(diff_old), sync_dist=True, reduce_fx=torch.sum, sync_dist_op='sum')
+        self.log('hp/no_correct', torch.sum(diff_correct), sync_dist=True, reduce_fx=torch.sum, sync_dist_op=None)
+        self.log('hp/no_wrong', torch.sum(diff_wrong), sync_dist=True, reduce_fx=torch.sum, sync_dist_op=None)
+        self.log('hp/no_unkown', torch.sum(diff_unkown), sync_dist=True, reduce_fx=torch.sum, sync_dist_op=None)
+        self.log('hp/no_old', torch.sum(diff_old), sync_dist=True, reduce_fx=torch.sum, sync_dist_op=None)
 
         ids = {'ids_diff_old': id[diff_old].tolist(),
                'ids_diff_unkown': id[diff_unkown].tolist(),
