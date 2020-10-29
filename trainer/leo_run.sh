@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="deeplabv3+_sgd_plateau"
+exp_name="deeplabv3+_adam_multistep"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/deeplabv3+_sgd_lr1e-2/version_0/checkpoints/epoch=16.ckpt"
 resume_training=False
@@ -43,7 +43,7 @@ gpus=2
 batch_size=4
 batch_augm=2
 accumulate_grad_batches=2
-max_epochs=40
+max_epochs=30
 val_check_interval=0.5
 log_every_n_steps=100
 flush_logs_every_n_steps=100
@@ -56,11 +56,11 @@ benchmark=True
 # Model hyperparameters
 model='deeplabv3+'
 backbone='resnet50'
-optimiser="sgd"
-lr=2e-2
-lr_scheduler='plateau'
-scheduler_steps="0"
-scheduler_gamma=0.5
+optimiser="adam"
+lr=5e-5
+lr_scheduler='multistep'
+scheduler_steps="12000 20000"
+scheduler_gamma=0.2
 momentum=0.9
 weight_decay=0.0
 in_channels=3
