@@ -140,21 +140,21 @@ if __name__ == '__main__':
     # run test
 
     # home
-    data_folder = '/home/patrick/ecovision/data/2018'
-    ava_file = 'avalanches0118_endversion.shp'
-    region_file = 'Region_Selection.shp'
+    # data_folder = '/home/patrick/ecovision/data/2018'
+    # ava_file = 'avalanches0118_endversion.shp'
+    # region_file = 'Region_Selection.shp'
+    # dem_path = None #'/home/patrick/ecovision/data/2018/avalanches0118_endversion.tif'
 
     # pfpc
-    # data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
-    # ava_file = 'avalanches0118_endversion.shp'
-    # region_file = 'Val_area_2018.shp'
-    # dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
+    data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
+    ava_file = 'avalanches0118_endversion.shp'
+    region_file = 'Val_area_2018.shp'
+    dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
-    my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=None,
+    my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=dem_path,
                                         random=True, batch_augm=1)
     dataloader = DataLoader(my_dataset, batch_size=2, shuffle=False, num_workers=2, collate_fn=utils.ba_collate_fn)
 
     for batch in iter(dataloader):
-        batch = [elem.squeeze() for elem in batch]
-        viz_utils.plot_avalanches_by_certainty(*batch)
+        viz_utils.plot_avalanches_by_certainty(*batch, dem=my_dataset.dem)
         input('Press key for another sample')

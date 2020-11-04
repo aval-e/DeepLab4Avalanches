@@ -1,35 +1,24 @@
 import matplotlib.pyplot as plt
-from matplotlib import colors
 from torchvision.utils import make_grid
 import torch
 
 
-def viz_sample(sample):
-    """ Visualise single sample of the Avalanche dataset"""
-    image, aval = sample
-    i = image[:, :, 0:3]
-    i = (i - i.min()) / (i.max() - i.min())
+def plot_avalanches_by_certainty(image, aval_image, dem=None):
+    """ Plots batch images and overlays avalanches in different colors according to their certainty. Also plot dem if
+    available
 
-    i[:, :, 0] += 0.4 * aval
-    i[:, :, 1] -= 0.4 * aval
-    i[:, :, 2] -= 0.4 * aval
-    plt.imshow(i)
-    plt.show()
-
-    # also plot DEM if available
-    if (image.shape[2] == 5):
-        dem = image[:, :, 4]
-        plt.imshow(dem)
-        plt.show()
-
-
-def plot_avalanches_by_certainty(image, aval_image):
-    """ Plots image and overlays avalanches in different colors according to their certainty
-
-    :param image: background satellite image as numpy array
+    :param image: satellite image and optionally dem as torch tensor
     :param aval_images: list of 3 rasterised avalanche shapes from certain to uncertain
+    :param dem: whether image includes dem or not
     """
-    i = image[:, :, 0:3].clone()
+    i = image.clone()
+    min_no_channels = 4 if dem else 3
+    while i.shape[3] < min_no_channels:
+        i = torch.cat([i[:, :, :, 0:1], i], dim=3)
+    if dem:
+        dem = i[:, :, :, -1].unsqueeze(dim=3)
+        dem = (dem - dem.min()) / (dem.max() - dem.min())
+    i = i[:, :, :, :3]
     i = (i - i.min()) / (i.max() - i.min())
 
     green = aval_image == 1
@@ -37,28 +26,28 @@ def plot_avalanches_by_certainty(image, aval_image):
     red = aval_image == 3
 
     # overlay certain avalanches in green
-    i[:, :, 0] -= 0.4 * green
-    i[:, :, 1] += 0.4 * green
-    i[:, :, 2] -= 0.4 * green
+    i[:, :, :, 0:1] -= 0.4 * green
+    i[:, :, :, 1:2] += 0.4 * green
+    i[:, :, :, 2:3] -= 0.4 * green
 
     # overlay estimated avalanches in orange
-    i[:, :, 0] += 0.4 * yellow
-    i[:, :, 1] += 0.1 * yellow
-    i[:, :, 2] -= 0.4 * yellow
+    i[:, :, :, 0:1] += 0.4 * yellow
+    i[:, :, :, 1:2] += 0.1 * yellow
+    i[:, :, :, 2:3] -= 0.4 * yellow
 
     # overlay guessed avalanches in red
-    i[:, :, 0] += 0.4 * red
-    i[:, :, 1] -= 0.4 * red
-    i[:, :, 2] -= 0.4 * red
+    i[:, :, :, 0:1] += 0.4 * red
+    i[:, :, :, 1:2] -= 0.4 * red
+    i[:, :, :, 2:3] -= 0.4 * red
 
-    plt.imshow(i)
+    fig, axs = plt.subplots(1 if dem is None else 2, image.shape[0], squeeze=False, sharex=True, sharey=True, gridspec_kw={'hspace': 0.01})
+    for k in range(image.shape[0]):
+        axs[0, k].imshow(i[k,:,:,:])
+
+    if dem is not None:
+        for k in range(image.shape[0]):
+            axs[1, k].imshow(dem[k, :, :, :])
     plt.show()
-
-    # also plot DEM if available
-    if (image.shape[2] == 5):
-        dem = image[:, :, 4]
-        plt.imshow(dem)
-        plt.show()
 
 
 def select_rgb_channels_from_batch(x, dem=None):
@@ -69,9 +58,7 @@ def select_rgb_channels_from_batch(x, dem=None):
     :param dem: whether DEM is in x
     """
     x = x.clone()
-    min_no_channels = 3
-    if dem:
-        min_no_channels += 2
+    min_no_channels = 3 if dem else 4
     while x.shape[1] < min_no_channels:
         x = torch.cat([x[:,0:1,:,:], x], dim=1)
     if x.shape[1] > 3:
