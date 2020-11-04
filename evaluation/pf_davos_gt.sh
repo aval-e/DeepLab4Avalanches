@@ -3,9 +3,10 @@
 
 exp_name="deeplabv3+_dem"
 #ckpt_path="/scratch/bartonp/checkpoints/deeplab_pretrained.ckpt"
-ckpt_path="/scratch/bartonp/checkpoints/deeplabv3+_dem_ba2_accgrads2.ckpt"
+#ckpt_path="/scratch/bartonp/checkpoints/deeplabv3+_dem_ba2_accgrads2.ckpt"
+ckpt_path="/scratch/bartonp/checkpoints/best_baselines/deeplabv3+_adam_multistep/version_0/checkpoints/epoch=25.ckpt"
 
-viz_diffs=True
+viz_diffs=False
 save_dir="/scratch/bartonp/images/davos_gt_eval"
 
 # Dataset hyperparameters

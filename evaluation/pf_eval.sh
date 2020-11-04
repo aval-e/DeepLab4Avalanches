@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-checkpoint="/scratch/bartonp/checkpoints/deeplab_adam_b4_bigvalarea.ckpt"
+checkpoint="/scratch/bartonp/checkpoints/best_baselines/deeplabv3+_adam_multistep/version_0/checkpoints/epoch=25.ckpt"
 
-save_dir="/scratch/bartonp/images/deeplab_adam_b4_bigvalarea"
+save_dir="/scratch/bartonp/images/deeplabv3+"
 
 # Dataset hyperparameters
 train_root_dir="/home/pf/pfstud/bartonp/slf_avalanches/2018"
@@ -11,14 +11,13 @@ train_region_file="Train_area_2018.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
-dem_dir="" #"/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
+dem_dir="/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size="512 512"
 aval_certainty=3
 bands="3 4"
 means="1023.9 949.9"
 stds="823.4 975.5"
 
-benchmark=True
 
 python -m evaluation.qualitative \
 $checkpoint \
@@ -35,4 +34,3 @@ $checkpoint \
 --bands $bands \
 --means $means \
 --stds $stds \
---benchmark $benchmark \

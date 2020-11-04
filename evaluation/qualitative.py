@@ -36,7 +36,7 @@ def main(hparams):
         x, y = batch
         y_hat = model(x)
 
-        fig = plot_prediction(x, y, y_hat)
+        fig = plot_prediction(x, y, y_hat, dem=val_set.dem)
 
         name = input("Enter name to save under or press enter to skip:\n")
         if name:
