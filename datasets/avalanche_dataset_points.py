@@ -90,10 +90,9 @@ class AvalancheDatasetPoints(Dataset):
         """
         p = self.sample_points.iloc[idx]
 
-        px_offset = self.tile_size // 2
-
         samples = []
         for sample in range(self.ba):
+            px_offset = self.tile_size // 2
             if self.random:
                 max_diff = self.tile_size.min() // 3
                 px_offset += np.random.randint(-max_diff, max_diff, 2)
