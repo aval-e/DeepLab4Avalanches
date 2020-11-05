@@ -7,7 +7,7 @@ from datasets.davos_gt_dataset import DavosGtDataset
 from torch.utils.data import DataLoader, random_split
 from torchvision.transforms import ToTensor
 from utils.utils import str2bool
-from utils.viz_utils import plot_prediction
+from utils.viz_utils import viz_predictions, save_fig
 from utils.data_augmentation import center_crop_batch
 
 
@@ -52,13 +52,13 @@ def main(hparams):
         if (pred == mapped).all():
             continue
 
-        fig = plot_prediction(x, y, y_hat, dem=test_set.dem, gt=status.squeeze())
+        fig = viz_predictions(x, y, y_hat, dem=test_set.dem, gt=status.squeeze())
+        fig.show()
 
         name = input("Enter name to save under or press enter to skip:\n")
         if name:
             print('saving...')
-            fig_path = os.path.join(hparams.save_dir, name)
-            fig.savefig(fig_path, bbox_inches='tight', pad_inches=0)
+            save_fig(fig, hparams.save_dir, name)
         else:
             print('searching for next difference...')
 

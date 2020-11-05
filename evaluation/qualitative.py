@@ -4,7 +4,7 @@ from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
-from utils.viz_utils import plot_prediction
+from utils.viz_utils import viz_predictions, save_fig
 
 
 def main(hparams):
@@ -36,13 +36,13 @@ def main(hparams):
         x, y = batch
         y_hat = model(x)
 
-        fig = plot_prediction(x, y, y_hat, dem=val_set.dem)
+        fig = viz_predictions(x, y, y_hat, dem=val_set.dem)
+        fig.show()
 
         name = input("Enter name to save under or press enter to skip:\n")
         if name:
             print('saving...')
-            fig_path = os.path.join(hparams.save_dir, name)
-            fig.savefig(fig_path, bbox_inches='tight', pad_inches=0)
+            save_fig(fig, hparams.save_dir, name)
         else:
             print('skipping...')
 

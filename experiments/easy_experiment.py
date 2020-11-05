@@ -90,8 +90,8 @@ class EasyExperiment(LightningModule):
         self.log('train_loss', loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
-            image = viz_utils.viz_training(x, y, y_hat, dem=self.hparams.dem_dir)
-            self.logger.experiment.add_image("Training Sample", image, self.global_step)
+            fig = viz_utils.viz_predictions(x, y, y_hat, dem=self.hparams.dem_dir, fig_size=2)
+            self.logger.experiment.add_figure("Training Sample", fig, self.global_step)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -121,8 +121,8 @@ class EasyExperiment(LightningModule):
         self.log('recall/estimated', recall2, sync_dist=True, reduce_fx=nanmean)
         self.log('recall/created', recall3, sync_dist=True, reduce_fx=nanmean)
         if batch_idx == self.hparams.val_viz_idx:
-            image = viz_utils.viz_training(x, y, y_hat, pred, dem=self.hparams.dem_dir)
-            self.logger.experiment.add_image("Validation Sample", image, self.global_step)
+            fig = viz_utils.viz_predictions(x, y, y_hat, pred, dem=self.hparams.dem_dir, fig_size=2)
+            self.logger.experiment.add_figure("Validation Sample", fig, self.global_step)
         return bce_loss
 
     def test_step(self, batch, batch_idx):

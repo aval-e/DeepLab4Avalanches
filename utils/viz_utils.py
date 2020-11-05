@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 import torch
+import os
 
 
 def plot_avalanches_by_certainty(image, aval_image, dem=None):
@@ -16,7 +17,7 @@ def plot_avalanches_by_certainty(image, aval_image, dem=None):
     while i.shape[3] < min_no_channels:
         i = torch.cat([i[:, :, :, 0:1], i], dim=3)
     if dem:
-        dem = i[:, :, :, -1].unsqueeze(dim=3)
+        dem = i[:, :, :, -1:]
         dem = (dem - dem.min()) / (dem.max() - dem.min())
     i = i[:, :, :, :3]
     i = (i - i.min()) / (i.max() - i.min())
@@ -40,9 +41,10 @@ def plot_avalanches_by_certainty(image, aval_image, dem=None):
     i[:, :, :, 1:2] -= 0.4 * red
     i[:, :, :, 2:3] -= 0.4 * red
 
-    fig, axs = plt.subplots(1 if dem is None else 2, image.shape[0], squeeze=False, sharex=True, sharey=True, gridspec_kw={'hspace': 0.01})
+    fig, axs = plt.subplots(1 if dem is None else 2, image.shape[0], squeeze=False, sharex=True, sharey=True,
+                            gridspec_kw={'hspace': 0.01})
     for k in range(image.shape[0]):
-        axs[0, k].imshow(i[k,:,:,:])
+        axs[0, k].imshow(i[k, :, :, :])
 
     if dem is not None:
         for k in range(image.shape[0]):
@@ -58,43 +60,12 @@ def select_rgb_channels_from_batch(x, dem=None):
     :param dem: whether DEM is in x
     """
     x = x.clone()
-    min_no_channels = 3 if dem else 4
+    min_no_channels = 4 if dem else 3
     while x.shape[1] < min_no_channels:
-        x = torch.cat([x[:,0:1,:,:], x], dim=1)
+        x = torch.cat([x[:, 0:1, :, :], x], dim=1)
     if x.shape[1] > 3:
-        x = x[:,0:3,:,:]
+        x = x[:, 0:3, :, :]
     return x
-
-
-def viz_training(x, y, y_hat, pred=None, dem=None):
-    """
-    Show input, ground truth and prediction next to each other.
-
-    All arguments are torch tensors with [B,C,H,W]
-    :param x: satellite image
-    :param y: ground truth
-    :param y_hat: probability output
-    :param pred: prediction - y_hat rounded to zero or one
-    :param dem: whether DEM is in x
-    :return: image grid of comparisons for all samples in batch
-    """
-    with torch.no_grad():
-        # if less than 3 channels, duplicate first channel for rgb image
-        x_only = select_rgb_channels_from_batch(x, dem)
-
-        x_only = (x_only - x_only.min()) / (x_only.max() - x_only.min())
-        y_over = overlay_avalanches_by_certainty(x_only, y)
-        y_hat_over = overlay_avalanches(x_only, y_hat)
-
-        if pred is not None:
-            pred_over = overlay_avalanches(x_only, pred)
-            image_list = [x_only, y_over, pred_over, y_hat_over]
-        else:
-            image_list = [x_only, y_over, y_hat_over]
-
-        image_array = torch.cat(image_list, dim=0)
-        image = make_grid(image_array, nrow=x.shape[0])
-    return image.clamp(0, 1)
 
 
 def overlay_avalanches(image, aval_image):
@@ -161,35 +132,68 @@ def overlay_avalanches_by_certainty(image, aval_image):
         return i.clamp(0, 1)
 
 
-def plot_prediction(image, y, y_hat, dem=None, gt=None):
+def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None):
+    """ Visualise predictions during training or for qualitative evaluation
+
+    :param x: input satellite image and may include dem
+    :param y: ground truth label
+    :param y_hat: nn outputs probabilities
+    :param pred: thresholded predictions
+    :param dem: whether dem is included in x
+    :param gt: ground truth label for davos area
+    :param fig_size: sequence for figure size or scalar to keep automatic aspect ratio
+    :returns: matplotlib figure
+    """
     status_strs = ['null', 'True', 'Unkown', 'False', '4', 'Old']
     status_colors = ['b', 'g', 'b', 'r', 'b', 'y']
 
     with torch.no_grad():
-        image = (image - image.min()) / (image.max() - image.min())
-        image = select_rgb_channels_from_batch(image, dem=dem)
-        y_over = overlay_avalanches_by_certainty(image, y)
+        # if less than 3 channels, duplicate first channel for rgb image
+        x_only = select_rgb_channels_from_batch(x, dem)
+        x_only = (x_only - x_only.min()) / (x_only.max() - x_only.min())
+        y_over = overlay_avalanches_by_certainty(x_only, y)
+        y_over = y_over.clamp(0, 1)
 
         # convert to numpy format for plotting
-        image = image.squeeze().permute(1, 2, 0).numpy()
-        y_over = y_over.squeeze().permute(1, 2, 0).numpy()
-        y_hat = y_hat.squeeze().numpy()
+        x_only = x_only.permute(0, 2, 3, 1).cpu().numpy()
+        y_over = y_over.permute(0, 2, 3, 1).cpu().numpy()
+        y_hat = y_hat.permute(0, 2, 3, 1).cpu().numpy()
+        if pred is not None:
+            pred = pred.permute(0, 2, 3, 1).cpu().numpy()
 
-        alpha_map = 0.5 * y_hat
+        fig, axs = plt.subplots(3 if pred is None else 4, x.shape[0], sharex=True, sharey=True,
+                                gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, facecolor='black')
+        j = 2
+        for i in range(x.shape[0]):
+            axs[0, i].imshow(x_only[i, :, :, :])
+            axs[1, i].imshow(y_over[i, :, :, :])
+            axs[2, i].imshow(x_only[i, :, :, :])
+            if pred is not None:
+                axs[2, i].imshow(pred[i, :, :, :], cmap='bwr', alpha=0.4 * pred[i, :, :, 0])
+                j = 3
+            axs[j, i].imshow(x_only[i, :, :, :])
+            axs[j, i].imshow(y_hat[i, :, :, :], cmap=plt.cm.jet, alpha=0.5 * y_hat[i, :, :, 0])
 
-        fig, axs = plt.subplots(1, 3, sharey=True, gridspec_kw={'wspace': 0.01})
-        axs[0].imshow(image)
-        axs[1].imshow(y_over)
-        axs[2].imshow(image)
-        axs[2].imshow(y_hat, cmap=plt.cm.jet, alpha=alpha_map)
+            if gt is not None:
+                axs[0, i].scatter(x.shape[1] / 2, x.shape[2] / 2, c=status_colors[gt[i]], s=20 ** 2, marker=(5, 0),
+                                  alpha=0.5)
+                axs[0, i].set_title('Gt status: ' + status_strs[gt[i]])
 
-        if gt:
-            axs[0].scatter(image.shape[0]/2, image.shape[1]/2, c=status_colors[gt.item()], s=20**2, marker=(5,0), alpha=0.5)
-            fig.suptitle('Gt avalanche status: ' + status_strs[gt.item()])
+        # make figure aspect ratio fit content
+        if not isinstance(fig_size, (list, tuple)):
+            s = 1 if fig_size is None else fig_size
+            fig_size = (x.shape[0], 3 if pred is None else 4)
+            fig_size = (s * fig_size[0], s * fig_size[1])
+            if gt is not None:
+                fig_size[1] += 0.5
 
-        for ax in axs:
-            ax.axis('off')
-        fig.set_size_inches(12, 4.5 if gt else 4)
-        fig.subplots_adjust(0,0,1,1)
-        fig.show()
+        for ax in axs.ravel():
+            ax.set_axis_off()
+        fig.set_size_inches(*fig_size)
+        fig.subplots_adjust(0, 0, 1, 1)
         return fig
+
+
+def save_fig(fig, dir, name):
+    fig_path = os.path.join(dir, name)
+    fig.savefig(fig_path, bbox_inches='tight', pad_inches=0, facecolor=fig.get_facecolor())
