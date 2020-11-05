@@ -65,6 +65,7 @@ momentum=0.9
 weight_decay=0.0
 in_channels=3
 train_viz_interval=2000
+val_viz_interval=2
 val_viz_idx=4
 
 python -m trainer.train \
@@ -110,6 +111,7 @@ python -m trainer.train \
 --weight_decay $weight_decay \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \
+--val_viz_interval $val_viz_interval \
 --val_viz_idx $val_viz_idx \
 --scheduler_gamma $scheduler_gamma \
 --scheduler_steps $scheduler_steps \

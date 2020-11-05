@@ -23,6 +23,7 @@ class EasyExperiment(LightningModule):
         if isinstance(hparams, dict):
             hparams = argparse.Namespace(**hparams)
         self.hparams = hparams
+        self.val_no = 0
 
         self.bce_loss = BCELoss()
         self.l1 = L1Loss()
@@ -121,8 +122,10 @@ class EasyExperiment(LightningModule):
         self.log('recall/estimated', recall2, sync_dist=True, reduce_fx=nanmean)
         self.log('recall/created', recall3, sync_dist=True, reduce_fx=nanmean)
         if batch_idx == self.hparams.val_viz_idx:
-            fig = viz_utils.viz_predictions(x, y, y_hat, pred, dem=self.hparams.dem_dir, fig_size=2)
-            self.logger.experiment.add_figure("Validation Sample", fig, self.global_step)
+            self.val_no += 1
+            if self.val_no % self.hparams.val_viz_interval:
+                fig = viz_utils.viz_predictions(x, y, y_hat, pred, dem=self.hparams.dem_dir, fig_size=2)
+                self.logger.experiment.add_figure("Validation Sample", fig, self.global_step)
         return bce_loss
 
     def test_step(self, batch, batch_idx):
@@ -209,6 +212,7 @@ class EasyExperiment(LightningModule):
         parser.add_argument('--in_channels', type=int, default=4, help="no. of input channels to network")
         parser.add_argument('--train_viz_interval', type=int, default=100, help="image save interval during training")
         parser.add_argument('--val_viz_idx', type=int, default=0, help="batch index to be plotted during validation")
+        parser.add_argument('--val_viz_interval', type=int, default=1, help='how often to save validation image')
         return parser
 
 
