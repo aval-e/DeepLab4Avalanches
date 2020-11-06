@@ -1,5 +1,6 @@
 import torch
 from torchvision.models.segmentation import deeplabv3_resnet50
+from torchvision.models.detection.mask_rcnn import maskrcnn_resnet50_fpn
 
 
 class DeepLabv4(torch.nn.Module):

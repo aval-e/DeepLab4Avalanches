@@ -21,3 +21,7 @@ def ba_collate_fn(batch):
     if isinstance(sample_elem, list):
         batch = [ba_sample for sample in batch for ba_sample in sample]
     return default_collate(batch)
+
+
+def inst_collate_fn(batch):
+    return tuple(zip(*batch))

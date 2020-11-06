@@ -12,6 +12,11 @@ from matplotlib import patches
 import numpy as np
 import torch
 
+DEBUG = True
+TYP_2_LABEL = {'UNKNOWN': 0,
+                'SLAB': 1,
+                'LOOSE_SNOW': 2,
+                'FULL_DEPTH': 3}
 
 class AvalancheInstDataset(Dataset):
     """
@@ -96,9 +101,6 @@ class AvalancheInstDataset(Dataset):
         # Get all avalanches in bounding box of possible samples
         bb = self.tile_size * self.pixel_w * 5 / 6
         avals = self.avalanches.cx[p.x-bb[0]:p.x+bb[0], p.y-bb[1]:p.y+bb[1]]
-        fig, ax = plt.subplots()
-        avals.plot(ax=ax)
-        # plt.show()
 
         # get no of samles according to batch augmentation
         samples = []
@@ -117,8 +119,15 @@ class AvalancheInstDataset(Dataset):
             new_p = Point(p + (px_offset - self.tile_size // 2) * self.pixel_w)
             patch_poly = new_p.buffer(self.pixel_w * self.tile_size.min() / 2, cap_style=3)
             bb_patch = patch_poly.bounds
-            gpd.GeoSeries(patch_poly).boundary.plot(ax=ax, color='red')
-            plt.show()
+            if DEBUG:
+                fig, ax = plt.subplots()
+                avals.plot(ax=ax)
+                gpd.GeoSeries(patch_poly).boundary.plot(ax=ax, color='red')
+                plt.show()
+
+            masks = np.empty([0, self.tile_size[0], self.tile_size[1]])
+            boxes = np.empty([0,4])
+            labels = np.empty(0)
             for index, aval in avals.iterrows():
                 inter = aval.geometry.intersection(patch_poly)
                 if inter.area < 400:
@@ -127,21 +136,25 @@ class AvalancheInstDataset(Dataset):
                 # aval_offset = (bb_patch[0], bb_patch[3])
                 t = affine.Affine(1.5, 0, bb_patch[0], 0, -1.5, bb_patch[3])
                 mask = rasterio.features.rasterize(((aval.geometry, 1),), self.tile_size.tolist(), transform=t, dtype=np.single)
+                masks = np.append(masks, np.expand_dims(mask, axis=0), axis=0)
 
                 # get bounding box and convert to image coordinates
                 bb_inst = ((np.array(inter.bounds) - np.tile(bb_patch[0:2], 2)) / self.pixel_w).round()
                 bb_inst = [bb_inst[0], self.tile_size[1] - bb_inst[1], bb_inst[2], self.tile_size[1] - bb_inst[3]]
+                boxes = np.append(boxes, np.array(bb_inst, ndmin=2), axis=0)
 
-                fig, ax = plt.subplots()
-                ax.imshow(mask)
-                rect = patches.Rectangle(bb_inst[0:2], bb_inst[2]-bb_inst[0], bb_inst[3]-bb_inst[1], edgecolor='r', facecolor='none')
+                labels = np.append(labels, TYP_2_LABEL[aval['typ']])
 
-                ax.add_patch(rect)
-                fig.show()
+                if DEBUG:
+                    fig, ax = plt.subplots()
+                    ax.imshow(mask)
+                    rect = patches.Rectangle(bb_inst[0:2], bb_inst[2]-bb_inst[0], bb_inst[3]-bb_inst[1], edgecolor='r', facecolor='none')
+                    ax.add_patch(rect)
+                    fig.show()
 
-                print(bb_inst)
-                label = aval['typ']
-            shp_image = mask
+            targets = {'boxes': boxes,
+                       'labels': labels,
+                       'masks': masks}
 
             # augment one of brightness and contrast
             if self.random:
@@ -168,7 +181,7 @@ class AvalancheInstDataset(Dataset):
                 else:
                     image = array[:, :, :-1]
                     shp_image = array[:, :, -1]
-            samples.append([image, shp_image])
+            samples.append((image, targets))
 
         return samples if self.ba > 1 else samples[0]
 
@@ -189,9 +202,9 @@ if __name__ == '__main__':
     # dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
     my_dataset = AvalancheInstDataset(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=dem_path,
-                                        random=True, batch_augm=1)
-    dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=0, collate_fn=utils.ba_collate_fn)
+                                        random=True, batch_augm=2)
+    dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=0, collate_fn=utils.inst_collate_fn)
 
     for batch in iter(dataloader):
-        viz_utils.plot_avalanches_by_certainty(*batch, dem=my_dataset.dem)
+        # viz_utils.plot_avalanches_by_certainty(*batch, dem=my_dataset.dem)
         input('Press key for another sample')

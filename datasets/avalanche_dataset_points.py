@@ -1,7 +1,6 @@
 import os
 import geopandas as gpd
 from torch.utils.data import Dataset, DataLoader
-from osgeo import gdal
 from utils import data_utils, viz_utils, utils
 from torchvision.transforms import ToTensor
 from utils.data_augmentation import RandomScaling, RandomShift
