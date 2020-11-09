@@ -1,4 +1,5 @@
 from scipy import ndimage
+from torchvision.transforms import functional as F
 import torch
 import random
 import numbers
@@ -34,6 +35,28 @@ class RandomShift:
         return img - self.get_params(self.max_shift)
 
 
+class RandomHorizontalFlip:
+    """Random horizontal flip
+    :param p (float): probability of horizontal flip. Default value is 0.5
+    """
+
+    def __init__(self, p=0.5):
+        super().__init__()
+        self.p = p
+
+    def get_param(self):
+        """ Get a random value within the objects bounds """
+        p = random.random()
+        return p
+
+    def __call__(self, img, p=None):
+        if not p:
+            p = self.get_param()
+        if p > self.p:
+            return img
+        return F.hflip(img)
+
+
 class RandomRotation:
     """ Random rotation of numpy ndarray
 
@@ -52,19 +75,15 @@ class RandomRotation:
                 raise ValueError("If degrees is a sequence, it must be of len 2.")
             self.degrees = degrees
 
-    @staticmethod
-    def get_params(degrees):
-        """Get parameters for ``rotate`` for a random rotation.
-
-        Returns:
-            sequence: params to be passed to ``rotate`` for random rotation.
-        """
-        angle = random.uniform(degrees[0], degrees[1])
+    def get_param(self):
+        """ Get a random value within the objects bounds """
+        angle = random.uniform(self.degrees[0], self.degrees[1])
         return angle
 
-    def __call__(self, img):
+    def __call__(self, img, angle=None):
         """ returns a randomly rotated version of the input"""
-        angle = self.get_params(self.degrees)
+        if not angle:
+            angle = self.get_param()
 
         return ndimage.rotate(img, angle, reshape=False, order=1)
 

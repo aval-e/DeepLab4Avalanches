@@ -11,7 +11,7 @@ def main():
                                         region_file,
                                         means=[986.3, 1028.3, 1023.9, 949.9],
                                         stds=[1014.3, 955.9, 823.4, 975.5],
-                                        tile_size=[256, 256],
+                                        tile_size=256,
                                         dem_path=dem_path,
                                         random=False
                                         )

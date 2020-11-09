@@ -48,7 +48,7 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, means=No
 
     :param raster: gdal raster object
     :param offset: offset tuple (x,y) in pixels from top left corner
-    :param res: output size (x,y) in pixels (crops input). Default is to use the whole raster.
+    :param res: output size in pixels (crops input). Default is to use the whole raster.
     :param bands: list of bands to extract. Default is all.
     :param means: list of means for each band to standardise
     :param stds: list of standard deviations for each band to standardise
@@ -57,6 +57,8 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, means=No
 
     if res is None:
         res = (raster.RasterXSize, raster.RasterYSize)
+    else:
+        res = (res, res)
 
     if bands is None:
         bands = range(1, raster.RasterCount + 1)
@@ -211,12 +213,11 @@ def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=
 
         :param avalanches: geopandas geoseries of avalanche polygons
         :param region: region in which samples are contained as geoseries
-        :param tile_size: size of one sample [x, y]
+        :param tile_size: size of one sample
         :param no_aval_ratio: ratio of samples to add with no avalanche [0-1]
         :param n: number of neighbour avalanches (in geoseries order) to consider when checking distance
         :returns: geoseries of sample Points
     """
-    dist = tile_size.min()
     sample_points = gpd.GeoSeries()
 
     # add point for each avalanche, multiple points for large avalanches
@@ -228,10 +229,10 @@ def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=
             p = diff.representative_point()
 
             # get difference of avalanche and square around sample point
-            diff = diff.difference(p.buffer(dist, cap_style=3))
+            diff = diff.difference(p.buffer(tile_size, cap_style=3))
 
             # only add point if it is not too close to another (could be too close to another avalanche)
-            if not (sample_points.iloc[-n:].distance(p) < dist).any():
+            if not (sample_points.iloc[-n:].distance(p) < tile_size).any():
                 sample_points = sample_points.append(gpd.GeoSeries(p))
 
     # add points with no avalanche
@@ -240,7 +241,7 @@ def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=
             p = get_random_point_in_region(region)
 
             # only add point if far enough from all avalanches
-            if not (sample_points.distance(p) < dist).any():
+            if not (sample_points.distance(p) < tile_size).any():
                 sample_points = sample_points.append(gpd.GeoSeries(p))
                 break
 

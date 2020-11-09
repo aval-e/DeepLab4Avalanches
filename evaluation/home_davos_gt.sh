@@ -2,10 +2,11 @@
 # used when running on personal laptop
 
 ckpt_path='best'
+save_dir="/tmp/davos_gt"
 
 # dataset hyperparameters
 test_root_dir="/home/patrick/ecovision/data/2018"
-tile_size="64 64"
+tile_size=64
 bands="1 2 3 4"
 
 # training hyperparameters
@@ -23,6 +24,7 @@ backbone='resnet50'
 
 python -m evaluation.davos_gt_eval \
 --ckpt_path $ckpt_path \
+--save_dir $save_dir \
 --date "$(date +"%d.%m.%y")" \
 --time "$(date +"%T")" \
 --test_root_dir $test_root_dir \
