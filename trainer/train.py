@@ -75,7 +75,7 @@ def main(hparams):
                                      hparams.val_region_file,
                                      dem_path=hparams.dem_dir,
                                      random=False,
-                                     tile_size=[512, 512],
+                                     tile_size=512,
                                      bands=hparams.bands,
                                      certainty=None,
                                      batch_augm=0,
@@ -96,7 +96,7 @@ def main(hparams):
                               hparams.val_gt_file,
                               hparams.val_ava_file,
                               dem_path=hparams.dem_dir,
-                              tile_size=[256, 256],
+                              tile_size=256,
                               bands=hparams.bands,
                               means=hparams.means,
                               stds=hparams.stds,
@@ -123,8 +123,7 @@ if __name__ == "__main__":
     # Dataset Args
     parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
     parser.add_argument('--batch_augm', type=int, default=0, help='the amount of batch augmentation to use')
-    parser.add_argument('--tile_size', type=int, nargs=2, default=[256, 256],
-                        help='patch size during training in pixels')
+    parser.add_argument('--tile_size', type=int, default=256, help='patch size during training in pixels')
     parser.add_argument('--aval_certainty', type=int, default=None,
                         help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
     parser.add_argument('--bands', type=int, nargs='+', default=None, help='bands from optical imagery to be used')

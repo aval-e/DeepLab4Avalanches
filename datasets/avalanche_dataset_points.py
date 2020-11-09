@@ -29,11 +29,11 @@ class AvalancheDatasetPoints(Dataset):
     :return pytorch dataset to be used with dataloader
     """
 
-    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), bands=None,
+    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=512, bands=None,
                  certainty=None, batch_augm=0,
                  random=True, means=None, stds=None, transform=None):
         print('Creating Avalanche Dataset...')
-        self.tile_size = np.array(tile_size)
+        self.tile_size = tile_size
         self.bands = bands
         self.random = random
         self.means = means
@@ -46,7 +46,7 @@ class AvalancheDatasetPoints(Dataset):
         self.rand_shift_dem = RandomShift(1.0)
 
         aval_raster_path = os.path.join(root_dir, os.path.splitext(aval_file)[0] + '.tif')
-        vrt_padding = 1.5 * self.tile_size.max()  # padding around vrts [m] to avoid index error when reading near edge
+        vrt_padding = 1.5 * self.tile_size  # padding around vrts [m] to avoid index error when reading near edge
 
         # open satellite images - all tiffs found in root directory
         all_tiffs = data_utils.list_paths_in_dir(root_dir, ('.tif', '.TIF', '.img', '.IMG'))
@@ -92,18 +92,18 @@ class AvalancheDatasetPoints(Dataset):
 
         samples = []
         for sample in range(self.ba):
-            px_offset = self.tile_size // 2
+            px_offset = np.array(2 * [self.tile_size // 2])
             if self.random:
-                max_diff = self.tile_size.min() // 3
+                max_diff = self.tile_size // 3
                 px_offset += np.random.randint(-max_diff, max_diff, 2)
             vrt_offset = np.array([p.x - self.ulx, self.uly - p.y])
             vrt_offset = vrt_offset / self.pixel_w - px_offset
             aval_offset = np.array([p.x - self.aval_ulx, self.aval_uly - p.y])
             aval_offset = aval_offset / self.pixel_w - px_offset
 
-            image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size.tolist(),
+            image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size,
                                                       means=self.means, stds=self.stds, bands=self.bands)
-            shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist())
+            shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
 
             # augment one of brightness and contrast
             if self.random:
@@ -114,7 +114,7 @@ class AvalancheDatasetPoints(Dataset):
             if self.dem:
                 dem_offset = np.array([p.x - self.dem_ulx, self.dem_uly - p.y])
                 dem_offset = dem_offset / self.pixel_w - px_offset
-                dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist(),
+                dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size,
                                                               means=[2800], stds=[1000])
                 if self.random:
                     dem_image = self.rand_shift_dem(dem_image)
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     region_file = 'Val_area_2018.shp'
     dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
-    my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=dem_path,
+    my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=256, dem_path=dem_path,
                                         random=True, batch_augm=1)
     dataloader = DataLoader(my_dataset, batch_size=2, shuffle=False, num_workers=2, collate_fn=utils.ba_collate_fn)
 

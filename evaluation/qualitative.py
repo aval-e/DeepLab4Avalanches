@@ -56,8 +56,7 @@ if __name__ == "__main__":
 
     # Dataset Args
     parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
-    parser.add_argument('--tile_size', type=int, nargs=2, default=[256, 256],
-                        help='patch size during training in pixels')
+    parser.add_argument('--tile_size', type=int, default=256, help='patch size during training in pixels')
     parser.add_argument('--aval_certainty', type=int, default=None,
                         help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
     parser.add_argument('--bands', type=int, nargs='+', default=None, help='bands from optical imagery to be used')

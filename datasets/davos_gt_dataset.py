@@ -31,14 +31,14 @@ class DavosGtDataset(Dataset):
     def __init__(self, root_dir, gt_file, aval_file, dem_path=None, tile_size=(256, 256), bands=None,
                  means=None, stds=None, transform=None):
         print('Creating Avalanche Dataset...')
-        self.tile_size = np.array(tile_size)
+        self.tile_size = tile_size
         self.bands = bands
         self.means = means
         self.stds = stds
         self.transform = transform
 
         aval_raster_path = os.path.join(root_dir, os.path.splitext(aval_file)[0] + '.tif')
-        vrt_padding = 1.5 * self.tile_size.max() # padding around vrts [m] to avoid index error when reading near edge
+        vrt_padding = 1.5 * self.tile_size # padding around vrts [m] to avoid index error when reading near edge
 
         # open satellite images - all tiffs found in root directory
         all_tiffs = data_utils.list_paths_in_dir(root_dir, ('.tif', '.TIF', '.img', '.IMG'))
@@ -87,21 +87,21 @@ class DavosGtDataset(Dataset):
         if correspon_aval_id != 0:
             mapped = True
 
-        px_offset = self.tile_size // 2
+        px_offset = np.array(2 * [self.tile_size // 2])
         vrt_offset = np.array([p.x - self.ulx, self.uly - p.y])
         vrt_offset = vrt_offset / self.pixel_w - px_offset
         aval_offset = np.array([p.x - self.aval_ulx, self.aval_uly - p.y])
         aval_offset = aval_offset / self.pixel_w - px_offset
 
-        image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size.tolist(),
+        image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size,
                                                   means=self.means, stds=self.stds, bands=self.bands)
-        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist())
+        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
 
         # add DEM after changing brightness etc but before rotating and flipping
         if self.dem:
             dem_offset = np.array([p.x - self.dem_ulx, self.dem_uly - p.y])
             dem_offset = dem_offset / self.pixel_w - px_offset
-            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist(),
+            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size,
                                                           means=[2800], stds=[1000])
             image = np.concatenate([image, dem_image], axis=2)
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     # region_file = 'Val_area_2018.shp'
     # dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
-    my_dataset = DavosGtDataset(data_folder, gt_file, ava_file, tile_size=[256, 256], dem_path=None)
+    my_dataset = DavosGtDataset(data_folder, gt_file, ava_file, tile_size=256, dem_path=None)
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=False, num_workers=2)
 
     for batch in iter(dataloader):

@@ -7,7 +7,7 @@ resume_training=False
 # dataset hyperparameters
 train_root_dir="/home/patrick/ecovision/data/2018"
 dem_dir="/home/patrick/ecovision/data/2018/avalanches0118_endversion.tif"
-tile_size="64 64"
+tile_size=64
 aval_certainty=1
 bands="3 4"
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"

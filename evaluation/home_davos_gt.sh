@@ -5,7 +5,7 @@ ckpt_path='best'
 
 # dataset hyperparameters
 test_root_dir="/home/patrick/ecovision/data/2018"
-tile_size="64 64"
+tile_size=64
 bands="1 2 3 4"
 
 # training hyperparameters
