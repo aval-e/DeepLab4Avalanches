@@ -27,7 +27,6 @@ def main(hparams):
                               bands=hparams.bands,
                               means=hparams.means,
                               stds=hparams.stds,
-                              transform=ToTensor()
                               )
 
     test_loader = DataLoader(test_set, batch_size=hparams.batch_size, shuffle=True, num_workers=hparams.num_workers,
@@ -77,16 +76,7 @@ if __name__ == "__main__":
     parser.add_argument('--log_dir', type=str, default=os.getcwd(), help='directory to store logs and checkpoints')
 
     # Dataset Args
-    parser.add_argument('--batch_size', type=int, default=1, help='batch size used in training')
-    parser.add_argument('--tile_size', type=int, default=256, help='patch size during training in pixels')
-    parser.add_argument('--aval_certainty', type=int, default=None,
-                        help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
-    parser.add_argument('--bands', type=int, nargs='+', default=None, help='bands from optical imagery to be used')
-    parser.add_argument('--means', type=float, nargs='+', default=None,
-                        help='list of means to standardise optical images')
-    parser.add_argument('--stds', type=float, nargs='+', default=None,
-                        help='list of standard deviations to standardise optical images')
-    parser.add_argument('--num_workers', type=int, default=4, help='no. of workers each dataloader uses')
+    parser = DavosGtDataset.add_argparse_args(parser)
 
     # Dataset paths
     parser.add_argument('--test_root_dir', type=str, default='/home/patrick/ecovision/data/2018',
