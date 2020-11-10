@@ -7,7 +7,7 @@ from models.deep_lab_v4 import DeepLabv4
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
 from models.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import LightningModule
-from pytorch_lightning.metrics.functional.classification import auroc
+from torchvision.models.detection.mask_rcnn import maskrcnn_resnet50_fpn
 from utils.data_augmentation import center_crop_batch
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
@@ -36,6 +36,8 @@ class EasyExperiment(LightningModule):
                                        encoder_weights='imagenet')
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
+        elif hparams.model == 'mask_rcnn':
+            self.model = maskrcnn_resnet50_fpn(False)
         else:
             raise ('Model not found: ' + hparams.model)
 
@@ -123,7 +125,7 @@ class EasyExperiment(LightningModule):
         self.log('recall/created', recall3, sync_dist=True, reduce_fx=nanmean)
         if batch_idx == self.hparams.val_viz_idx:
             self.val_no += 1
-            if self.val_no % self.hparams.val_viz_interval:
+            if self.val_no % self.hparams.val_viz_interval == 0:
                 fig = viz_utils.viz_predictions(x, y, y_hat, pred, dem=self.hparams.dem_dir, fig_size=2)
                 self.logger.experiment.add_figure("Validation Sample", fig, self.global_step)
         return bce_loss

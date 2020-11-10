@@ -4,11 +4,13 @@ from pytorch_lightning import Trainer, seed_everything, Callback
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from experiments.easy_experiment import EasyExperiment
+from experiments.inst_segm import InstSegmentation
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
+from datasets.avalanche_inst_dataset import AvalancheInstDataset
 from datasets.davos_gt_dataset import DavosGtDataset
 from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks.lr_monitor import LearningRateMonitor
-from utils.utils import str2bool, ba_collate_fn
+from utils.utils import str2bool, ba_collate_fn, inst_collate_fn
 
 
 class RunValidationOnStart(Callback):
@@ -27,58 +29,67 @@ class RunValidationOnStart(Callback):
 def main(hparams):
     seed_everything(hparams.seed)
 
+    # change some params when using Instance segmentation
+    my_experiment = EasyExperiment
+    my_dataset = AvalancheDatasetPoints
+    my_collate_fn = ba_collate_fn
+    if hparams.model == 'mask_rcnn':
+        my_experiment = InstSegmentation
+        my_dataset = AvalancheInstDataset
+        my_collate_fn = inst_collate_fn
+
     # load model
     if hparams.checkpoint:
         if hparams.resume_training:
-            model = EasyExperiment(hparams)
+            model = my_experiment(hparams)
             resume_ckpt = hparams.checkpoint
         else:
-            model = EasyExperiment.load_from_checkpoint(hparams.checkpoint, hparams=hparams)
+            model = my_experiment.load_from_checkpoint(hparams.checkpoint, hparams=hparams)
             resume_ckpt = None
     else:
-        model = EasyExperiment(hparams)
+        model = my_experiment(hparams)
         resume_ckpt = None
 
     mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name, default_hp_metric=False)
-    mycheckpoint = ModelCheckpoint(monitor='f1/a_soft_dice', mode='max')
+    mycheckpoint = ModelCheckpoint(monitor='val_loss', mode='max')
     trainer = Trainer.from_argparse_args(hparams, logger=mylogger, checkpoint_callback=mycheckpoint,
                                          resume_from_checkpoint=resume_ckpt,
                                          callbacks=[LearningRateMonitor('step')])
 
-    train_set = AvalancheDatasetPoints(hparams.train_root_dir,
-                                       hparams.train_ava_file,
-                                       hparams.train_region_file,
-                                       dem_path=hparams.dem_dir,
-                                       tile_size=hparams.tile_size,
-                                       bands=hparams.bands,
-                                       certainty=hparams.aval_certainty,
-                                       batch_augm=hparams.batch_augm,
-                                       means=hparams.means,
-                                       stds=hparams.stds,
-                                       random=True,
-                                       hflip_p=hparams.hflip_p,
-                                       rand_rot=hparams.rand_rotation,
-                                       )
+    train_set = my_dataset(hparams.train_root_dir,
+                           hparams.train_ava_file,
+                           hparams.train_region_file,
+                           dem_path=hparams.dem_dir,
+                           tile_size=hparams.tile_size,
+                           bands=hparams.bands,
+                           certainty=hparams.aval_certainty,
+                           batch_augm=hparams.batch_augm,
+                           means=hparams.means,
+                           stds=hparams.stds,
+                           random=True,
+                           hflip_p=hparams.hflip_p,
+                           rand_rot=hparams.rand_rotation,
+                           )
 
-    val_set = AvalancheDatasetPoints(hparams.val_root_dir,
-                                     hparams.val_ava_file,
-                                     hparams.val_region_file,
-                                     dem_path=hparams.dem_dir,
-                                     tile_size=512,
-                                     bands=hparams.bands,
-                                     certainty=None,
-                                     batch_augm=0,
-                                     means=hparams.means,
-                                     stds=hparams.stds,
-                                     random=False,
-                                     hflip_p=0,
-                                     rand_rot=0,
-                                     )
+    val_set = my_dataset(hparams.val_root_dir,
+                         hparams.val_ava_file,
+                         hparams.val_region_file,
+                         dem_path=hparams.dem_dir,
+                         tile_size=512,
+                         bands=hparams.bands,
+                         certainty=None,
+                         batch_augm=0,
+                         means=hparams.means,
+                         stds=hparams.stds,
+                         random=False,
+                         hflip_p=0,
+                         rand_rot=0,
+                         )
     loader_batch_size = hparams.batch_size // hparams.batch_augm if hparams.batch_augm > 0 else hparams.batch_size
     train_loader = DataLoader(train_set, batch_size=loader_batch_size, shuffle=True, num_workers=hparams.num_workers,
-                              drop_last=True, pin_memory=True, collate_fn=ba_collate_fn)
+                              drop_last=True, pin_memory=True, collate_fn=my_collate_fn)
     val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
-                            drop_last=False, pin_memory=True, collate_fn=ba_collate_fn)
+                            drop_last=False, pin_memory=True, collate_fn=my_collate_fn)
 
     trainer.fit(model, train_loader, val_loader)
 

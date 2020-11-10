@@ -161,7 +161,7 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None):
         if pred is not None:
             pred = pred.permute(0, 2, 3, 1).cpu().numpy()
 
-        fig, axs = plt.subplots(3 if pred is None else 4, x.shape[0], sharex=True, sharey=True,
+        fig, axs = plt.subplots(3 if pred is None else 4, x.shape[0], sharex=True, sharey=True, squeeze=False,
                                 gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, facecolor='black')
         j = 2
         for i in range(x.shape[0]):

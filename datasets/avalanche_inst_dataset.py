@@ -1,20 +1,17 @@
-import os
+import torch
+import numpy as np
+import affine
 import geopandas as gpd
 from torch.utils.data import DataLoader
 import rasterio.features
-from shapely.geometry import Point
 import shapely.affinity
-import affine
+from shapely.geometry import Point
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
 from utils import data_utils, viz_utils, utils
-from torchvision.transforms import ToTensor
-from utils.data_augmentation import RandomScaling, RandomShift
 import matplotlib.pyplot as plt
 from matplotlib import patches
-import numpy as np
-import torch
 
-DEBUG = True
+DEBUG = False
 TYP_2_LABEL = {'UNKNOWN': 0,
                'SLAB': 1,
                'LOOSE_SNOW': 2,
@@ -107,7 +104,7 @@ class AvalancheInstDataset(AvalancheDatasetPoints):
 
             masks = np.empty([0, self.tile_size, self.tile_size])
             boxes = np.empty([0, 4])
-            labels = np.empty(0)
+            labels = np.empty(0, dtype=np.int64)
             for index, aval in avals.iterrows():
                 inter = aval.geometry.intersection(patch_poly)
                 inter = inter.intersection(shapely.affinity.rotate(patch_poly, -angle, origin=new_p))
@@ -139,9 +136,9 @@ class AvalancheInstDataset(AvalancheDatasetPoints):
                     ax.add_patch(rect)
                     fig.show()
 
-            targets = {'boxes': boxes,
-                       'labels': labels,
-                       'masks': masks}
+            targets = {'boxes': torch.from_numpy(boxes).float(),
+                       'labels': torch.from_numpy(labels),
+                       'masks': self.to_tensor(masks).permute(1, 2, 0)}
 
             samples.append((image, targets))
 
