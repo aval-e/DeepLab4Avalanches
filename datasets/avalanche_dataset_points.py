@@ -78,7 +78,7 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
 
             image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size,
                                                       means=self.means, stds=self.stds, bands=self.bands)
-            shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
+            mask = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
 
             # augment one of brightness and contrast
             if self.random:
@@ -98,16 +98,16 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
             # Apply transforms
             angle = self.rand_rotation.get_param()
             image = self.rand_rotation(image, angle)
-            shp_image = self.rand_rotation(image, angle)
+            mask = self.rand_rotation(mask, angle)
 
             image = self.to_tensor(image)
-            shp_image = self.to_tensor(shp_image)
+            mask = self.to_tensor(mask)
             
             ph = self.rand_flip.get_param()
             image = self.rand_flip(image, ph)
-            shp_image = self.rand_flip(shp_image, ph)
+            mask = self.rand_flip(mask, ph)
 
-            samples.append([image, shp_image])
+            samples.append([image, mask])
 
         return samples if self.ba > 1 else samples[0]
 
