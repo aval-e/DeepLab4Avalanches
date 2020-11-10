@@ -47,14 +47,14 @@ class RandomHorizontalFlip:
     def get_param(self):
         """ Get a random value within the objects bounds """
         p = random.random()
-        return p
+        return p < self.p
 
-    def __call__(self, img, p=None):
-        if not p:
-            p = self.get_param()
-        if p > self.p:
-            return img
-        return F.hflip(img)
+    def __call__(self, img, flip=None):
+        if flip is None:
+            flip = self.get_param()
+        if flip:
+            return F.hflip(img)
+        return img
 
 
 class RandomRotation:
