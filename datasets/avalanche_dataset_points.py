@@ -107,7 +107,7 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
             image = self.rand_flip(image, ph)
             mask = self.rand_flip(mask, ph)
 
-            samples.append([image, mask])
+            samples.append((image, mask))
 
         return samples if self.ba > 1 else samples[0]
 

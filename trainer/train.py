@@ -51,7 +51,7 @@ def main(hparams):
         resume_ckpt = None
 
     mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name, default_hp_metric=False)
-    mycheckpoint = ModelCheckpoint(monitor='val_loss', mode='max')
+    mycheckpoint = ModelCheckpoint(monitor='f1/a_soft_dice', mode='max')
     trainer = Trainer.from_argparse_args(hparams, logger=mylogger, checkpoint_callback=mycheckpoint,
                                          resume_from_checkpoint=resume_ckpt,
                                          callbacks=[LearningRateMonitor('step')])
@@ -75,7 +75,7 @@ def main(hparams):
                          hparams.val_ava_file,
                          hparams.val_region_file,
                          dem_path=hparams.dem_dir,
-                         tile_size=512,
+                         tile_size=64,
                          bands=hparams.bands,
                          certainty=None,
                          batch_augm=0,

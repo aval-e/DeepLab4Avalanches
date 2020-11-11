@@ -11,6 +11,7 @@ from torchvision.models.detection.mask_rcnn import maskrcnn_resnet50_fpn
 from utils.data_augmentation import center_crop_batch
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
+from utils.utils import nanmean
 from argparse import ArgumentParser
 
 
@@ -37,7 +38,7 @@ class EasyExperiment(LightningModule):
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         elif hparams.model == 'mask_rcnn':
-            self.model = maskrcnn_resnet50_fpn(False)
+            self.model = maskrcnn_resnet50_fpn(False, num_classes=5)
         else:
             raise ('Model not found: ' + hparams.model)
 
@@ -216,8 +217,3 @@ class EasyExperiment(LightningModule):
         parser.add_argument('--val_viz_idx', type=int, default=0, help="batch index to be plotted during validation")
         parser.add_argument('--val_viz_interval', type=int, default=1, help='how often to save validation image')
         return parser
-
-
-def nanmean(x):
-    """ Calculate mean ignoring nan values"""
-    return x[~torch.isnan(x)].mean()

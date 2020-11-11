@@ -167,5 +167,6 @@ if __name__ == '__main__':
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=0, collate_fn=utils.inst_collate_fn)
 
     for batch in iter(dataloader):
-        # viz_utils.plot_avalanches_by_certainty(*batch, dem=my_dataset.dem)
+        fig = viz_utils.viz_aval_instances(*batch, dem=my_dataset.dem, fig_size=2)
+        fig.show()
         input('Press key for another sample')

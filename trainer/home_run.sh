@@ -12,8 +12,9 @@ aval_certainty=1
 bands="3 4"
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
 stds="823.4 975.5" #"1014.3 955.9 823.4 975.5"
-batch_size=2
+batch_size=1
 batch_augm=0
+num_workers=1
 
 # data augmentation
 hflip_p=0.5
@@ -52,6 +53,7 @@ python -m trainer.train \
 --stds $stds \
 --batch_size $batch_size \
 --batch_augm $batch_augm \
+--num_workers $num_workers \
 --hflip_p $hflip_p \
 --rand_rotation $rand_rotation \
 --seed $seed \
