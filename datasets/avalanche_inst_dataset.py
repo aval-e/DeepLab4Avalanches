@@ -12,10 +12,11 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 
 DEBUG = False
-TYP_2_LABEL = {'UNKNOWN': 0,
-               'SLAB': 1,
-               'LOOSE_SNOW': 2,
-               'FULL_DEPTH': 3}
+TYP_2_LABEL = {'BACKGROUND': 0,
+               'UNKNOWN': 1,
+               'SLAB': 2,
+               'LOOSE_SNOW': 3,
+               'FULL_DEPTH': 4}
 
 
 class AvalancheInstDataset(AvalancheDatasetPoints):

@@ -218,9 +218,11 @@ def numpy_from_torch(tensor):
 
 def viz_aval_instances(x, targets, outputs=None, dem=None, fig_size=None):
     """ Visualise outputs from instance segmentation """
-    status_strs = ['null', 'True', 'Unkown', 'False', '4', 'Old']
-    status_colors = ['b', 'g', 'b', 'r', 'b', 'y']
-
+    LABEL_2_STR = {0: 'BACKGROUND',
+                   1: 'UNKNOWN',
+                   2: 'SLAB',
+                   3: 'LOOSE_SNOW',
+                   4: 'FULL_DEPTH'}
     with torch.no_grad():
         fig, axs = plt.subplots(2 if outputs is None else 3, len(x), sharex=True, sharey=True, squeeze=False,
                                 gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, facecolor='black')
@@ -238,21 +240,27 @@ def viz_aval_instances(x, targets, outputs=None, dem=None, fig_size=None):
 
             boxes = targets[i]['boxes'].cpu()
             masks = targets[i]['masks'].cpu()
+            labels = targets[i]['labels'].cpu().numpy()
+            label_cmap = plt.cm.get_cmap('hsv', boxes.shape[0]+1)
             for j in range(boxes.shape[0]):
                 mask = masks[j, :, :]
                 box = boxes[j, :]
-                rect = patches.Rectangle(box[0:2], box[2] - box[0], box[3] - box[1], edgecolor='b', facecolor='none')
+                rect = patches.Rectangle(box[0:2], box[2] - box[0], box[3] - box[1], edgecolor=label_cmap(j), facecolor='none')
                 axs[1, i].add_patch(rect)
+                axs[1, i].text(box[0], box[1], LABEL_2_STR[labels[j]], color=label_cmap(j))
                 axs[1, i].imshow(mask, cmap=plt.cm.bwr, alpha=0.5 * mask)
 
             if outputs is not None:
                 boxes = outputs[i]['boxes'].cpu()
                 masks = numpy_from_torch(outputs[i]['masks'])
+                labels = outputs[i]['labels'].cpu().numpy()
+                label_cmap = plt.cm.get_cmap('hsv', boxes.shape[0] + 1)
                 for j in range(boxes.shape[0]):
                     mask = masks[j, :, :, :].squeeze()
                     box = boxes[j, :]
-                    rect = patches.Rectangle(box[0:2], box[2] - box[0], box[3] - box[1], edgecolor='b', facecolor='none')
+                    rect = patches.Rectangle(box[0:2], box[2] - box[0], box[3] - box[1], edgecolor=label_cmap(j), facecolor='none')
                     axs[2, i].add_patch(rect)
+                    axs[2, i].text(box[0], box[1], LABEL_2_STR[labels[j]], color=label_cmap(j))
                     axs[2, i].imshow(mask, cmap=plt.cm.jet, alpha=0.5 * mask)
 
         # make figure aspect ratio fit content
