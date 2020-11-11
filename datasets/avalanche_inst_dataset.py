@@ -8,15 +8,11 @@ import shapely.affinity
 from shapely.geometry import Point
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
 from utils import data_utils, viz_utils, utils
+from utils.lookup import TYP_2_INSTLABEL
 import matplotlib.pyplot as plt
 from matplotlib import patches
 
 DEBUG = False
-TYP_2_LABEL = {'BACKGROUND': 0,
-               'UNKNOWN': 1,
-               'SLAB': 2,
-               'LOOSE_SNOW': 3,
-               'FULL_DEPTH': 4}
 
 
 class AvalancheInstDataset(AvalancheDatasetPoints):
@@ -127,7 +123,7 @@ class AvalancheInstDataset(AvalancheDatasetPoints):
                 bb = [bb[0], self.tile_size - bb[3], bb[2], self.tile_size - bb[1]]
                 boxes = np.append(boxes, np.array(bb, ndmin=2), axis=0)
 
-                labels = np.append(labels, TYP_2_LABEL[aval['typ']])
+                labels = np.append(labels, TYP_2_INSTLABEL[aval['typ']])
 
                 if DEBUG:
                     fig, ax = plt.subplots()

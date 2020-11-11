@@ -39,10 +39,10 @@ class InstSegmentation(EasyExperiment):
         x, targets = batch
         outputs = self(x)
 
-        y = torch.stack([target['masks'] for target in targets], dim=0)
-        y, _ = torch.max(y, dim=1, keepdim=True)
-        y_hat = torch.stack([output['masks'].squeeze() for output in outputs], dim=0)
-        y_hat, _ = torch.max(y_hat, dim=1, keepdim=True)
+        masks = [target['masks'].max(dim=0, keepdim=True)[0] for target in targets]
+        y = torch.stack(masks, dim=0)
+        masks = [output['masks'].squeeze().max(dim=0, keepdim=True)[0] for output in outputs]
+        y_hat = torch.stack(masks, dim=0)
 
         pred = torch.round(y_hat)  # rounds probability to 0 or 1
         y_mask = data_utils.labels_to_mask(y)
@@ -82,8 +82,8 @@ class InstSegmentation(EasyExperiment):
         x = [sample for sample in x]
         outputs = self(x)
 
-        y_hat = torch.stack([output['masks'].squeeze() for output in outputs], dim=0)
-        y_hat, _ = torch.max(y_hat, dim=1, keepdim=True)
+        masks = [output['masks'].squeeze().max(dim=0, keepdim=True)[0] for output in outputs]
+        y_hat = torch.stack(masks, dim=0)
 
         # aval detected if average in 10px patch around point is bigger than 0.5 threshold
         y_hat = center_crop_batch(y_hat, crop_size=10)

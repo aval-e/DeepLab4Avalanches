@@ -3,6 +3,7 @@ from matplotlib import patches
 from torchvision.utils import make_grid
 import torch
 import os
+from utils.lookup import INSTLABEL_2_STR, STATUS_2_STR, STATUS_COLORS
 
 
 def plot_avalanches_by_certainty(image, aval_image, dem=None):
@@ -153,8 +154,6 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None):
     :param fig_size: sequence for figure size or scalar to keep automatic aspect ratio
     :returns: matplotlib figure
     """
-    status_strs = ['null', 'True', 'Unkown', 'False', '4', 'Old']
-    status_colors = ['b', 'g', 'b', 'r', 'b', 'y']
 
     with torch.no_grad():
         # if less than 3 channels, duplicate first channel for rgb image
@@ -184,9 +183,9 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None):
             axs[j, i].imshow(y_hat[i, :, :, :], cmap=plt.cm.jet, alpha=0.5 * y_hat[i, :, :, 0])
 
             if gt is not None:
-                axs[0, i].scatter(x.shape[1] / 2, x.shape[2] / 2, c=status_colors[gt[i]], s=20 ** 2, marker=(5, 0),
+                axs[0, i].scatter(x.shape[1] / 2, x.shape[2] / 2, c=STATUS_COLORS[gt[i]], s=20 ** 2, marker=(5, 0),
                                   alpha=0.5)
-                axs[0, i].set_title('Gt status: ' + status_strs[gt[i]])
+                axs[0, i].set_title('Gt status: ' + STATUS_2_STR[gt[i]])
 
         # make figure aspect ratio fit content
         if not isinstance(fig_size, (list, tuple)):
@@ -218,11 +217,6 @@ def numpy_from_torch(tensor):
 
 def viz_aval_instances(x, targets, outputs=None, dem=None, fig_size=None):
     """ Visualise outputs from instance segmentation """
-    LABEL_2_STR = {0: 'BACKGROUND',
-                   1: 'UNKNOWN',
-                   2: 'SLAB',
-                   3: 'LOOSE_SNOW',
-                   4: 'FULL_DEPTH'}
     with torch.no_grad():
         fig, axs = plt.subplots(2 if outputs is None else 3, len(x), sharex=True, sharey=True, squeeze=False,
                                 gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, facecolor='black')
@@ -247,7 +241,7 @@ def viz_aval_instances(x, targets, outputs=None, dem=None, fig_size=None):
                 box = boxes[j, :]
                 rect = patches.Rectangle(box[0:2], box[2] - box[0], box[3] - box[1], edgecolor=label_cmap(j), facecolor='none')
                 axs[1, i].add_patch(rect)
-                axs[1, i].text(box[0], box[1], LABEL_2_STR[labels[j]], color=label_cmap(j))
+                axs[1, i].text(box[0], box[1], INSTLABEL_2_STR[labels[j]], color=label_cmap(j))
                 axs[1, i].imshow(mask, cmap=plt.cm.bwr, alpha=0.5 * mask)
 
             if outputs is not None:
@@ -260,7 +254,7 @@ def viz_aval_instances(x, targets, outputs=None, dem=None, fig_size=None):
                     box = boxes[j, :]
                     rect = patches.Rectangle(box[0:2], box[2] - box[0], box[3] - box[1], edgecolor=label_cmap(j), facecolor='none')
                     axs[2, i].add_patch(rect)
-                    axs[2, i].text(box[0], box[1], LABEL_2_STR[labels[j]], color=label_cmap(j))
+                    axs[2, i].text(box[0], box[1], INSTLABEL_2_STR[labels[j]], color=label_cmap(j))
                     axs[2, i].imshow(mask, cmap=plt.cm.jet, alpha=0.5 * mask)
 
         # make figure aspect ratio fit content
