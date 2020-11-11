@@ -39,8 +39,14 @@ class InstSegmentation(EasyExperiment):
         x, targets = batch
         outputs = self(x)
 
-        masks = [target['masks'].max(dim=0, keepdim=True)[0] for target in targets]
+        masks = []
+        for target in targets:
+            if target['masks'].numel() == 0:  # check if tensor is empty
+                masks.append(torch.zeros_like(target['masks']))
+            else:
+                masks.append(target['masks'].max(dim=0, keepdim=True)[0])
         y = torch.stack(masks, dim=0)
+
         masks = [output['masks'].squeeze().max(dim=0, keepdim=True)[0] for output in outputs]
         y_hat = torch.stack(masks, dim=0)
 
