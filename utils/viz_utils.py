@@ -253,9 +253,10 @@ def viz_aval_instances(x, targets, outputs=None, dem=None, fig_size=None):
                     mask = masks[j, :, :, :].squeeze()
                     box = boxes[j, :]
                     rect = patches.Rectangle(box[0:2], box[2] - box[0], box[3] - box[1], edgecolor=label_cmap(j), facecolor='none')
+                    axs[2, i].imshow(img)
+                    axs[2, i].imshow(mask, cmap=plt.cm.jet, alpha=0.5 * mask)
                     axs[2, i].add_patch(rect)
                     axs[2, i].text(box[0], box[1], INSTLABEL_2_STR[labels[j]], color=label_cmap(j))
-                    axs[2, i].imshow(mask, cmap=plt.cm.jet, alpha=0.5 * mask)
 
         # make figure aspect ratio fit content
         if not isinstance(fig_size, (list, tuple)):
