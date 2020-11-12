@@ -42,12 +42,19 @@ class InstSegmentation(EasyExperiment):
         masks = []
         for target in targets:
             if target['masks'].numel() == 0:  # check if tensor is empty
-                masks.append(torch.zeros_like(target['masks']))
+                mask = target['masks']
+                masks.append(torch.zeros([1, mask.shape[1], mask.shape[2]], dtype=mask.dtype, layout=mask.layout, device=mask.device))
             else:
                 masks.append(target['masks'].max(dim=0, keepdim=True)[0])
         y = torch.stack(masks, dim=0)
 
-        masks = [output['masks'].squeeze().max(dim=0, keepdim=True)[0] for output in outputs]
+        masks = []
+        for output in outputs:
+            if output['masks'].numel() == 0:
+                mask = output['masks']
+                masks.append(torch.zeros([1, mask.shape[2], mask.shape[3]], dtype=mask.dtype, layout=mask.layout, device=mask.device))
+            else:
+                masks.append(output['masks'].squeeze(dim=1).max(dim=0, keepdim=True)[0])
         y_hat = torch.stack(masks, dim=0)
 
         pred = torch.round(y_hat)  # rounds probability to 0 or 1
