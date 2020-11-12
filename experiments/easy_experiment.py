@@ -38,7 +38,10 @@ class EasyExperiment(LightningModule):
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         elif hparams.model == 'mask_rcnn':
-            self.model = maskrcnn_resnet50_fpn(False, num_classes=5)
+            self.model = maskrcnn_resnet50_fpn(False, num_classes=5, trainable_backbone_layers=5,
+                                               rpn_post_nms_top_n_train=1000, rpn_post_nms_top_n_test=200,
+                                               box_detections_per_img=30, min_size=500,
+                                               image_mean=[0, 0, 0], image_std=[1, 1, 1])
         else:
             raise ('Model not found: ' + hparams.model)
 

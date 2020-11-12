@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-exp_name="my_experiment"
+exp_name="mask_rcnn"
 
 checkpoint=""
 resume_training=False
@@ -12,8 +12,8 @@ train_region_file="Train_area_2018.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
-dem_dir="" #"/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
-tile_size=256
+dem_dir="/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
+tile_size=512
 aval_certainty=3
 bands="3 4"
 means="1023.9 949.9"
@@ -27,7 +27,7 @@ rand_rotation=180
 seed=42
 deterministic=True
 gpus=1
-batch_size=2
+batch_size=4
 max_epochs=10
 val_check_interval=0.5
 log_every_n_steps=5
@@ -35,12 +35,12 @@ flush_logs_every_n_steps=20
 log_dir="/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
-model='deeplab'
+model='mask_rcnn'
 optimiser="adam"
 lr=5e-5
-in_channels=2
-train_viz_interval=20
-val_viz_idx=2
+in_channels=3
+train_viz_interval=50
+val_viz_idx=4
 
 python -m trainer.train \
 --exp_name $exp_name \
