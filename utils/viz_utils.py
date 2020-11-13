@@ -249,11 +249,11 @@ def viz_aval_instances(x, targets, outputs=None, dem=None, fig_size=None):
                 masks = numpy_from_torch(outputs[i]['masks'])
                 labels = outputs[i]['labels'].cpu().numpy()
                 label_cmap = plt.cm.get_cmap('hsv', boxes.shape[0] + 1)
+                axs[2, i].imshow(img)
                 for j in range(boxes.shape[0]):
                     mask = masks[j, :, :, :].squeeze()
                     box = boxes[j, :]
                     rect = patches.Rectangle(box[0:2], box[2] - box[0], box[3] - box[1], edgecolor=label_cmap(j), facecolor='none')
-                    axs[2, i].imshow(img)
                     axs[2, i].imshow(mask, cmap=plt.cm.jet, alpha=0.5 * mask)
                     axs[2, i].add_patch(rect)
                     axs[2, i].text(box[0], box[1], INSTLABEL_2_STR[labels[j]], color=label_cmap(j))
