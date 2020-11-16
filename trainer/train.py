@@ -4,14 +4,13 @@ from pytorch_lightning import Trainer, seed_everything, Callback
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from experiments.easy_experiment import EasyExperiment
-from datasets.avalanche_dataset import AvalancheDataset
+from experiments.inst_segm import InstSegmentation
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
+from datasets.avalanche_inst_dataset import AvalancheInstDataset
 from datasets.davos_gt_dataset import DavosGtDataset
-from torch.utils.data import DataLoader, random_split
-from torchvision.transforms import ToTensor, Compose, RandomHorizontalFlip
-from utils.data_augmentation import RandomRotation
+from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks.lr_monitor import LearningRateMonitor
-from utils.utils import str2bool, ba_collate_fn
+from utils.utils import str2bool, ba_collate_fn, inst_collate_fn
 
 
 class RunValidationOnStart(Callback):
@@ -30,16 +29,25 @@ class RunValidationOnStart(Callback):
 def main(hparams):
     seed_everything(hparams.seed)
 
+    # change some params when using Instance segmentation
+    my_experiment = EasyExperiment
+    my_dataset = AvalancheDatasetPoints
+    my_collate_fn = ba_collate_fn
+    if hparams.model == 'mask_rcnn':
+        my_experiment = InstSegmentation
+        my_dataset = AvalancheInstDataset
+        my_collate_fn = inst_collate_fn
+
     # load model
     if hparams.checkpoint:
         if hparams.resume_training:
-            model = EasyExperiment(hparams)
+            model = my_experiment(hparams)
             resume_ckpt = hparams.checkpoint
         else:
-            model = EasyExperiment.load_from_checkpoint(hparams.checkpoint, hparams=hparams)
+            model = my_experiment.load_from_checkpoint(hparams.checkpoint, hparams=hparams)
             resume_ckpt = None
     else:
-        model = EasyExperiment(hparams)
+        model = my_experiment(hparams)
         resume_ckpt = None
 
     mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name, default_hp_metric=False)
@@ -48,46 +56,40 @@ def main(hparams):
                                          resume_from_checkpoint=resume_ckpt,
                                          callbacks=[LearningRateMonitor('step')])
 
-    # build transform list since some transforms can only be applied to numpy arrays or torch tensors
-    transform_list = []
-    if hparams.rand_rotation != 0:
-        transform_list.append(RandomRotation(hparams.rand_rotation))
-    transform_list.append(ToTensor())
-    if hparams.hflip_p != 0:
-        transform_list.append(RandomHorizontalFlip(hparams.hflip_p))
+    train_set = my_dataset(hparams.train_root_dir,
+                           hparams.train_ava_file,
+                           hparams.train_region_file,
+                           dem_path=hparams.dem_dir,
+                           tile_size=hparams.tile_size,
+                           bands=hparams.bands,
+                           certainty=hparams.aval_certainty,
+                           batch_augm=hparams.batch_augm,
+                           means=hparams.means,
+                           stds=hparams.stds,
+                           random=True,
+                           hflip_p=hparams.hflip_p,
+                           rand_rot=hparams.rand_rotation,
+                           )
 
-    train_set = AvalancheDatasetPoints(hparams.train_root_dir,
-                                       hparams.train_ava_file,
-                                       hparams.train_region_file,
-                                       dem_path=hparams.dem_dir,
-                                       random=True,
-                                       tile_size=hparams.tile_size,
-                                       bands=hparams.bands,
-                                       certainty=hparams.aval_certainty,
-                                       batch_augm=hparams.batch_augm,
-                                       means=hparams.means,
-                                       stds=hparams.stds,
-                                       transform=Compose(transform_list)
-                                       )
-
-    val_set = AvalancheDatasetPoints(hparams.val_root_dir,
-                                     hparams.val_ava_file,
-                                     hparams.val_region_file,
-                                     dem_path=hparams.dem_dir,
-                                     random=False,
-                                     tile_size=[512, 512],
-                                     bands=hparams.bands,
-                                     certainty=None,
-                                     batch_augm=0,
-                                     means=hparams.means,
-                                     stds=hparams.stds,
-                                     transform=ToTensor(),
-                                     )
+    val_set = my_dataset(hparams.val_root_dir,
+                         hparams.val_ava_file,
+                         hparams.val_region_file,
+                         dem_path=hparams.dem_dir,
+                         tile_size=512,
+                         bands=hparams.bands,
+                         certainty=None,
+                         batch_augm=0,
+                         means=hparams.means,
+                         stds=hparams.stds,
+                         random=False,
+                         hflip_p=0,
+                         rand_rot=0,
+                         )
     loader_batch_size = hparams.batch_size // hparams.batch_augm if hparams.batch_augm > 0 else hparams.batch_size
     train_loader = DataLoader(train_set, batch_size=loader_batch_size, shuffle=True, num_workers=hparams.num_workers,
-                              drop_last=True, pin_memory=True, collate_fn=ba_collate_fn)
+                              drop_last=True, pin_memory=True, collate_fn=my_collate_fn)
     val_loader = DataLoader(val_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
-                            drop_last=False, pin_memory=True, collate_fn=ba_collate_fn)
+                            drop_last=False, pin_memory=True, collate_fn=my_collate_fn)
 
     trainer.fit(model, train_loader, val_loader)
 
@@ -96,11 +98,10 @@ def main(hparams):
                               hparams.val_gt_file,
                               hparams.val_ava_file,
                               dem_path=hparams.dem_dir,
-                              tile_size=[256, 256],
+                              tile_size=256,
                               bands=hparams.bands,
                               means=hparams.means,
                               stds=hparams.stds,
-                              transform=ToTensor()
                               )
     test_loader = DataLoader(test_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
                              drop_last=False, pin_memory=True)
@@ -121,22 +122,7 @@ if __name__ == "__main__":
                         help='whether to resume training or only load model weights from checkpoint')
 
     # Dataset Args
-    parser.add_argument('--batch_size', type=int, default=2, help='batch size used in training')
-    parser.add_argument('--batch_augm', type=int, default=0, help='the amount of batch augmentation to use')
-    parser.add_argument('--tile_size', type=int, nargs=2, default=[256, 256],
-                        help='patch size during training in pixels')
-    parser.add_argument('--aval_certainty', type=int, default=None,
-                        help='Which avalanche certainty to consider. 1: exact, 2: estimated, 3: guessed')
-    parser.add_argument('--bands', type=int, nargs='+', default=None, help='bands from optical imagery to be used')
-    parser.add_argument('--means', type=float, nargs='+', default=None,
-                        help='list of means to standardise optical images')
-    parser.add_argument('--stds', type=float, nargs='+', default=None,
-                        help='list of standard deviations to standardise optical images')
-    parser.add_argument('--num_workers', type=int, default=4, help='no. of workers each dataloader uses')
-
-    # data augmentation
-    parser.add_argument('--hflip_p', type=float, default=0, help='probability of horizontal flip')
-    parser.add_argument('--rand_rotation', type=float, default=0, help='max random rotation in degrees')
+    parser = AvalancheDatasetPoints.add_argparse_args(parser)
 
     # Dataset paths
     parser.add_argument('--train_root_dir', type=str, default='/home/patrick/ecovision/data/2018',

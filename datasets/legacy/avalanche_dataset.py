@@ -26,9 +26,9 @@ class AvalancheDataset(Dataset):
     :return pytorch dataset to be used with dataloader
     """
 
-    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=(512, 512), bands=None, certainty=None,
+    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=512, bands=None, certainty=None,
                  random=True, means=None, stds=None, transform=None):
-        self.tile_size = np.array(tile_size)
+        self.tile_size = tile_size
         self.bands = bands
         self.random = random
         self.means = means
@@ -83,7 +83,7 @@ class AvalancheDataset(Dataset):
         # calculate pixel coords, width and height of patch
         res_aval_px = np.array((bbox[2] - bbox[0], bbox[3] - bbox[1]))
         res_aval_px = np.ceil(res_aval_px / self.pixel_w)
-        size_diff = self.tile_size - res_aval_px
+        size_diff = np.array(2 * [self.tile_size]) - res_aval_px
 
         # move avalanche to center or augment position around center if random enabled
         px_offset = np.array([0, 0])
@@ -103,14 +103,14 @@ class AvalancheDataset(Dataset):
         aval_offset = np.array([bbox[0] - self.aval_ulx, self.aval_uly - bbox[3]])
         aval_offset = aval_offset / self.pixel_w - px_offset
 
-        image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size.tolist(),
+        image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size,
                                                   means=self.means, stds=self.stds, bands=self.bands)
-        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size.tolist())
+        shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
 
         if self.dem:
             dem_offset = np.array([bbox[0] - self.dem_ulx, self.dem_uly - bbox[3]])
             dem_offset = dem_offset / self.pixel_w - px_offset
-            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size.tolist())
+            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size)
             dem_image = np.concatenate(np.gradient(dem_image, axis=(0,1)), axis=2) # get gradients
             image = np.concatenate([image, dem_image], axis=2)
 
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     region_file = 'Val_area_2018.shp'
     dem_path="" #'/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
-    my_dataset = AvalancheDataset(data_folder, ava_file, region_file, tile_size=[256, 256], dem_path=dem_path)
+    my_dataset = AvalancheDataset(data_folder, ava_file, region_file, tile_size=256, dem_path=dem_path)
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=2)
 
     dataiter = iter(dataloader)
