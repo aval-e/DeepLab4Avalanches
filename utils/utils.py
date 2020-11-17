@@ -24,13 +24,21 @@ def ba_collate_fn(batch):
     return default_collate(batch)
 
 
-def inst_collate_fn(batch):#
+def inst_collate_fn(batch):
     # first handle batch augmentation
     sample_elem = batch[0]
     if isinstance(sample_elem, list):
         batch = [ba_sample for sample in batch for ba_sample in sample]
     # then collate into lists
     return tuple(zip(*batch))
+
+
+def detectron_collate_fn(batch):
+    # first handle batch augmentation
+    sample_elem = batch[0]
+    if isinstance(sample_elem, list):
+        batch = [ba_sample for sample in batch for ba_sample in sample]
+    return batch
 
 
 def nanmean(x):

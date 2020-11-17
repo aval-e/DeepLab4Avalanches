@@ -1,29 +1,35 @@
 import torch
-from experiments.easy_experiment import EasyExperiment
+from experiments.inst_segm import InstSegmentation
+from datasets.detectron2_dataset import detectron_targets_to_torchvision, detectron_preds_to_torchvision
+from detectron2.utils.events import EventStorage
 from utils.data_augmentation import center_crop_batch
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
 from utils.utils import nanmean
 
 
-class InstSegmentation(EasyExperiment):
+class DetectronSegmentation(InstSegmentation):
 
     def forward(self, *args, **kwargs):
-        x = self.model(*args, **kwargs)
+        with EventStorage() as storage:
+            x = self.model(*args, **kwargs)
         return x
 
     def training_step(self, batch, batch_idx):
-        x, targets = batch
-        losses = self(x, targets)
+        x = batch
+        losses = self(x)
+
+        targets = [detectron_targets_to_torchvision(sample['instances']) for sample in x]
+
+        print('Targets:')
+        print(targets)
+        print('\nLosses:')
+        print(losses)
+
 
         loss = sum(loss for loss in losses.values())
 
         self.log('train_loss', loss, on_epoch=True, sync_dist=True)
-        self.log('losses/classifier', losses['loss_classifier'], on_epoch=True, sync_dist=True)
-        self.log('losses/box_reg', losses['loss_box_reg'], on_epoch=True, sync_dist=True)
-        self.log('losses/mask', losses['loss_mask'], on_epoch=True, sync_dist=True)
-        self.log('losses/objectness', losses['loss_objectness'], on_epoch=True, sync_dist=True)
-        self.log('losses/rpn_box_reg', losses['loss_rpn_box_reg'], on_epoch=True, sync_dist=True)
 
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
@@ -35,43 +41,15 @@ class InstSegmentation(EasyExperiment):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, targets = batch
+        x = batch
         outputs = self(x)
 
-        bce_loss = self.log_and_viz_inst(batch_idx, x, targets, outputs)
-        return bce_loss
+        targets = [detectron_targets_to_torchvision(sample['instances']) for sample in x]
+        outputs = [detectron_preds_to_torchvision(output['instances']) for output in outputs]
 
-    def log_and_viz_inst(self, batch_idx, x, targets, outputs):
-        masks = []
-        for target in targets:
-            if target['masks'].numel() == 0:  # check if tensor is empty
-                mask = target['masks']
-                masks.append(torch.zeros([1, mask.shape[1], mask.shape[2]], dtype=mask.dtype, layout=mask.layout,
-                                         device=mask.device))
-            else:
-                masks.append(target['masks'].max(dim=0, keepdim=True)[0])
-        y = torch.stack(masks, dim=0)
+        imgs = [el['image'] for el in x]
 
-        masks = []
-        for output in outputs:
-            if output['masks'].numel() == 0:
-                mask = output['masks']
-                masks.append(torch.zeros([1, mask.shape[2], mask.shape[3]], dtype=mask.dtype, layout=mask.layout, device=mask.device))
-            else:
-                masks.append(output['masks'].squeeze(dim=1).max(dim=0, keepdim=True)[0])
-        y_hat = torch.stack(masks, dim=0)
-
-        pred = torch.round(y_hat)  # rounds probability to 0 or 1
-        y_mask = data_utils.labels_to_mask(y)
-
-        bce_loss = self._calc_and_log_val_losses(y, y_mask, y_hat, pred)
-
-        if batch_idx == self.hparams.val_viz_idx:
-            self.val_no += 1
-            if self.val_no % self.hparams.val_viz_interval == 0:
-                fig = viz_utils.viz_aval_instances(x, targets, outputs, dem=self.hparams.dem_dir, fig_size=2)
-                self.logger.experiment.add_figure("Validation Sample", fig, self.global_step)
-
+        bce_loss = self.log_and_viz_inst(batch_idx, imgs, targets, outputs)
         return bce_loss
 
     def test_step(self, batch, batch_idx):

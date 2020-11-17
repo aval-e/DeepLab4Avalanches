@@ -4,6 +4,8 @@ import csv
 import os
 from torch.nn import L1Loss, MSELoss, BCELoss
 from models.deep_lab_v4 import DeepLabv4
+from detectron2.modeling import build_model
+from centermask.config import get_cfg
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
 from models.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import LightningModule
@@ -42,6 +44,10 @@ class EasyExperiment(LightningModule):
                                                rpn_post_nms_top_n_train=1000, rpn_post_nms_top_n_test=200,
                                                box_detections_per_img=30, min_size=500,
                                                image_mean=[0, 0, 0], image_std=[1, 1, 1])
+        elif hparams.model == 'centermask':
+            cfg = get_cfg()
+            cfg.merge_from_file(hparams.detectron_cfg_file)
+            self.model = build_model(cfg)
         else:
             raise ('Model not found: ' + hparams.model)
 
@@ -107,6 +113,16 @@ class EasyExperiment(LightningModule):
         pred = torch.round(y_hat)  # rounds probability to 0 or 1
         y_mask = data_utils.labels_to_mask(y)
 
+        bce_loss = self._calc_and_log_val_losses(y, y_mask, y_hat, pred)
+
+        if batch_idx == self.hparams.val_viz_idx:
+            self.val_no += 1
+            if self.val_no % self.hparams.val_viz_interval == 0:
+                fig = viz_utils.viz_predictions(x, y, y_hat, pred, dem=self.hparams.dem_dir, fig_size=2)
+                self.logger.experiment.add_figure("Validation Sample", fig, self.global_step)
+        return bce_loss
+
+    def _calc_and_log_val_losses(self, y, y_mask, y_hat, pred):
         bce_loss = self.bce_loss(y_hat, y_mask)
         dice_score = soft_dice(y_mask, y_hat)
         precision, recall, f1 = get_precision_recall_f1(y, pred)
@@ -127,11 +143,6 @@ class EasyExperiment(LightningModule):
         self.log('recall/exact', recall1, sync_dist=True, reduce_fx=nanmean)
         self.log('recall/estimated', recall2, sync_dist=True, reduce_fx=nanmean)
         self.log('recall/created', recall3, sync_dist=True, reduce_fx=nanmean)
-        if batch_idx == self.hparams.val_viz_idx:
-            self.val_no += 1
-            if self.val_no % self.hparams.val_viz_interval == 0:
-                fig = viz_utils.viz_predictions(x, y, y_hat, pred, dem=self.hparams.dem_dir, fig_size=2)
-                self.logger.experiment.add_figure("Validation Sample", fig, self.global_step)
         return bce_loss
 
     def test_step(self, batch, batch_idx):
@@ -203,6 +214,8 @@ class EasyExperiment(LightningModule):
                             help='Model arcitecture. One of "deeplab", "deeplabv3+" or "sa_unet"')
         parser.add_argument('--backbone', type=str, default='resnet50',
                             help='backbone to use in deeplabv3+. "xception", "resnetxx"')
+        parser.add_argument('--detectron_cfg_file', type=str, default='/home/patrick/ecovision/avamap/models/centermask2/configs/centermask/centermask_V_39_eSE_FPN_ms_3x.yaml',
+                            help='filepath to the config file when using a detectron model')
 
         # optimisation
         parser.add_argument('--optimiser', type=str, default='adam', help="optimisation algorithm. 'adam' or 'sgd'")

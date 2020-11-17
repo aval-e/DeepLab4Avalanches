@@ -35,7 +35,7 @@ benchmark=True
 # model hyperparameters
 lr=1e-4
 in_channels=3
-model='mask_rcnn'
+model='centermask'
 backbone='resnet50'
 
 

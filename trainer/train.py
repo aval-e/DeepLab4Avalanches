@@ -5,12 +5,14 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from experiments.easy_experiment import EasyExperiment
 from experiments.inst_segm import InstSegmentation
+from experiments.detectron_segm import DetectronSegmentation
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
 from datasets.avalanche_inst_dataset import AvalancheInstDataset
 from datasets.davos_gt_dataset import DavosGtDataset
+from datasets.detectron2_dataset import Detectron2Dataset
 from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks.lr_monitor import LearningRateMonitor
-from utils.utils import str2bool, ba_collate_fn, inst_collate_fn
+from utils.utils import str2bool, ba_collate_fn, inst_collate_fn, detectron_collate_fn
 
 
 class RunValidationOnStart(Callback):
@@ -37,6 +39,10 @@ def main(hparams):
         my_experiment = InstSegmentation
         my_dataset = AvalancheInstDataset
         my_collate_fn = inst_collate_fn
+    elif hparams.model == 'centermask':
+        my_experiment = DetectronSegmentation
+        my_dataset = Detectron2Dataset
+        my_collate_fn = detectron_collate_fn
 
     # load model
     if hparams.checkpoint:
@@ -129,13 +135,13 @@ if __name__ == "__main__":
                         help='root directory of the training set')
     parser.add_argument('--train_ava_file', type=str, default='avalanches0118_endversion.shp',
                         help='File name of avalanche shapefile in root directory of training set')
-    parser.add_argument('--train_region_file', type=str, default='Region_Selection.shp',
+    parser.add_argument('--train_region_file', type=str, default='Small_test_area.shp',
                         help='File name of shapefile in root directory defining training area')
     parser.add_argument('--val_root_dir', type=str, default='/home/patrick/ecovision/data/2018',
                         help='root directory of the validation set')
     parser.add_argument('--val_ava_file', type=str, default='avalanches0118_endversion.shp',
                         help='File name of avalanche shapefile in root directory of training set')
-    parser.add_argument('--val_region_file', type=str, default='Region_Selection.shp',
+    parser.add_argument('--val_region_file', type=str, default='Small_test_area.shp',
                         help='File name of shapefile in root directory defining validation area')
     parser.add_argument('--dem_dir', type=str, default=None,
                         help='directory of the DEM within root_dir')
