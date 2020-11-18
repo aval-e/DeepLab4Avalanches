@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="mask_rcnn_catchempty"
+exp_name="centermask"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/deeplabv3+_sgd_lr1e-2/version_0/checkpoints/epoch=16.ckpt"
 resume_training=False
@@ -25,7 +25,7 @@ val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
 dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
-tile_size=256
+tile_size=512
 aval_certainty=2
 bands="3 4"
 num_workers=2
@@ -41,7 +41,7 @@ seed=42
 deterministic=True
 gpus=2
 batch_size=4
-batch_augm=2
+batch_augm=0
 accumulate_grad_batches=1
 max_epochs=20
 val_check_interval=0.5
@@ -54,7 +54,7 @@ benchmark=True
 
 
 # Model hyperparameters
-model='mask_rcnn'
+model='centermask'
 backbone='resnet50'
 optimiser="adam"
 lr=5e-5

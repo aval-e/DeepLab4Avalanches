@@ -217,7 +217,7 @@ class EasyExperiment(LightningModule):
                             help='Model arcitecture. One of "deeplab", "deeplabv3+" or "sa_unet"')
         parser.add_argument('--backbone', type=str, default='resnet50',
                             help='backbone to use in deeplabv3+. "xception", "resnetxx"')
-        parser.add_argument('--detectron_cfg_file', type=str, default='/home/patrick/ecovision/avamap/models/centermask2/configs/centermask/centermask_V_39_eSE_FPN_ms_3x.yaml',
+        parser.add_argument('--detectron_cfg_file', type=str, default='./models/centermask2/configs/centermask/centermask_V_39_eSE_FPN_ms_3x.yaml',
                             help='filepath to the config file when using a detectron model')
 
         # optimisation
