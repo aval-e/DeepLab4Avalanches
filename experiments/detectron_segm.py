@@ -18,12 +18,14 @@ class DetectronSegmentation(InstSegmentation):
     def training_step(self, batch, batch_idx):
         x = batch
         losses = self(x)
+        train_loss = sum(loss for loss in losses.values())
 
         targets = [detectron_targets_to_torchvision(sample['instances']) for sample in x]
 
-        loss = sum(loss for loss in losses.values())
+        self.log('train_loss', train_loss, on_epoch=True, sync_dist=True)
+        for key, item in losses.items():
+            self.log('losses/' + key, item.item(), on_epoch=True, sync_dist=True)
 
-        self.log('train_loss', loss, on_epoch=True, sync_dist=True)
 
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
@@ -34,7 +36,7 @@ class DetectronSegmentation(InstSegmentation):
             outputs = [detectron_preds_to_torchvision(output['instances']) for output in outputs]
             fig = viz_utils.viz_aval_instances(imgs, targets, outputs, dem=self.hparams.dem_dir, fig_size=2)
             self.logger.experiment.add_figure("Training Sample", fig, self.global_step)
-        return loss
+        return train_loss
 
     def validation_step(self, batch, batch_idx):
         x = batch

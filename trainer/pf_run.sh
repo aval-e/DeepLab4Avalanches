@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-exp_name="mask_rcnn"
+exp_name="lr-6"
 
 checkpoint=""
 resume_training=False
@@ -8,7 +8,7 @@ resume_training=False
 # Dataset hyperparameters
 train_root_dir="/home/pf/pfstud/bartonp/slf_avalanches/2018"
 train_ava_file="avalanches0118_endversion.shp"
-train_region_file="Train_area_2018.shp"
+train_region_file="Val_area_2018.shp" # "Train_area_2018.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
@@ -30,16 +30,16 @@ gpus=1
 batch_size=4
 max_epochs=10
 val_check_interval=0.5
-log_every_n_steps=5
-flush_logs_every_n_steps=20
-log_dir="/scratch/bartonp/lightning_logs"
+log_every_n_steps=10
+flush_logs_every_n_steps=50
+log_dir="/scratch/bartonp/lightning_logs/centermask"
 
 # Model hyperparameters
-model='mask_rcnn'
+model='centermask'
 optimiser="adam"
-lr=5e-5
+lr=5e-6
 in_channels=3
-train_viz_interval=50
+train_viz_interval=400
 val_viz_idx=4
 
 python -m trainer.train \
@@ -77,6 +77,6 @@ python -m trainer.train \
 --in_channels $in_channels \
 --train_viz_interval $train_viz_interval \
 --val_viz_idx $val_viz_idx \
---limit_train_batches 0.01 \
---limit_val_batches 0.02 \
+--limit_train_batches 0.9 \
+--limit_val_batches 0.5 \
 --profiler True \
