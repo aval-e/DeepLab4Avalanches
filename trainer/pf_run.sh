@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-exp_name="lr-6"
+exp_name="bbox_no_y"
 
 checkpoint=""
 resume_training=False
@@ -37,7 +37,7 @@ log_dir="/scratch/bartonp/lightning_logs/centermask"
 # Model hyperparameters
 model='centermask'
 optimiser="adam"
-lr=5e-6
+lr=5e-5
 in_channels=3
 train_viz_interval=400
 val_viz_idx=4

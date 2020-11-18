@@ -13,7 +13,7 @@ def detectron_targets_to_torchvision(sample):
 def detectron_preds_to_torchvision(sample):
     preds = {'boxes': sample.pred_boxes.tensor,
              'labels': sample.pred_classes,
-             'masks': sample.pred_masks.unsqueeze(dim=1).float()/ 255.0,
+             'masks': sample.pred_masks.unsqueeze(dim=1),
              }
     return preds
 

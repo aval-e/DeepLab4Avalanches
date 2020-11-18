@@ -54,11 +54,11 @@ class InstSegmentation(EasyExperiment):
 
         masks = []
         for output in outputs:
-            if output['masks'].numel() == 0:
-                mask = output['masks']
+            mask = output['masks']
+            if mask.numel() == 0:
                 masks.append(torch.zeros([1, mask.shape[2], mask.shape[3]], dtype=mask.dtype, layout=mask.layout, device=mask.device))
             else:
-                masks.append(output['masks'].squeeze(dim=1).max(dim=0, keepdim=True)[0])
+                masks.append(mask.squeeze(dim=1).max(dim=0, keepdim=True)[0])
         y_hat = torch.stack(masks, dim=0)
 
         pred = torch.round(y_hat)  # rounds probability to 0 or 1
