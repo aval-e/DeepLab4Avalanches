@@ -150,6 +150,9 @@ class EasyExperiment(LightningModule):
         img, _, mapped, status, id = batch
         y_hat = self(img)
 
+        return self.log_test_results(y_hat, mapped, status, id)
+
+    def log_test_results(self, y_hat, mapped, status, id):
         # aval detected if average in 10px patch around point is bigger than 0.5 threshold
         y_hat = center_crop_batch(y_hat, crop_size=10)
         pred = y_hat.mean(dim=[1, 2, 3]) > 0.5

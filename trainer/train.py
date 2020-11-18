@@ -81,7 +81,7 @@ def main(hparams):
                          hparams.val_ava_file,
                          hparams.val_region_file,
                          dem_path=hparams.dem_dir,
-                         tile_size=512,
+                         tile_size=64,
                          bands=hparams.bands,
                          certainty=None,
                          batch_augm=0,
