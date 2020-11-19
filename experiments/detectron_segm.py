@@ -2,6 +2,9 @@ import torch
 from experiments.inst_segm import InstSegmentation
 from datasets.detectron2_dataset import detectron_targets_to_torchvision, detectron_preds_to_torchvision
 from detectron2.utils.events import EventStorage
+from detectron2.utils.visualizer import Visualizer
+from matplotlib import pyplot as plt
+
 from utils.data_augmentation import center_crop_batch
 from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
 from utils import viz_utils, data_utils
@@ -42,10 +45,20 @@ class DetectronSegmentation(InstSegmentation):
         x = batch
         outputs = self(x)
 
+        imgs = [el['image'] for el in x]
+
+        if x[0]:
+            viz = Visualizer(imgs[0].permute(1,2,0).cpu())
+
+            inst = x[0]['instances'].to('cpu')
+            viz_overlay = viz.overlay_instances(boxes=inst.gt_boxes,
+                                                labels=inst.gt_classes,
+                                                masks=inst.gt_masks)
+            plt.imshow(viz_overlay.get_image())
+            plt.show()
+
         targets = [detectron_targets_to_torchvision(sample['instances']) for sample in x]
         outputs = [detectron_preds_to_torchvision(output['instances']) for output in outputs]
-
-        imgs = [el['image'] for el in x]
 
         bce_loss = self.log_and_viz_inst(batch_idx, imgs, targets, outputs)
         return bce_loss
