@@ -47,7 +47,6 @@ class EasyExperiment(LightningModule):
         elif hparams.model == 'centermask':
             cfg = get_cfg()
             cfg.merge_from_file(hparams.detectron_cfg_file)
-            cfg.MODEL.MASKIOU_ON = False
             self.model = build_model(cfg)
         else:
             raise ('Model not found: ' + hparams.model)
@@ -218,7 +217,7 @@ class EasyExperiment(LightningModule):
                             help='Model arcitecture. One of "deeplab", "deeplabv3+" or "sa_unet"')
         parser.add_argument('--backbone', type=str, default='resnet50',
                             help='backbone to use in deeplabv3+. "xception", "resnetxx"')
-        parser.add_argument('--detectron_cfg_file', type=str, default='./models/centermask2/configs/centermask/centermask_lite_V_39_eSE_FPN_ms_4x.yaml',
+        parser.add_argument('--detectron_cfg_file', type=str, default='./models/centermask2/configs/centermask/AvalancheCenterMask.yaml',
                             help='filepath to the config file when using a detectron model')
 
         # optimisation
