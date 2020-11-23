@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="centermask"
+exp_name="mask_rcnn_detectron"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/deeplabv3+_sgd_lr1e-2/version_0/checkpoints/epoch=16.ckpt"
 resume_training=False
@@ -25,8 +25,8 @@ val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
 dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
-tile_size=512
-aval_certainty=2
+tile_size=640
+aval_certainty=3
 bands="3 4"
 num_workers=2
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
@@ -54,6 +54,7 @@ benchmark=True
 
 
 # Model hyperparameters
+detectron_cfg_file='./detectron2/configs/COCO-InstanceSegmentation/mask_rcnn_R_50_DC5_1x.yaml'
 model='centermask'
 backbone='resnet50'
 optimiser="adam"
@@ -64,7 +65,7 @@ scheduler_gamma=0.2
 momentum=0.9
 weight_decay=0.0
 in_channels=3
-train_viz_interval=500
+train_viz_interval=2000
 val_viz_interval=1
 val_viz_idx=4
 
@@ -116,4 +117,4 @@ python -m trainer.train \
 --scheduler_gamma $scheduler_gamma \
 --scheduler_steps $scheduler_steps \
 --lr_scheduler $lr_scheduler \
-
+--detectron_cfg_file $detectron_cfg_file \
