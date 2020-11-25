@@ -12,7 +12,7 @@ aval_certainty=1
 bands="3 4"
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
 stds="823.4 975.5" #"1014.3 955.9 823.4 975.5"
-batch_size=1
+batch_size=2
 batch_augm=0
 num_workers=1
 
@@ -35,7 +35,7 @@ benchmark=True
 # model hyperparameters
 lr=1e-4
 in_channels=3
-model='mask_rcnn'
+model='deeplabv4'
 backbone='resnet50'
 
 

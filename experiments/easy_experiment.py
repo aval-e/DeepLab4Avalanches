@@ -35,6 +35,8 @@ class EasyExperiment(LightningModule):
         elif hparams.model == 'deeplabv3+':
             self.model = DeepLabV3Plus(self.hparams.backbone, in_channels=hparams.in_channels,
                                        encoder_weights='imagenet')
+        elif hparams.model == 'deeplabv4':
+            self.model = DeepLabv4(self.hparams.backbone, in_channels=hparams.in_channels)
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         elif hparams.model == 'mask_rcnn':
