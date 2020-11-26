@@ -7,7 +7,9 @@ resume_training=False
 # dataset hyperparameters
 train_root_dir="/home/patrick/ecovision/data/2018"
 dem_dir="/home/patrick/ecovision/data/2018/avalanches0118_endversion.tif"
-tile_size=64
+train_region_file='Small_test_area.shp'
+val_region_file="$train_region_file"
+tile_size=128
 aval_certainty=1
 bands="3 4"
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
@@ -36,7 +38,7 @@ benchmark=True
 lr=1e-4
 in_channels=3
 model='deeplabv4'
-backbone='resnet50'
+backbone='avanet_standard'
 
 
 python -m trainer.train \
@@ -45,6 +47,8 @@ python -m trainer.train \
 --train_root_dir $train_root_dir \
 --checkpoint "$checkpoint" \
 --resume_training $resume_training \
+--train_region_file $train_region_file \
+--val_region_file $val_region_file \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \
 --dem_dir $dem_dir \
