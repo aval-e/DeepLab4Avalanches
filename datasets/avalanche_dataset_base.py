@@ -2,6 +2,7 @@ import os
 from argparse import ArgumentParser
 from torch.utils.data import Dataset
 from utils import data_utils
+from osgeo import gdal
 
 
 class AvalancheDatasetBase(Dataset):
@@ -23,6 +24,8 @@ class AvalancheDatasetBase(Dataset):
         self.bands = bands
         self.means = means
         self.stds = stds
+
+        gdal.SetCacheMax(134217728) # 134Mb to limit memory usage on leonhard
 
         aval_raster_path = os.path.join(root_dir, os.path.splitext(aval_file)[0] + '.tif')
         vrt_padding = 1.5 * self.tile_size # padding around vrts [m] to avoid index error when reading near edge

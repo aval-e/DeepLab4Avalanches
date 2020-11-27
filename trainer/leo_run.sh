@@ -8,8 +8,8 @@ export PYTHONPATH=$PWD
 #BSUB -n 10
 #BSUB -W 230
 #BSUB -R "rusage[ngpus_excl_p=2]"
-#BSUB -R "rusage[mem=16384]"
-#BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
+#BSUB -R "rusage[mem=6000]"
+# #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "8_workers_4batches"
 
 exp_name="mask_rcnn_catchempty"
