@@ -1,6 +1,6 @@
-import torch
 import torch.nn as nn
 from torchvision.ops.deform_conv import DeformConv2d
+
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
@@ -92,7 +92,7 @@ class Bottleneck(nn.Module):
         out = self.relu(out)
 
         if self.deformable:
-            offsets = self.conv_offsets(out[:,-18:,:,:])
+            offsets = self.conv_offsets(out[:, -18:, :, :])
             out = self.conv2(out, offsets)
         else:
             out = self.conv2(out)
@@ -113,9 +113,9 @@ class Bottleneck(nn.Module):
 
 class AvaNet(nn.Module):
 
-    def __init__(self, block=Bottleneck, layers=(3, 4, 6, 3), num_classes=1000, zero_init_residual=False,
+    def __init__(self, block=Bottleneck, layers=(3, 4, 6, 3), zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=(False, False, True),
-                 norm_layer=None, out_channels=(3, 64, 256, 512, 1024, 2048)):
+                 norm_layer=None, out_channels=(3, 64, 256, 512, 1024, 2048), deformable=False):
         super(AvaNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -140,11 +140,11 @@ class AvaNet(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
-                                       dilate=replace_stride_with_dilation[0], deformable=True)
+                                       dilate=replace_stride_with_dilation[0], deformable=deformable)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
-                                       dilate=replace_stride_with_dilation[1], deformable=True)
+                                       dilate=replace_stride_with_dilation[1], deformable=deformable)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
-                                       dilate=replace_stride_with_dilation[2], deformable=True)
+                                       dilate=replace_stride_with_dilation[2], deformable=deformable)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -215,3 +215,21 @@ class AvaNet(nn.Module):
 
 def avanet_standard():
     return AvaNet()
+
+
+def avanet_deformable():
+    return AvaNet(deformable=True)
+
+
+def avanet_leaky():
+    avanet = avanet_standard()
+    convert_layer(avanet, nn.ReLU, nn.LeakyReLU, inplace=True)
+    return avanet
+
+
+def convert_layer(model, old_layer, new_layer, **kwargs):
+    for child_name, child in model.named_children():
+        if isinstance(child, old_layer):
+            setattr(model, child_name, new_layer(**kwargs))
+        else:
+            convert_layer(child, old_layer, new_layer, **kwargs)

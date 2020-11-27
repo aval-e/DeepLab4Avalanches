@@ -38,7 +38,7 @@ benchmark=True
 lr=1e-4
 in_channels=3
 model='deeplabv4'
-backbone='avanet_standard'
+backbone='avanet_leaky'
 
 
 python -m trainer.train \

@@ -4,7 +4,7 @@ from segmentation_models_pytorch.deeplabv3.decoder import DeepLabV3PlusDecoder
 from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead, ClassificationHead
 from segmentation_models_pytorch.encoders.resnet import ResNetEncoder
 from torchvision.models.resnet import Bottleneck
-from models.backbones.avanet import avanet_standard
+from models.backbones.avanet import avanet_standard, avanet_deformable, avanet_leaky
 
 
 class DeepLabv4(SegmentationModel):
@@ -61,6 +61,10 @@ class DeepLabv4(SegmentationModel):
             )
         elif encoder_name == 'avanet_standard':
             self.encoder = avanet_standard()
+        elif encoder_name == 'avanet_deformable':
+            self.encoder = avanet_deformable()
+        elif encoder_name == 'avanet_leaky':
+            self.encoder = avanet_leaky()
         else:
             raise NotImplementedError('No encoder found for: ' + encoder_name)
 
