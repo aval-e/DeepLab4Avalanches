@@ -227,6 +227,11 @@ def avanet_leaky():
     return avanet
 
 
+def avanet_small():
+    avanet = AvaNet(layers=(3, 2, 2, 2))
+    return avanet
+
+
 def convert_layer(model, old_layer, new_layer, **kwargs):
     for child_name, child in model.named_children():
         if isinstance(child, old_layer):
