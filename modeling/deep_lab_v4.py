@@ -5,6 +5,7 @@ from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead
 from segmentation_models_pytorch.encoders.resnet import ResNetEncoder
 from torchvision.models.resnet import Bottleneck
 from modeling.backbones.avanet import avanet_standard, avanet_deformable, avanet_leaky, avanet_small
+from modeling.backbones.grid_sample_net import GridSampleNet
 
 
 class DeepLabv4(SegmentationModel):
@@ -35,6 +36,7 @@ class DeepLabv4(SegmentationModel):
     Returns:
         ``torch.nn.Module``: **DeepLabV4**
     """
+
     def __init__(
             self,
             encoder_name: str = 'resnet50',
@@ -91,3 +93,19 @@ class DeepLabv4(SegmentationModel):
             )
         else:
             self.classification_head = None
+
+
+class FlowSegmentation(SegmentationModel):
+    def __init__(self):
+        super().__init__()
+        self.encoder = GridSampleNet(iterations=5, method='sum')
+        self.decoder = torch.nn.Identity()
+        self.segmentation_head = SegmentationHead(
+            in_channels=self.encoder.outplanes,
+            out_channels=1,
+            activation=None,
+            kernel_size=1,
+            upsampling=4,
+        )
+        self.classification_head = None
+
