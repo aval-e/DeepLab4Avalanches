@@ -4,7 +4,7 @@ from segmentation_models_pytorch.deeplabv3.decoder import DeepLabV3PlusDecoder
 from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead, ClassificationHead
 from segmentation_models_pytorch.encoders.resnet import ResNetEncoder
 from torchvision.models.resnet import Bottleneck
-from models.backbones.avanet import avanet_standard, avanet_deformable, avanet_leaky, avanet_small
+from modeling.backbones.avanet import avanet_standard, avanet_deformable, avanet_leaky, avanet_small
 
 
 class DeepLabv4(SegmentationModel):

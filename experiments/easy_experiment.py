@@ -3,9 +3,9 @@ import argparse
 import csv
 import os
 from torch.nn import L1Loss, MSELoss, BCELoss
-from models.deep_lab_v4 import DeepLabv4
+from modeling.deep_lab_v4 import DeepLabv4
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
-from models.self_attention_unet import SelfAttentionUNet
+from modeling.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import LightningModule
 from torchvision.models.detection.mask_rcnn import maskrcnn_resnet50_fpn
 from utils.data_augmentation import center_crop_batch
