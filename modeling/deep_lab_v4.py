@@ -98,7 +98,7 @@ class DeepLabv4(SegmentationModel):
 class FlowSegmentation(SegmentationModel):
     def __init__(self):
         super().__init__()
-        self.encoder = GridSampleNet(iterations=5, method='sum')
+        self.encoder = GridSampleNet(iterations=50)
         self.decoder = torch.nn.Identity()
         self.segmentation_head = SegmentationHead(
             in_channels=self.encoder.outplanes,

@@ -7,7 +7,7 @@ from modeling.reusable_blocks import Bottleneck, BasicBlock, conv1x1, conv3x3
 class GridSampleNet(nn.Module):
 
     def __init__(self, groups=1, width_per_group=64,
-                 norm_layer=None, iterations=5, method='sum'):
+                 norm_layer=None, iterations=50):
         super(GridSampleNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -15,7 +15,6 @@ class GridSampleNet(nn.Module):
 
         self.inplanes = 64
 
-        self.method = method
         self.iterations = iterations
         self.groups = groups
         self.base_width = width_per_group
@@ -29,16 +28,17 @@ class GridSampleNet(nn.Module):
 
         self.layer2 = self._make_layer(Bottleneck, self.inplanes, 64, 3, stride=2)
 
+        self.dem_grads = nn.Conv2d(1, 2, kernel_size=3, stride=2, padding=1)
         self.avgpool = nn.AvgPool2d(2)
-        self.grid_grads = nn.Conv2d(1, 2, kernel_size=3, stride=2, padding=1)
-        self.grid_layer1 = BasicBlock(2, 2)
-        self.grid_layer2 = BasicBlock(2, 2)
+        self.feature_squeeze = conv1x1(64*Bottleneck.expansion, 2)
+        self.grid_layer = self._make_layer(Bottleneck, 4, 8, 3)
+        self.grid_squeeze = conv1x1(32, 2)
 
         merge_outplanes = 64 * Bottleneck.expansion
-        merge_inplanes = merge_outplanes
-        if method == 'concat':
-            merge_inplanes *= 3
-        self.merge = BasicBlock(merge_inplanes, merge_outplanes)
+        self.bn3 = norm_layer(3 * merge_outplanes)
+        self.tanh = nn.Tanh()
+        self.merge = conv1x1(3 * merge_outplanes, merge_outplanes) #BasicBlock(merge_inplanes, merge_outplanes)
+        self.postprocess = self._make_layer(Bottleneck, merge_outplanes, 64, 2)
         self.outplanes = merge_outplanes
 
         for m in self.modules():
@@ -79,20 +79,29 @@ class GridSampleNet(nn.Module):
             x = stage(x)
 
         # Calculate grids
-        dem = self.avgpool(dem)
-        dem_grads = self.grid_grads(dem)
-        grid1 = self.grid_layer1(dem_grads)
-        grid2 = self.grid_layer2(dem_grads)
-        grid1 = grid1.permute(0, 2, 3, 1)
-        grid2 = grid2.permute(0, 2, 3, 1)
+        dem_grads = self.dem_grads(dem)
+        dem_grads = self.avgpool(dem_grads)
 
+        features = self.feature_squeeze(x)
+        grid = self.grid_layer(torch.cat([dem_grads, features], dim=1))  # Todo: check because of batch norm
+        grid = self.grid_squeeze(grid)
+        grid *= grid.shape[2] / 64  # rescale to work with any patch size since grid is relativ to patch size -
+        grid1 = grid.permute(0, 2, 3, 1)
+        grid2 = -grid1
+
+        out_dir1 = x
+        out_dir2 = x
+        sum_dir1 = torch.zeros_like(x)
+        sum_dir2 = torch.zeros_like(x)
         for i in range(self.iterations):
-            x_dir1 = grid_sample(x, grid1)
-            x_dir2 = grid_sample(x, grid2)
-            if self.method == 'sum':
-                x = x + x_dir1 + x_dir2
-            elif self.method == 'concat':
-                x = torch.cat([x, x_dir1, x_dir2], dim=1)
-            x = self.merge(x)
+            out_dir1 = grid_sample(out_dir1, grid1)
+            out_dir2 = grid_sample(out_dir2, grid2)
+            sum_dir1 += out_dir1
+            sum_dir2 += out_dir2
+        out = torch.cat([x, sum_dir1, sum_dir2], dim=1)
+        out = self.bn3(out)
+        out = self.tanh(out)
+        out = self.merge(out)
+        out = self.postprocess(out)
 
-        return [x,]
+        return [out,]
