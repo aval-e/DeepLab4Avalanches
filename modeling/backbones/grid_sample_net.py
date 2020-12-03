@@ -19,7 +19,7 @@ class GridSampleNet(nn.Module):
         self.iterations = iterations
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(2, self.inplanes, kernel_size=7, padding=3, bias=False)
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
 
@@ -27,18 +27,19 @@ class GridSampleNet(nn.Module):
         self.bn2 = norm_layer(self.inplanes)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        self.layer2 = self._make_layer(Bottleneck, self.inplanes, 64, 4, stride=2)
+        self.layer2 = self._make_layer(Bottleneck, self.inplanes, 64, 3, stride=1)
+        self.layer3 = self._make_layer(Bottleneck, 64*4, 128, 6, stride=2)
 
         self.spatial_grad = SpatialGradient()
         self.grad_scale = nn.Parameter(torch.rand(1))
         self.avgpool = nn.AvgPool2d(4)
-        self.feature_squeeze = conv1x1(64*Bottleneck.expansion, 64)
+        self.feature_squeeze = conv1x1(128*Bottleneck.expansion, 64)
 
-        merge_outplanes = 64 * Bottleneck.expansion
+        merge_outplanes = 128 * Bottleneck.expansion
         self.bn3 = norm_layer(merge_outplanes + 2*64)
         self.tanh = nn.Tanh()
         self.merge = conv1x1(merge_outplanes + 2*64, merge_outplanes)
-        self.postprocess = self._make_layer(Bottleneck, merge_outplanes, 64, 4, stride=2)
+        self.postprocess = self._make_layer(Bottleneck, merge_outplanes, 128, 4, stride=2)
         self.out_channels = [merge_outplanes, 0, 0, merge_outplanes]
 
         for m in self.modules():
@@ -67,24 +68,28 @@ class GridSampleNet(nn.Module):
             nn.Sequential(self.conv1, self.bn1, self.relu),
             nn.Sequential(self.conv2, self.bn2, self.relu, self.maxpool),
             self.layer2,
+            self.layer3,
         ]
 
     def forward(self, x):
         features = x[:, :-1, :, :]
         dem = x[:, [-1], :, :]
 
+        # calculate dem gradients and magnitude
+        dem_grads = self.spatial_grad(dem).squeeze(dim=1)
+        dem = torch.sqrt(torch.square(dem_grads[:, [0], :, :]) + torch.square(dem_grads[:, [1], :, :]))
+        features = torch.cat([features, dem], dim=1)
+
         stages = self.get_stages()
 
         for stage in stages:
             features = stage(features)
 
-        # Calculate grids
-        dem = self.spatial_grad(dem).squeeze(dim=1)
-        dem = self.avgpool(dem)
-        dem *= self.grad_scale
+        dem_grads = self.avgpool(dem_grads)
+        dem_grads *= self.grad_scale
 
-        dem *= dem.shape[2] / 64  # rescale to work with any patch size since grid is relativ to patch size -
-        grid1 = dem.permute(0, 2, 3, 1)
+        dem_grads *= dem_grads.shape[2] / 64  # rescale to work with any patch size since grid is relativ to patch size -
+        grid1 = dem_grads.permute(0, 2, 3, 1)
         grid2 = -grid1
 
         # propagate features along dem gradient field
