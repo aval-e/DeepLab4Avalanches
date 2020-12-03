@@ -99,9 +99,14 @@ class FlowSegmentation(SegmentationModel):
     def __init__(self):
         super().__init__()
         self.encoder = GridSampleNet(iterations=50)
-        self.decoder = torch.nn.Identity()
+        self.decoder = DeepLabV3PlusDecoder(
+            encoder_channels=self.encoder.out_channels,
+            out_channels=256,
+            atrous_rates=(8, 16, 24),
+            output_stride=8,
+        )
         self.segmentation_head = SegmentationHead(
-            in_channels=self.encoder.outplanes,
+            in_channels=self.decoder.out_channels,
             out_channels=1,
             activation=None,
             kernel_size=1,

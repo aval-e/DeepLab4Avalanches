@@ -38,8 +38,8 @@ class GridSampleNet(nn.Module):
         self.bn3 = norm_layer(merge_outplanes + 2*64)
         self.tanh = nn.Tanh()
         self.merge = conv1x1(merge_outplanes + 2*64, merge_outplanes)
-        self.postprocess = self._make_layer(Bottleneck, merge_outplanes, 64, 4)
-        self.outplanes = merge_outplanes
+        self.postprocess = self._make_layer(Bottleneck, merge_outplanes, 64, 4, stride=2)
+        self.out_channels = [merge_outplanes, 0, 0, merge_outplanes]
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -104,4 +104,4 @@ class GridSampleNet(nn.Module):
         out = self.merge(out)
         out = self.postprocess(out)
 
-        return [out,]
+        return [features, None, None, out]
