@@ -5,11 +5,11 @@ from modeling.reusable_blocks import Bottleneck, BasicBlock, conv1x1, conv3x3
 from kornia.filters.sobel import SpatialGradient
 
 
-class GridSampleNet(nn.Module):
+class AvanetBackbone(nn.Module):
 
     def __init__(self, groups=1, width_per_group=64,
                  norm_layer=None, iterations=50):
-        super(GridSampleNet, self).__init__()
+        super(AvanetBackbone, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer

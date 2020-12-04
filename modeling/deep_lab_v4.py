@@ -5,8 +5,8 @@ from segmentation_models_pytorch.deeplabv3.model import DeepLabV3Plus
 from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead, ClassificationHead
 from segmentation_models_pytorch.encoders.resnet import ResNetEncoder
 from torchvision.models.resnet import Bottleneck
-from modeling.backbones.avanet import avanet_standard, avanet_deformable, avanet_leaky, avanet_small
-from modeling.backbones.grid_sample_net import GridSampleNet
+from modeling.backbones.custom_resnet import resnet_standard, resnet_deformable, resnet_leaky, resnet_small
+from modeling.backbones.avanet_backbone import AvanetBackbone
 from modeling.reusable_blocks import DeformableBlock
 
 
@@ -64,13 +64,13 @@ class DeepLabv4(SegmentationModel):
                 dilation_list=[2]
             )
         elif encoder_name == 'avanet_standard':
-            self.encoder = avanet_standard()
+            self.encoder = resnet_standard()
         elif encoder_name == 'avanet_deformable':
-            self.encoder = avanet_deformable()
+            self.encoder = resnet_deformable()
         elif encoder_name == 'avanet_leaky':
-            self.encoder = avanet_leaky()
+            self.encoder = resnet_leaky()
         elif encoder_name == 'avanet_small':
-            self.encoder = avanet_small()
+            self.encoder = resnet_small()
         else:
             raise NotImplementedError('No encoder found for: ' + encoder_name)
 
@@ -95,26 +95,6 @@ class DeepLabv4(SegmentationModel):
             )
         else:
             self.classification_head = None
-
-
-class FlowSegmentation(SegmentationModel):
-    def __init__(self):
-        super().__init__()
-        self.encoder = GridSampleNet(iterations=50)
-        self.decoder = DeepLabV3PlusDecoder(
-            encoder_channels=self.encoder.out_channels,
-            out_channels=256,
-            atrous_rates=(8, 16, 24),
-            output_stride=8,
-        )
-        self.segmentation_head = SegmentationHead(
-            in_channels=self.decoder.out_channels,
-            out_channels=1,
-            activation=None,
-            kernel_size=1,
-            upsampling=4,
-        )
-        self.classification_head = None
 
 
 class Deeplabv5(DeepLabV3Plus):

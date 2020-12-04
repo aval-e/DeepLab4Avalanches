@@ -2,12 +2,12 @@ import torch.nn as nn
 from modeling.reusable_blocks import Bottleneck, DeformableBlock, BasicBlock, conv1x1, conv3x3
 
 
-class AvaNet(nn.Module):
+class CustomResNet(nn.Module):
 
     def __init__(self, block=Bottleneck, layers=(3, 4, 6, 3), zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=(False, False, True),
                  norm_layer=None, out_channels=(3, 64, 256, 512, 1024, 2048), deformable=False):
-        super(AvaNet, self).__init__()
+        super(CustomResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
@@ -98,22 +98,22 @@ class AvaNet(nn.Module):
         return self._forward_impl(x)
 
 
-def avanet_standard():
-    return AvaNet()
+def resnet_standard():
+    return CustomResNet()
 
 
-def avanet_deformable():
-    return AvaNet(block=DeformableBlock)
+def resnet_deformable():
+    return CustomResNet(block=DeformableBlock)
 
 
-def avanet_leaky():
-    avanet = avanet_standard()
+def resnet_leaky():
+    avanet = resnet_standard()
     convert_layer(avanet, nn.ReLU, nn.LeakyReLU, inplace=True)
     return avanet
 
 
-def avanet_small():
-    avanet = AvaNet(layers=(3, 2, 2, 2))
+def resnet_small():
+    avanet = CustomResNet(layers=(3, 2, 2, 2))
     return avanet
 
 
