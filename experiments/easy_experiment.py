@@ -3,7 +3,7 @@ import argparse
 import csv
 import os
 from torch.nn import L1Loss, MSELoss, BCELoss
-from modeling.deep_lab_v4 import DeepLabv4, FlowSegmentation
+from modeling.deep_lab_v4 import DeepLabv4, FlowSegmentation, Deeplabv5
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
 from modeling.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import LightningModule
@@ -37,6 +37,8 @@ class EasyExperiment(LightningModule):
                                        encoder_weights='imagenet')
         elif hparams.model == 'deeplabv4':
             self.model = DeepLabv4(self.hparams.backbone, in_channels=hparams.in_channels)
+        elif hparams.model == 'deeplabv5':
+            self.model = Deeplabv5(self.hparams.backbone, in_channels=hparams.in_channels, encoder_weights='imagenet')
         elif hparams.model == 'flowseg':
             self.model = FlowSegmentation()
         elif hparams.model == 'sa_unet':

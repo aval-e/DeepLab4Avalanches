@@ -103,7 +103,9 @@ class GridSampleNet(nn.Module):
             out_dir2 = grid_sample(out_dir2, grid2)
             sum_dir1 += out_dir1
             sum_dir2 += out_dir2
+        del out_dir1, out_dir2, grid1, grid2
         out = torch.cat([features, sum_dir1, sum_dir2], dim=1)
+        del sum_dir1, sum_dir2
         out = self.bn3(out)
         out = self.tanh(out)
         out = self.merge(out)

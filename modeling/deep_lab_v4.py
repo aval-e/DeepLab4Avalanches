@@ -1,6 +1,7 @@
 import torch
 from typing import Optional
-from segmentation_models_pytorch.deeplabv3.decoder import DeepLabV3PlusDecoder
+from segmentation_models_pytorch.deeplabv3.decoder import DeepLabV3PlusDecoder, SeparableConv2d
+from segmentation_models_pytorch.deeplabv3.model import DeepLabV3Plus
 from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead, ClassificationHead
 from segmentation_models_pytorch.encoders.resnet import ResNetEncoder
 from torchvision.models.resnet import Bottleneck
@@ -114,3 +115,28 @@ class FlowSegmentation(SegmentationModel):
         )
         self.classification_head = None
 
+
+class Deeplabv5(DeepLabV3Plus):
+    def __init__(
+            self,
+            encoder_name: str = "resnet34",
+            encoder_depth: int = 5,
+            encoder_weights: Optional[str] = "imagenet",
+            encoder_output_stride: int = 16,
+            decoder_channels: int = 256,
+            decoder_atrous_rates: tuple = (12, 24, 36),
+            in_channels: int = 3,
+            classes: int = 1,
+            activation: Optional[str] = None,
+            upsampling: int = 4,
+            aux_params: Optional[dict] = None,
+    ):
+        super().__init__(encoder_name, encoder_depth, encoder_weights, encoder_output_stride, decoder_channels,
+                         decoder_atrous_rates, in_channels, classes, activation, upsampling, aux_params)
+
+        self.decoder.aspp = torch.nn.Sequential(
+            torch.nn.Conv2d(self.encoder.out_channels[-1], decoder_channels, 1),
+            SeparableConv2d(decoder_channels, decoder_channels, kernel_size=3, padding=1, bias=False),
+            torch.nn.BatchNorm2d(decoder_channels),
+            torch.nn.ReLU(),
+        )
