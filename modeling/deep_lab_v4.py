@@ -7,6 +7,7 @@ from segmentation_models_pytorch.encoders.resnet import ResNetEncoder
 from torchvision.models.resnet import Bottleneck
 from modeling.backbones.avanet import avanet_standard, avanet_deformable, avanet_leaky, avanet_small
 from modeling.backbones.grid_sample_net import GridSampleNet
+from modeling.reusable_blocks import DeformableBlock
 
 
 class DeepLabv4(SegmentationModel):
@@ -135,7 +136,7 @@ class Deeplabv5(DeepLabV3Plus):
                          decoder_atrous_rates, in_channels, classes, activation, upsampling, aux_params)
 
         self.decoder.aspp = torch.nn.Sequential(
-            torch.nn.Conv2d(self.encoder.out_channels[-1], decoder_channels, 1),
+            DeformableBlock(self.encoder.out_channels[-1], decoder_channels//4),
             SeparableConv2d(decoder_channels, decoder_channels, kernel_size=3, padding=1, bias=False),
             torch.nn.BatchNorm2d(decoder_channels),
             torch.nn.ReLU(),

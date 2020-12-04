@@ -83,6 +83,7 @@ class Bottleneck(nn.Module):
         self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.stride = stride
+        self.dilation = dilation
 
         self.downsample = None
         if stride != 1 or inplanes != planes * self.expansion:
@@ -118,11 +119,12 @@ class DeformableBlock(Bottleneck):
     """ Custom deformable version"""
     expansion = 4
 
-    def __init__(self, *args, **kwargs):
-        super(DeformableBlock, self).__init__(*args, **kwargs)
-        self.conv_offsets = conv3x3(18, 18, self.stride, self.groups, self.dilation)
-        self.conv2 = DeformConv2d(self.conv2.in_channels, self.conv2.out_channels, 3, self.stride, self.dilation,
-                                  self.dilation, self.groups, bias=True)
+    def __init__(self, inplanes, planes, stride=1, groups=1,
+                 base_width=64, dilation=1, norm_layer=None):
+        super(DeformableBlock, self).__init__(inplanes, planes, stride, groups, base_width, dilation, norm_layer)
+        self.conv_offsets = conv3x3(18, 18, stride, groups, dilation)
+        self.conv2 = DeformConv2d(self.conv2.in_channels, self.conv2.out_channels, 3, stride, dilation,
+                                  dilation, groups, bias=True)
 
     def forward(self, x):
         identity = x
