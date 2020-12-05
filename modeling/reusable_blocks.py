@@ -147,3 +147,34 @@ class DeformableBlock(Bottleneck):
         out = self.relu(out)
 
         return out
+
+
+class SeparableConv2d(nn.Sequential):
+
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            padding=0,
+            dilation=1,
+            bias=True,
+    ):
+        dephtwise_conv = nn.Conv2d(
+            in_channels,
+            in_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=in_channels,
+            bias=False,
+        )
+        pointwise_conv = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=1,
+            bias=bias,
+        )
+        super().__init__(dephtwise_conv, pointwise_conv)
