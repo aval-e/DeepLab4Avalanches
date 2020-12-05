@@ -66,30 +66,28 @@ class Bottleneck(nn.Module):
     # This variant is also known as ResNet V1.5 and improves accuracy according to
     # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
 
-    expansion = 4
-
     def __init__(self, inplanes, planes, stride=1, groups=1,
                  base_width=64, dilation=1, norm_layer=None):
         super(Bottleneck, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
-        width = int(planes * (base_width / 64.)) * groups
+        width = int(planes/4 * (base_width / 64.)) * groups
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width)
         self.bn1 = norm_layer(width)
         self.conv2 = conv3x3(width, width, stride, groups, dilation)
         self.bn2 = norm_layer(width)
-        self.conv3 = conv1x1(width, planes * self.expansion)
-        self.bn3 = norm_layer(planes * self.expansion)
+        self.conv3 = conv1x1(width, planes)
+        self.bn3 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
         self.stride = stride
         self.dilation = dilation
 
         self.downsample = None
-        if stride != 1 or inplanes != planes * self.expansion:
+        if stride != 1 or inplanes != planes:
             self.downsample = nn.Sequential(
-                conv1x1(inplanes, planes * self.expansion, stride),
-                norm_layer(planes * self.expansion),
+                conv1x1(inplanes, planes, stride),
+                norm_layer(planes),
             )
 
     def forward(self, x):
