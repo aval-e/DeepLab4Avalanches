@@ -41,7 +41,11 @@ class EasyExperiment(LightningModule):
         elif hparams.model == 'deeplabv5':
             self.model = Deeplabv5(self.hparams.backbone, in_channels=hparams.in_channels, encoder_weights='imagenet')
         elif hparams.model == 'avanet':
-            self.model = Avanet()
+            self.model = Avanet(replace_stride_with_dilation=self.hparams.avanet_rep_stride_with_dil,
+                                no_blocks=self.hparams.avanet_no_blocks,
+                                deformable=self.hparams.avanet_deformable,
+                                iter_rate=self.hparams.avanet_iter_rate,
+                                grad_attention=self.hparams.avanet_grad_attention)
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         elif hparams.model == 'mask_rcnn':
@@ -210,6 +214,7 @@ class EasyExperiment(LightningModule):
                             help='Model arcitecture. One of "deeplab", "deeplabv3+" or "sa_unet"')
         parser.add_argument('--backbone', type=str, default='resnet50',
                             help='backbone to use in deeplabv3+. "xception", "resnetxx"')
+        parser = Avanet.add_model_specific_args(parser)
 
         # optimisation
         parser.add_argument('--optimiser', type=str, default='adam', help="optimisation algorithm. 'adam' or 'sgd'")

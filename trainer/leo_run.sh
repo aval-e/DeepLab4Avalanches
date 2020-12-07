@@ -68,6 +68,13 @@ train_viz_interval=500
 val_viz_interval=1
 val_viz_idx=4
 
+# Avanet options
+avanet_rep_stride_with_dil=False
+avanet_no_blocks="3 3 3 2"
+avanet_deformable=False
+avanet_iter_rate=1
+avanet_grad_attention=True
+
 python -m trainer.train \
 --exp_name $exp_name \
 --date "$(date +"%d.%m.%y")" \
@@ -116,4 +123,8 @@ python -m trainer.train \
 --scheduler_gamma $scheduler_gamma \
 --scheduler_steps $scheduler_steps \
 --lr_scheduler $lr_scheduler \
-
+--avanet_rep_stride_with_dil $avanet_rep_stride_with_dil \
+--avanet_no_blocks $avanet_no_blocks \
+--avanet_deformable $avanet_deformable \
+--avanet_iter_rate $avanet_iter_rate \
+--avanet_grad_attention $avanet_grad_attention \

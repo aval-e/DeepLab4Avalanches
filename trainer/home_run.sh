@@ -37,8 +37,13 @@ benchmark=True
 # model hyperparameters
 lr=1e-4
 in_channels=3
-model='deeplabv4'
-backbone='avanet_leaky'
+model='avanet'
+backbone='avanet'
+avanet_rep_stride_with_dil=False
+avanet_no_blocks="3 3 3 2"
+avanet_deformable=True
+avanet_iter_rate=1
+avanet_grad_attention=True
 
 
 python -m trainer.train \
@@ -69,6 +74,11 @@ python -m trainer.train \
 --lr $lr \
 --model $model \
 --backbone $backbone \
+--avanet_rep_stride_with_dil $avanet_rep_stride_with_dil \
+--avanet_no_blocks $avanet_no_blocks \
+--avanet_deformable $avanet_deformable \
+--avanet_iter_rate $avanet_iter_rate \
+--avanet_grad_attention $avanet_grad_attention \
 --in_channels $in_channels \
 --limit_train_batches $limit_train_batches \
 --limit_val_batches $limit_val_batches \
