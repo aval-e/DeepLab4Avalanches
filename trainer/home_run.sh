@@ -39,11 +39,11 @@ lr=1e-4
 in_channels=3
 model='avanet'
 backbone='avanet'
-avanet_rep_stride_with_dil=False
+avanet_rep_stride_with_dil=True
 avanet_no_blocks="3 3 3 2"
 avanet_deformable=True
 avanet_iter_rate=1
-avanet_grad_attention=True
+avanet_grad_attention=False
 
 
 python -m trainer.train \
