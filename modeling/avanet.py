@@ -83,7 +83,7 @@ class AvanetDecoder(nn.Module):
         if self.attention:
             self.grad_attention = FlowAttention(in_channels, replace_stride_with_dilation=replace_stride_with_dilation)
 
-        self.flow1 = FlowLayer(in_channels[-1], 128, 4 * iter_rate)
+        self.flow1 = FlowLayer(in_channels[-1], 128, 4 * iter_rate if not replace_stride_with_dilation else 8 * iter_rate)
         self.flow2 = FlowLayer(in_channels[-2], 64, 8 * iter_rate)
         self.flow3 = FlowLayer(in_channels[-3], 32, 16 * iter_rate)
         self.flows = [self.flow1, self.flow2, self.flow3]
