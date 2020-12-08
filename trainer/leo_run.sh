@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 # #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="mask_rcnn_catchempty"
+exp_name="more_blocks_iters_noattention_scheduler"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/deeplabv3+_sgd_lr1e-2/version_0/checkpoints/epoch=16.ckpt"
 resume_training=False
@@ -49,31 +49,31 @@ log_every_n_steps=100
 flush_logs_every_n_steps=100
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/mask_rcnn"
+log_dir="/cluster/scratch/bartonp/lightning_logs/avanet"
 benchmark=True
 
 
 # Model hyperparameters
-model='mask_rcnn'
-backbone='resnet50'
+model='avanet'
+backbone='avanet'
 optimiser="adam"
-lr=5e-5
+lr=2e-4
 lr_scheduler='multistep'
-scheduler_steps="12000 20000"
+scheduler_steps="16000 30000"
 scheduler_gamma=0.2
 momentum=0.9
 weight_decay=0.0
 in_channels=3
-train_viz_interval=500
+train_viz_interval=2000
 val_viz_interval=1
 val_viz_idx=4
 
 # Avanet options
 avanet_rep_stride_with_dil=False
-avanet_no_blocks="3 3 3 2"
-avanet_deformable=False
-avanet_iter_rate=1
-avanet_grad_attention=True
+avanet_no_blocks="3 4 6 3"
+avanet_deformable=True
+avanet_iter_rate=2
+avanet_grad_attention=False
 
 python -m trainer.train \
 --exp_name $exp_name \
