@@ -130,7 +130,7 @@ class AvanetDecoder(nn.Module):
             tensors = [features, flow, high_features] if high_features is not None else [features, flow]
             features = torch.cat(tensors, dim=1)
             features = self.block[i](features)
-            high_features = self.upsample(features) if not self.replace_stride_with_dilation else features
+            high_features = features if i == 0 and self.replace_stride_with_dilation else self.upsample(features)
         features = self.final(high_features)
         return features
 
