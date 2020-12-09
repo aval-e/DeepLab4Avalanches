@@ -92,7 +92,7 @@ class AvanetDecoder(nn.Module):
         self.block1 = Bottleneck(in_channels[-1] + 128, in_channels[-1])
         self.block2 = Bottleneck(in_channels[-2] + 64 + in_channels[-1], in_channels[-2])
         self.block3 = Bottleneck(in_channels[-3] + 32 + in_channels[-2], in_channels[-3])
-        self.block = [self.block1, self.block2, self.block3]
+        self.blocks = [self.block1, self.block2, self.block3]
 
         self.skip2 = Bottleneck(in_channels[-2], in_channels[-2])
         self.skip3 = Bottleneck(in_channels[-3], in_channels[-3])
@@ -130,7 +130,7 @@ class AvanetDecoder(nn.Module):
             flow = self.flows[i](features, grads[i])
             tensors = [features, flow, high_features] if high_features is not None else [features, flow]
             features = torch.cat(tensors, dim=1)
-            features = self.block[i](features)
+            features = self.blocks[i](features)
             high_features = features if i == 0 and self.replace_stride_with_dilation else self.upsample(features)
         features = self.final(high_features)
         return features

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.functional import grid_sample
-from modeling.reusable_blocks import Bottleneck, DeformableBlock, conv1x1
+from modeling.reusable_blocks import Bottleneck, DeformableBlock, SelfAttentionBlock
 from kornia.filters.sobel import SpatialGradient
 
 
@@ -41,17 +41,18 @@ class AvanetBackbone(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def _make_layer(self, inplanes, planes, blocks, stride=1, dilation=1, deformable=False):
+    def _make_layer(self, inplanes, planes, blocks, stride=1, dilation=1, deformable=False, attention=True):
         norm_layer = self._norm_layer
-        block = Bottleneck if not deformable else DeformableBlock
+        block1 = Bottleneck if not deformable else DeformableBlock
+        block2 = Bottleneck if not attention else SelfAttentionBlock
 
         layers = []
-        layers.append(block(inplanes, planes, stride, self.groups,
-                            self.base_width, dilation, norm_layer))
+        layers.append(block1(inplanes, planes, stride, self.groups,
+                             self.base_width, dilation, norm_layer))
         for _ in range(1, blocks):
-            layers.append(Bottleneck(planes, planes, groups=self.groups,
-                                     base_width=self.base_width, dilation=1,
-                                     norm_layer=norm_layer))
+            layers.append(block2(planes, planes, stride=1, groups=self.groups,
+                                 base_width=self.base_width, dilation=1,
+                                 norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
 
