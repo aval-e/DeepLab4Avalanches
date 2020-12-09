@@ -44,7 +44,7 @@ class EasyExperiment(LightningModule):
             self.model = Avanet(replace_stride_with_dilation=self.hparams.avanet_rep_stride_with_dil,
                                 no_blocks=self.hparams.avanet_no_blocks,
                                 deformable=self.hparams.avanet_deformable,
-                                iter_rate=self.hparams.avanet_iter_rate,
+                                px_per_iter=self.hparams.avanet_px_per_iter,
                                 grad_attention=self.hparams.avanet_grad_attention)
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)

@@ -13,7 +13,7 @@ class Avanet(nn.Module):
     def __init__(self, replace_stride_with_dilation=False,
                  no_blocks=(3, 3, 3, 2),
                  deformable=True,
-                 iter_rate=1,
+                 px_per_iter=4,
                  grad_attention=True,
                  ):
         super().__init__()
@@ -22,11 +22,12 @@ class Avanet(nn.Module):
 
         self.encoder = AvanetBackbone(replace_stride_with_dilation=replace_stride_with_dilation,
                                       no_blocks=no_blocks,
-                                      deformable=deformable)
+                                      deformable=deformable,
+                                      groups=2)
         self.decoder = AvanetDecoder(
             in_channels=self.encoder.out_channels,
             out_channels=256,
-            iter_rate=iter_rate,
+            px_per_iter=px_per_iter,
             grad_attention=grad_attention,
             replace_stride_with_dilation=replace_stride_with_dilation
         )
@@ -66,13 +67,13 @@ class Avanet(nn.Module):
                             help='Replace stride with dilation in backbone')
         parser.add_argument('--avanet_no_blocks', type=int, nargs='+', default=(3, 3, 3, 2))
         parser.add_argument('--avanet_deformable', type=str2bool, default='True',)
-        parser.add_argument('--avanet_iter_rate', type=int, default=1)
+        parser.add_argument('--avanet_px_per_iter', type=int, default=4)
         parser.add_argument('--avanet_grad_attention', type=str2bool, default='True')
         return parser
 
 
 class AvanetDecoder(nn.Module):
-    def __init__(self, in_channels, out_channels, iter_rate=1, grad_attention=False,
+    def __init__(self, in_channels, out_channels, px_per_iter=1, grad_attention=False,
                  replace_stride_with_dilation=False):
         super().__init__()
         self.out_channels = out_channels
@@ -83,9 +84,9 @@ class AvanetDecoder(nn.Module):
         if self.attention:
             self.grad_attention = FlowAttention(in_channels, replace_stride_with_dilation=replace_stride_with_dilation)
 
-        self.flow1 = FlowLayer(in_channels[-1], 128, 4 * iter_rate if not replace_stride_with_dilation else 8 * iter_rate)
-        self.flow2 = FlowLayer(in_channels[-2], 64, 8 * iter_rate)
-        self.flow3 = FlowLayer(in_channels[-3], 32, 16 * iter_rate)
+        self.flow1 = FlowLayer(in_channels[-1], 128, px_per_iter)
+        self.flow2 = FlowLayer(in_channels[-2], 64, px_per_iter)
+        self.flow3 = FlowLayer(in_channels[-3], 32, px_per_iter)
         self.flows = [self.flow1, self.flow2, self.flow3]
 
         self.block1 = Bottleneck(in_channels[-1] + 128, in_channels[-1])
@@ -138,29 +139,32 @@ class AvanetDecoder(nn.Module):
 class FlowLayer(nn.Module):
     """ Layer which implements flow propagation along a gradient field in both directions"""
 
-    def __init__(self, inplanes, outplanes, iters):
+    def __init__(self, inplanes, outplanes, pixels_per_iter=4):
         super().__init__()
-        self.iters = iters
+        self.pixels_per_iter = pixels_per_iter
         self.conv1 = conv1x1(inplanes, outplanes)
         self.conv2 = conv1x1(inplanes, outplanes)
         self.sigmoid = nn.Sigmoid()
         self.merge = SeparableConv2d(2 * outplanes, outplanes, 3, padding=1)
+        self.postprocess = SeparableConv2d(outplanes, outplanes, 3, padding=1)
 
     def forward(self, x, grads):
-        grads = grads / self.iters
+        iters = x.shape[2] // self.pixels_per_iter
+        grads = grads / iters
         grads = grads.permute(0, 2, 3, 1).contiguous()
 
         m1 = self.conv1(x)
         m2 = self.conv2(x)
         m1 = self.sigmoid(m1)
         m2 = self.sigmoid(m2)
-        for _ in range(self.iters):
+        for _ in range(iters):
             m1 = m1 + nn.functional.grid_sample(m1, grads)
             m2 = m2 + nn.functional.grid_sample(m2, -grads)
         m1 = self.sigmoid(m1)
         m2 = self.sigmoid(m2)
         x = torch.cat([m1, m2], dim=1)
-        return self.merge(x)
+        x = self.merge(x)
+        return self.postprocess(x)
 
 
 class FlowAttention(nn.Module):

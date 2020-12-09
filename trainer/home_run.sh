@@ -42,7 +42,7 @@ backbone='avanet'
 avanet_rep_stride_with_dil=True
 avanet_no_blocks="3 3 3 2"
 avanet_deformable=True
-avanet_iter_rate=1
+avanet_px_per_iter=4
 avanet_grad_attention=False
 
 
@@ -77,7 +77,7 @@ python -m trainer.train \
 --avanet_rep_stride_with_dil $avanet_rep_stride_with_dil \
 --avanet_no_blocks $avanet_no_blocks \
 --avanet_deformable $avanet_deformable \
---avanet_iter_rate $avanet_iter_rate \
+--avanet_px_per_iter $avanet_px_per_iter \
 --avanet_grad_attention $avanet_grad_attention \
 --in_channels $in_channels \
 --limit_train_batches $limit_train_batches \
