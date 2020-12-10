@@ -4,39 +4,61 @@ from torch import nn
 import warnings
 from kornia.filters.sobel import SpatialGradient
 from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead, ClassificationHead
+from segmentation_models_pytorch.encoders import get_encoder
 from modeling.backbones.avanet_backbone import AvanetBackbone
 from modeling.reusable_blocks import conv1x1, conv3x3, SeparableConv2d, Bottleneck
 from utils.utils import str2bool
 
 
 class Avanet(nn.Module):
-    def __init__(self, replace_stride_with_dilation=False,
+    def __init__(self, backbone='avanet',
+                 replace_stride_with_dilation=False,
                  no_blocks=(3, 3, 3, 2),
                  deformable=True,
                  px_per_iter=4,
                  grad_attention=True,
                  ):
         super().__init__()
+        self.backbone = backbone
         self.spatial_grad = SpatialGradient()
         self.dem_bn = nn.BatchNorm2d(1)
+        depth = 4
 
-        self.encoder = AvanetBackbone(replace_stride_with_dilation=replace_stride_with_dilation,
-                                      no_blocks=no_blocks,
-                                      deformable=deformable,
-                                      groups=2)
+        if backbone == 'avanet':
+            self.encoder = AvanetBackbone(replace_stride_with_dilation=replace_stride_with_dilation,
+                                          no_blocks=no_blocks,
+                                          deformable=deformable,
+                                          groups=2)
+        else:
+            self.encoder = get_encoder(
+                backbone,
+                in_channels=3,
+                depth=5,
+                weights='imagenet',
+            )
+            if replace_stride_with_dilation:
+                self.encoder.make_dilated(
+                    stage_list=[5],
+                    dilation_list=[2],
+                )
+            depth = 5
+
         self.decoder = AvanetDecoder(
             in_channels=self.encoder.out_channels,
             out_channels=256,
+            depth=depth,
             px_per_iter=px_per_iter,
             grad_attention=grad_attention,
             replace_stride_with_dilation=replace_stride_with_dilation
         )
+
+        upsampling = 2**(depth - 3)
         self.segmentation_head = SegmentationHead(
             in_channels=self.decoder.out_channels,
             out_channels=1,
             activation=None,
             kernel_size=1,
-            upsampling=2,
+            upsampling=upsampling,
         )
 
         self._init_weights()
@@ -54,7 +76,7 @@ class Avanet(nn.Module):
         dem = self.dem_bn(dem)
         x = torch.cat([x, dem], dim=1)
 
-        x = self.encoder(x, dem_grads)
+        x = self.encoder(x, dem_grads) if self.backbone == 'avanet' else self.encoder(x)
         x = self.decoder(x, dem_grads)
         x = self.segmentation_head(x)
         return x
@@ -73,10 +95,11 @@ class Avanet(nn.Module):
 
 
 class AvanetDecoder(nn.Module):
-    def __init__(self, in_channels, out_channels, px_per_iter=1, grad_attention=False,
+    def __init__(self, in_channels, out_channels, depth=4, px_per_iter=1, grad_attention=False,
                  replace_stride_with_dilation=False):
         super().__init__()
         self.out_channels = out_channels
+        self.depth = depth
         self.attention = grad_attention
         self.replace_stride_with_dilation = replace_stride_with_dilation
 
@@ -114,8 +137,8 @@ class AvanetDecoder(nn.Module):
 
     def forward(self, x, grads):
         # make gradient field magnitude independent
-        grads = self.downsample(grads)
-        grads = self.downsample(grads)
+        for _ in range(self.depth - 2):
+            grads = self.downsample(grads)
         grads = grads + 1e-5  # avoid dividing by zero
         grads = grads / grads.norm(p=None, dim=1, keepdim=True)
         if self.attention:
