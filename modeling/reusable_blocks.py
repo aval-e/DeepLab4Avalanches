@@ -115,7 +115,6 @@ class Bottleneck(nn.Module):
 
 class DeformableBlock(Bottleneck):
     """ Custom deformable version"""
-    expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, groups=1,
                  base_width=64, dilation=1, norm_layer=None):
@@ -139,6 +138,44 @@ class DeformableBlock(Bottleneck):
 
         out = self.conv3(out)
         out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class SeBlock(Bottleneck):
+    """ effective squeeze and excitation"""
+    def __init__(self, inplanes, planes, stride=1, groups=1,
+                 base_width=64, dilation=1, norm_layer=None):
+        super(SeBlock, self).__init__(inplanes, planes, stride, groups, base_width, dilation, norm_layer)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(planes, planes)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        b, c, _, _ = out.shape
+        se = self.pool(out).view(b, c)
+        se = self.fc(se)
+        se = self.sigmoid(se).view(b, c, 1, 1)
+        out = out * se.expand_as(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)

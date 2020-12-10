@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.functional import grid_sample
-from modeling.reusable_blocks import Bottleneck, DeformableBlock, conv1x1
+from modeling.reusable_blocks import Bottleneck, DeformableBlock, SeBlock
 from kornia.filters.sobel import SpatialGradient
 
 
@@ -49,9 +49,9 @@ class AvanetBackbone(nn.Module):
         layers.append(block(inplanes, planes, stride, self.groups,
                             self.base_width, dilation, norm_layer))
         for _ in range(1, blocks):
-            layers.append(Bottleneck(planes, planes, groups=self.groups,
-                                     base_width=self.base_width, dilation=1,
-                                     norm_layer=norm_layer))
+            layers.append(SeBlock(planes, planes, groups=self.groups,
+                                  base_width=self.base_width, dilation=1,
+                                  norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
 
