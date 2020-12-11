@@ -78,6 +78,27 @@ def soft_dice(gt, y_hat):
     return 2 * torch.sum(gt * y_hat) / (torch.sum(gt + y_hat))
 
 
+def focal_loss(input, target, alpha, gamma):
+    EPSILON = 1e-10
+    p = input
+    q = 1 - p
+
+    # avoid log of 0
+    p.clamp(min=EPSILON, max=1)
+    q.clamp(min=EPSILON, max=1)
+
+    # Loss for the positive examples
+    pos_loss = -alpha * (q ** gamma) * torch.log(p)
+
+    # Loss for the negative examples
+    neg_loss = -(1 - alpha) * (p ** gamma) * torch.log(q)
+
+    loss = target * pos_loss + (1 - target) * neg_loss
+    loss = loss.mean()
+
+    return loss
+
+
 if __name__ == '__main__':
     # small test
     a = torch.tensor([[0, 1, 2],
@@ -95,4 +116,3 @@ if __name__ == '__main__':
     print('Precision: ' + str(prec))
     print('Recall: ' + str(rec))
     print('F1: ' + str(f1(prec, rec)))
-

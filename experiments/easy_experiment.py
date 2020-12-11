@@ -10,7 +10,7 @@ from modeling.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import LightningModule
 from torchvision.models.detection.mask_rcnn import maskrcnn_resnet50_fpn
 from utils.data_augmentation import center_crop_batch
-from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice
+from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice, focal_loss
 from utils import viz_utils, data_utils
 from utils.utils import nanmean
 from argparse import ArgumentParser
@@ -105,13 +105,15 @@ class EasyExperiment(LightningModule):
         y_hat = self(x)
         y_mask = data_utils.labels_to_mask(y)
         loss = self.bce_loss(y_hat, y_mask)
+        focal = focal_loss(y_hat, y_mask.squeeze(dim=1).long(), 0.5, 2)
 
         self.log('train_loss', loss, on_epoch=True, sync_dist=True)
+        self.log('focal_loss', focal, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             fig = viz_utils.viz_predictions(x, y, y_hat, dem=self.hparams.dem_dir, fig_size=2)
             self.logger.experiment.add_figure("Training Sample", fig, self.global_step)
-        return loss
+        return focal
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
