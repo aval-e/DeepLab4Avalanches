@@ -105,10 +105,10 @@ class EasyExperiment(LightningModule):
         y_hat = self(x)
         y_mask = data_utils.labels_to_mask(y)
         loss = self.bce_loss(y_hat, y_mask)
-        focal = focal_loss(y_hat, y_mask.squeeze(dim=1).long(), 0.5, 2)
+        focal = focal_loss(y_hat, y_mask, gamma=2)
 
-        self.log('train_loss', loss, on_epoch=True, sync_dist=True)
-        self.log('focal_loss', focal, on_epoch=True, sync_dist=True)
+        self.log('train_loss/bce', loss, on_epoch=True, sync_dist=True)
+        self.log('train_loss/focal', focal, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             fig = viz_utils.viz_predictions(x, y, y_hat, dem=self.hparams.dem_dir, fig_size=2)

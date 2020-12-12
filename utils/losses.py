@@ -78,24 +78,18 @@ def soft_dice(gt, y_hat):
     return 2 * torch.sum(gt * y_hat) / (torch.sum(gt + y_hat))
 
 
-def focal_loss(input, target, alpha, gamma):
-    EPSILON = 1e-10
-    p = input
+def focal_loss(prob, target, alpha=0.5, gamma=2):
+    p = prob
     q = 1 - p
 
-    # avoid log of 0
-    p.clamp(min=EPSILON, max=1)
-    q.clamp(min=EPSILON, max=1)
-
     # Loss for the positive examples
-    pos_loss = -alpha * (q ** gamma) * torch.log(p)
+    pos_loss = alpha * (q ** gamma) * -torch.log(p).clamp(min=-100)
 
     # Loss for the negative examples
-    neg_loss = -(1 - alpha) * (p ** gamma) * torch.log(q)
+    neg_loss = (1 - alpha) * (p ** gamma) * -torch.log(q).clamp(min=-100)
 
     loss = target * pos_loss + (1 - target) * neg_loss
     loss = loss.mean()
-
     return loss
 
 
