@@ -5,6 +5,7 @@ import warnings
 from kornia.filters.sobel import SpatialGradient
 from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead, ClassificationHead
 from segmentation_models_pytorch.encoders import get_encoder
+from segmentation_models_pytorch.deeplabv3.decoder import DeepLabV3PlusDecoder
 from modeling.backbones.avanet_backbone import AvanetBackbone
 from modeling.reusable_blocks import conv1x1, conv3x3, SeparableConv2d, Bottleneck
 from utils.utils import str2bool
@@ -165,6 +166,7 @@ class FlowLayer(nn.Module):
     def __init__(self, inplanes, outplanes, pixels_per_iter=4):
         super().__init__()
         self.pixels_per_iter = pixels_per_iter
+        self.register_buffer('theta', torch.tensor([[1, 0, 0], [0, 1, 0]]).unsqueeze(dim=0).float())
         self.conv1 = conv1x1(inplanes, outplanes)
         self.conv2 = conv1x1(inplanes, outplanes)
         self.sigmoid = nn.Sigmoid()
@@ -172,17 +174,23 @@ class FlowLayer(nn.Module):
         self.postprocess = SeparableConv2d(outplanes, outplanes, 3, padding=1)
 
     def forward(self, x, grads):
-        iters = x.shape[2] // self.pixels_per_iter
-        grads = grads / iters
+        # Only propagate features a maximum of 3/4 of the image size since more would be overkill
+        iters = (3 * x.shape[2]) // (4 * self.pixels_per_iter)
+        grads = 1.5 * grads / iters
         grads = grads.permute(0, 2, 3, 1).contiguous()
+
+        # compute absolute sample points from relativ offsets (grads)
+        grid = nn.functional.affine_grid(self.theta.expand(x.shape[0], 2, 3), x.size(), align_corners=True)
+        grid1 = grid + grads
+        grid2 = grid - grads
 
         m1 = self.conv1(x)
         m2 = self.conv2(x)
         m1 = self.sigmoid(m1)
         m2 = self.sigmoid(m2)
         for _ in range(iters):
-            m1 = m1 + nn.functional.grid_sample(m1, grads)
-            m2 = m2 + nn.functional.grid_sample(m2, -grads)
+            m1 = m1 + nn.functional.grid_sample(m1, grid1, align_corners=True)
+            m2 = m2 + nn.functional.grid_sample(m2, grid2, align_corners=True)
         m1 = self.sigmoid(m1)
         m2 = self.sigmoid(m2)
         x = torch.cat([m1, m2], dim=1)
