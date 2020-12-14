@@ -188,11 +188,15 @@ class FlowLayer(nn.Module):
         m2 = self.conv2(x)
         m1 = self.sigmoid(m1)
         m2 = self.sigmoid(m2)
+        m1_sum = m1
+        m2_sum = m2
         for _ in range(iters):
-            m1 = m1 + nn.functional.grid_sample(m1, grid1, align_corners=True)
-            m2 = m2 + nn.functional.grid_sample(m2, grid2, align_corners=True)
-        m1 = self.sigmoid(m1)
-        m2 = self.sigmoid(m2)
+            m1 = nn.functional.grid_sample(m1, grid1, align_corners=True)
+            m2 = nn.functional.grid_sample(m2, grid2, align_corners=True)
+            m1_sum = m1_sum + m1
+            m2_sum = m2_sum + m2
+        m1 = self.sigmoid(m1_sum)
+        m2 = self.sigmoid(m2_sum)
         x = torch.cat([m1, m2], dim=1)
         x = self.merge(x)
         return self.postprocess(x)
