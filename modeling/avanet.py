@@ -7,7 +7,7 @@ from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead
 from segmentation_models_pytorch.encoders import get_encoder
 from segmentation_models_pytorch.deeplabv3.decoder import DeepLabV3PlusDecoder
 from modeling.backbones.avanet_backbone import AvanetBackbone
-from modeling.reusable_blocks import conv1x1, conv3x3, SeparableConv2d, Bottleneck
+from modeling.reusable_blocks import conv1x1, conv3x3, SeparableConv2d, Bottleneck, SeBlock, DeformableBlock
 from utils.utils import str2bool
 
 
@@ -108,19 +108,17 @@ class AvanetDecoder(nn.Module):
         if self.attention:
             self.grad_attention = FlowAttention(in_channels, replace_stride_with_dilation=replace_stride_with_dilation)
 
-        self.flow1 = FlowLayer(in_channels[-1], 128, px_per_iter)
-        self.flow2 = FlowLayer(in_channels[-2], 64, px_per_iter)
-        self.flow3 = FlowLayer(in_channels[-3], 32, px_per_iter)
-        self.flows = [self.flow1, self.flow2, self.flow3]
+        self.flows = nn.ModuleList([FlowLayer(in_channels[-1], 128, px_per_iter),
+                                    FlowLayer(in_channels[-2], 64, px_per_iter),
+                                    FlowLayer(in_channels[-3], 32, px_per_iter)])
 
-        self.block1 = Bottleneck(in_channels[-1] + 128, in_channels[-1])
-        self.block2 = Bottleneck(in_channels[-2] + 64 + in_channels[-1], in_channels[-2])
-        self.block3 = Bottleneck(in_channels[-3] + 32 + in_channels[-2], in_channels[-3])
-        self.block = [self.block1, self.block2, self.block3]
+        self.block = nn.ModuleList([SeBlock(in_channels[-1] + 128, in_channels[-1]),
+                                    SeBlock(in_channels[-2] + 64 + in_channels[-1], in_channels[-2]),
+                                    SeBlock(in_channels[-3] + 32 + in_channels[-2], in_channels[-3])])
 
-        self.skip2 = Bottleneck(in_channels[-2], in_channels[-2])
-        self.skip3 = Bottleneck(in_channels[-3], in_channels[-3])
-        self.skips = [nn.Identity(), self.skip2, self.skip3]
+        self.skips = nn.ModuleList([SeBlock(in_channels[-1], in_channels[-1]),
+                                    SeBlock(in_channels[-2], in_channels[-2]),
+                                    SeBlock(in_channels[-3], in_channels[-3])])
 
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=2)
 
@@ -167,11 +165,16 @@ class FlowLayer(nn.Module):
         super().__init__()
         self.pixels_per_iter = pixels_per_iter
         self.register_buffer('theta', torch.tensor([[1, 0, 0], [0, 1, 0]]).unsqueeze(dim=0).float())
+        self.bn1 = nn.BatchNorm2d(inplanes)
         self.conv1 = conv1x1(inplanes, outplanes)
         self.conv2 = conv1x1(inplanes, outplanes)
         self.sigmoid = nn.Sigmoid()
-        self.merge = SeparableConv2d(2 * outplanes, outplanes, 3, padding=1)
-        self.postprocess = SeparableConv2d(outplanes, outplanes, 3, padding=1)
+        self.merge = nn.Sequential(SeparableConv2d(2 * outplanes, outplanes, 3, padding=1, bias=False),
+                                   nn.BatchNorm2d(outplanes),
+                                   nn.ReLU(inplace=True))
+        self.postprocess = nn.Sequential(SeparableConv2d(outplanes, outplanes, 3, padding=1, bias=False),
+                                         nn.BatchNorm2d(outplanes),
+                                         nn.ReLU(inplace=True))
 
     def forward(self, x, grads):
         # Only propagate features a maximum of 3/4 of the image size since more would be overkill
@@ -184,6 +187,7 @@ class FlowLayer(nn.Module):
         grid1 = grid + grads
         grid2 = grid - grads
 
+        x = self.bn1(x)
         m1 = self.conv1(x)
         m2 = self.conv2(x)
         m1 = self.sigmoid(m1)
