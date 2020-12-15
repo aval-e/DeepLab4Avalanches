@@ -1,8 +1,13 @@
 import torch
 import torch.nn as nn
 from torch.nn.functional import grid_sample
+from torch.utils import model_zoo
+from segmentation_models_pytorch.encoders.resnet import resnet_encoders
 from modeling.reusable_blocks import Bottleneck, DeformableBlock, SeBlock
+from torchvision.models.resnet import BasicBlock
 from kornia.filters.sobel import SpatialGradient
+from torchvision.models.resnet import ResNet, conv1x1
+from segmentation_models_pytorch.encoders import _utils as utils
 
 
 class AvanetBackbone(nn.Module):
@@ -69,3 +74,55 @@ class AvanetBackbone(nn.Module):
             features.append(x)
 
         return features
+
+
+class AdaptedResnet(ResNet):
+    def __init__(self, depth=5, pretrained=True):
+        super().__init__(block=BasicBlock, layers=[3, 4, 6, 3])
+        if pretrained:
+            settings = resnet_encoders['resnet34']["pretrained_settings"]['imagenet']
+            self.load_state_dict(model_zoo.load_url(settings["url"]))
+
+        self._depth = depth
+        self.out_channels = (3, 64, 64, 128, 256, 512)
+        self._in_channels = 3
+
+        del self.fc
+        del self.avgpool
+
+        self.conv1.stride = (1, 1)
+        self.layer1[0].conv1.stride = (2, 2)
+        self.layer1[0].downsample = nn.Sequential(
+                conv1x1(self.layer1[0].conv1.in_channels, self.layer1[0].conv1.out_channels * self.layer1[0].expansion, 2),
+                nn.BatchNorm2d(self.layer1[0].conv1.out_channels * self.layer1[0].expansion),
+            )
+
+        self.stages = [
+            nn.Identity(),
+            nn.Sequential(self.conv1, self.bn1, self.relu),
+            nn.Sequential(self.maxpool, self.layer1),
+            self.layer2,
+            self.layer3,
+            self.layer4,
+        ]
+
+        self.make_dilated(
+            stage_list=[5],
+            dilation_list=[2],
+        )
+
+    def forward(self, x):
+        features = []
+        for stage in self.stages:
+            x = stage(x)
+            features.append(x)
+
+        return features
+
+    def make_dilated(self, stage_list, dilation_list):
+        stages = self.stages
+        for stage_indx, dilation_rate in zip(stage_list, dilation_list):
+            utils.replace_strides_with_dilation(
+                module=stages[stage_indx],
+                dilation_rate=dilation_rate,
+            )

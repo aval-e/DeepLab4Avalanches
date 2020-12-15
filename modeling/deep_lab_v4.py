@@ -121,3 +121,4 @@ class Deeplabv5(DeepLabV3Plus):
             torch.nn.BatchNorm2d(decoder_channels),
             torch.nn.ReLU(),
         )
+

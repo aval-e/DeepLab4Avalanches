@@ -42,6 +42,7 @@ class EasyExperiment(LightningModule):
             self.model = Deeplabv5(self.hparams.backbone, in_channels=hparams.in_channels, encoder_weights='imagenet')
         elif hparams.model == 'avanet':
             self.model = Avanet(backbone=self.hparams.backbone,
+                                decoder=self.hparams.decoder,
                                 replace_stride_with_dilation=self.hparams.avanet_rep_stride_with_dil,
                                 no_blocks=self.hparams.avanet_no_blocks,
                                 deformable=self.hparams.avanet_deformable,

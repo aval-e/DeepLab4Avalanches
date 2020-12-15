@@ -6,13 +6,14 @@ from kornia.filters.sobel import SpatialGradient
 from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead, ClassificationHead
 from segmentation_models_pytorch.encoders import get_encoder
 from segmentation_models_pytorch.deeplabv3.decoder import DeepLabV3PlusDecoder
-from modeling.backbones.avanet_backbone import AvanetBackbone
+from modeling.backbones.avanet_backbone import AvanetBackbone, AdaptedResnet
 from modeling.reusable_blocks import conv1x1, conv3x3, SeparableConv2d, Bottleneck
 from utils.utils import str2bool
 
 
 class Avanet(nn.Module):
     def __init__(self, backbone='avanet',
+                 decoder='avanet',
                  replace_stride_with_dilation=False,
                  no_blocks=(3, 3, 3, 2),
                  deformable=True,
@@ -30,6 +31,9 @@ class Avanet(nn.Module):
                                           no_blocks=no_blocks,
                                           deformable=deformable,
                                           groups=2)
+        elif backbone == 'adapted_resnet':
+            self.encoder = AdaptedResnet()
+            depth = 5
         else:
             self.encoder = get_encoder(
                 backbone,
@@ -44,14 +48,24 @@ class Avanet(nn.Module):
                 )
             depth = 5
 
-        self.decoder = AvanetDecoder(
-            in_channels=self.encoder.out_channels,
-            out_channels=256,
-            depth=depth,
-            px_per_iter=px_per_iter,
-            grad_attention=grad_attention,
-            replace_stride_with_dilation=replace_stride_with_dilation
-        )
+        if decoder == 'avanet':
+            self.decoder = AvanetDecoder(
+                in_channels=self.encoder.out_channels,
+                out_channels=256,
+                depth=depth,
+                px_per_iter=px_per_iter,
+                grad_attention=grad_attention,
+                replace_stride_with_dilation=replace_stride_with_dilation
+            )
+        elif decoder == 'deeplab':
+            self.decoder = DeepLabV3PlusDecoder(
+                self.encoder.out_channels,
+                out_channels=256,
+                atrous_rates=(12, 24, 36),
+                output_stride=16,
+            )
+        else:
+            raise NotImplementedError('decoder type not implemented')
 
         upsampling = 2**(depth - 3)
         self.segmentation_head = SegmentationHead(
@@ -78,7 +92,7 @@ class Avanet(nn.Module):
         x = torch.cat([x, dem], dim=1)
 
         x = self.encoder(x, dem_grads) if self.backbone == 'avanet' else self.encoder(x)
-        x = self.decoder(x, dem_grads)
+        x = self.decoder(x, dem_grads) if self.decoder == 'avanet' else self.decoder(*x)
         x = self.segmentation_head(x)
         return x
 
@@ -86,6 +100,7 @@ class Avanet(nn.Module):
     def add_model_specific_args(parent_parser):
         # allows adding model specific args via command line and logging them
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument('--decoder', type=str, default='avanet')
         parser.add_argument('--avanet_rep_stride_with_dil', type=str2bool, default='False',
                             help='Replace stride with dilation in backbone')
         parser.add_argument('--avanet_no_blocks', type=int, nargs='+', default=(3, 3, 3, 2))
