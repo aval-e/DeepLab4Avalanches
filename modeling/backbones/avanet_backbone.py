@@ -113,15 +113,15 @@ class AdaptedResnet(ResNet):
         )
 
         # make first block in layer deformable
-        self.layer1[0] = DeformableBasicBlock(self.layer1[0])
-        self.layer2[0] = DeformableBasicBlock(self.layer2[0])
-        self.layer3[0] = DeformableBasicBlock(self.layer3[0])
-        self.layer4[0] = DeformableBasicBlock(self.layer4[0])
+        layers = [self.layer1, self.layer2, self.layer3, self.layer4]
+        for i in range(len(layers)):
+            for j in range(len(layers[i])):
+                layers[i][j] = DeformableBasicBlock(layers[i][j])
 
         self.offsetnet = OffsetNet()
 
     def forward(self, x, grads):
-        offsets = self.offsetnet(torch.cat([x, grads], dim=1))
+        offsets = self.offsetnet(grads)
 
         features = []
         for i in range(2):
@@ -129,16 +129,16 @@ class AdaptedResnet(ResNet):
             features.append(x)
 
         x = self.maxpool(x)
-        x = self.layer1([x, offsets[0]])
+        x, _ = self.layer1([x, offsets[0]])
         features.append(x)
 
-        x = self.layer2([x, offsets[1]])
+        x, _ = self.layer2([x, offsets[1]])
         features.append(x)
 
-        x = self.layer3([x, offsets[2]])
+        x, _ = self.layer3([x, offsets[2]])
         features.append(x)
 
-        x = self.layer4([x, offsets[2]])
+        x, _ = self.layer4([x, offsets[2]])
         features.append(x)
 
         return features
@@ -186,7 +186,7 @@ class DeformableBasicBlock(nn.Module):
         out += identity
         out = self.relu(out)
 
-        return out
+        return (out, offsets)
 
 
 class OffsetNet(nn.Module):
@@ -195,7 +195,7 @@ class OffsetNet(nn.Module):
         self.maxpool = nn.MaxPool2d(2)
         self.avgpool = nn.AvgPool2d(2)
         self.layers = nn.ModuleList(
-            [nn.Sequential(BasicBlock(5, 18),
+            [nn.Sequential(BasicBlock(2, 18),
                            BasicBlock(18, 18),
                            BasicBlock(18, 18)),
              nn.Sequential(nn.AvgPool2d(2),
