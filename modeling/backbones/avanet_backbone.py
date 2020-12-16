@@ -1,10 +1,11 @@
 import torch
+import torchvision
 import torch.nn as nn
 from torch.nn.functional import grid_sample
 from torch.utils import model_zoo
 from segmentation_models_pytorch.encoders.resnet import resnet_encoders
-from modeling.reusable_blocks import Bottleneck, DeformableBlock, SeBlock
-from torchvision.models.resnet import BasicBlock
+from modeling.reusable_blocks import Bottleneck, DeformableBlock, SeBlock, BasicBlock
+from torchvision.ops.deform_conv import DeformConv2d
 from kornia.filters.sobel import SpatialGradient
 from torchvision.models.resnet import ResNet, conv1x1
 from segmentation_models_pytorch.encoders import _utils as utils
@@ -78,7 +79,7 @@ class AvanetBackbone(nn.Module):
 
 class AdaptedResnet(ResNet):
     def __init__(self, depth=5, pretrained=True):
-        super().__init__(block=BasicBlock, layers=[3, 4, 6, 3])
+        super().__init__(block=torchvision.models.resnet.BasicBlock, layers=[3, 4, 6, 3])
         if pretrained:
             settings = resnet_encoders['resnet34']["pretrained_settings"]['imagenet']
             self.load_state_dict(model_zoo.load_url(settings["url"]))
@@ -97,25 +98,48 @@ class AdaptedResnet(ResNet):
                 nn.BatchNorm2d(self.layer1[0].conv1.out_channels * self.layer1[0].expansion),
             )
 
-        self.stages = [
+        self.stages = nn.ModuleList([
             nn.Identity(),
             nn.Sequential(self.conv1, self.bn1, self.relu),
             nn.Sequential(self.maxpool, self.layer1),
             self.layer2,
             self.layer3,
             self.layer4,
-        ]
+        ])
 
         self.make_dilated(
             stage_list=[5],
             dilation_list=[2],
         )
 
-    def forward(self, x):
+        # make first block in layer deformable
+        self.layer1[0] = DeformableBasicBlock(self.layer1[0])
+        self.layer2[0] = DeformableBasicBlock(self.layer2[0])
+        self.layer3[0] = DeformableBasicBlock(self.layer3[0])
+        self.layer4[0] = DeformableBasicBlock(self.layer4[0])
+
+        self.offsetnet = OffsetNet()
+
+    def forward(self, x, grads):
+        offsets = self.offsetnet(grads)
+
         features = []
-        for stage in self.stages:
-            x = stage(x)
+        for i in range(2):
+            x = self.stages[i](x)
             features.append(x)
+
+        x = self.maxpool(x)
+        x = self.layer1([x, offsets[0]])
+        features.append(x)
+
+        x = self.layer2([x, offsets[1]])
+        features.append(x)
+
+        x = self.layer3([x, offsets[2]])
+        features.append(x)
+
+        x = self.layer4([x, offsets[2]])
+        features.append(x)
 
         return features
 
@@ -126,3 +150,68 @@ class AdaptedResnet(ResNet):
                 module=stages[stage_indx],
                 dilation_rate=dilation_rate,
             )
+
+
+class DeformableBasicBlock(nn.Module):
+    def __init__(self, basic_block):
+        super(DeformableBasicBlock, self).__init__()
+        conv1 = basic_block.conv1
+        deformconv = DeformConv2d(conv1.in_channels, conv1.out_channels, conv1.kernel_size, conv1.stride,
+                                  conv1.dilation, conv1.dilation, conv1.groups, conv1.bias)
+        deformconv.weight.data.copy_(conv1.weight.data)
+
+        self.conv1 = deformconv
+        self.bn1 = basic_block.bn1
+        self.relu = basic_block.relu
+        self.conv2 = basic_block.conv2
+        self.bn2 = basic_block.bn2
+        self.downsample = basic_block.downsample
+        self.stride = basic_block.stride
+
+
+    def forward(self, x):
+        x, offsets = x
+        identity = x
+
+        out = self.conv1(x, offsets)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+class OffsetNet(nn.Module):
+    def __init__(self):
+        super(OffsetNet, self).__init__()
+        self.maxpool = nn.MaxPool2d(2)
+        self.avgpool = nn.AvgPool2d(2)
+        self.layers = nn.ModuleList(
+            [nn.Sequential(BasicBlock(2, 18),
+                           BasicBlock(18, 18),
+                           BasicBlock(18, 18)),
+             nn.Sequential(nn.AvgPool2d(2),
+                           BasicBlock(18, 18)),
+             nn.Sequential(nn.AvgPool2d(2),
+                           BasicBlock(18, 18))])
+
+    def forward(self, x):
+        x = self.maxpool(x)
+        x = self.avgpool(x)
+
+        features = []
+        for layer in self.layers:
+            x = layer(x)
+            features.append(x)
+        return features
+
+
+

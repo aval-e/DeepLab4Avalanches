@@ -91,7 +91,7 @@ class Avanet(nn.Module):
         dem = self.dem_bn(dem)
         x = torch.cat([x, dem], dim=1)
 
-        x = self.encoder(x, dem_grads) if self.backbone == 'avanet' else self.encoder(x)
+        x = self.encoder(x, dem_grads) if self.backbone == 'avanet' or self.backbone == 'adapted_resnet' else self.encoder(x)
         x = self.decoder(x, dem_grads) if self.decoder == 'avanet' else self.decoder(*x)
         x = self.segmentation_head(x)
         return x
