@@ -91,12 +91,12 @@ class AdaptedResnet(ResNet):
         del self.fc
         del self.avgpool
 
-        self.conv1.stride = (1, 1)
-        self.layer1[0].conv1.stride = (2, 2)
-        self.layer1[0].downsample = nn.Sequential(
-                conv1x1(self.layer1[0].conv1.in_channels, self.layer1[0].conv1.out_channels * self.layer1[0].expansion, 2),
-                nn.BatchNorm2d(self.layer1[0].conv1.out_channels * self.layer1[0].expansion),
-            )
+        # self.conv1.stride = (1, 1)
+        # self.layer1[0].conv1.stride = (2, 2)
+        # self.layer1[0].downsample = nn.Sequential(
+        #         conv1x1(self.layer1[0].conv1.in_channels, self.layer1[0].conv1.out_channels * self.layer1[0].expansion, 2),
+        #         nn.BatchNorm2d(self.layer1[0].conv1.out_channels * self.layer1[0].expansion),
+        #     )
 
         self.stages = nn.ModuleList([
             nn.Identity(),
@@ -121,7 +121,7 @@ class AdaptedResnet(ResNet):
         self.offsetnet = OffsetNet()
 
     def forward(self, x, grads):
-        offsets = self.offsetnet(grads)
+        offsets = self.offsetnet(torch.cat([x, grads], dim=1))
 
         features = []
         for i in range(2):
@@ -195,7 +195,7 @@ class OffsetNet(nn.Module):
         self.maxpool = nn.MaxPool2d(2)
         self.avgpool = nn.AvgPool2d(2)
         self.layers = nn.ModuleList(
-            [nn.Sequential(BasicBlock(2, 18),
+            [nn.Sequential(BasicBlock(5, 18),
                            BasicBlock(18, 18),
                            BasicBlock(18, 18)),
              nn.Sequential(nn.AvgPool2d(2),
