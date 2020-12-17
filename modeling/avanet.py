@@ -22,6 +22,7 @@ class Avanet(nn.Module):
                  ):
         super().__init__()
         self.backbone = backbone
+        self.decoder_type = decoder
         self.spatial_grad = SpatialGradient()
         self.dem_bn = nn.BatchNorm2d(1)
         depth = 4
@@ -92,7 +93,7 @@ class Avanet(nn.Module):
         x = torch.cat([x, dem], dim=1)
 
         x = self.encoder(x, dem_grads) if self.backbone == 'avanet' or self.backbone == 'adapted_resnet' else self.encoder(x)
-        x = self.decoder(x, dem_grads) if self.decoder == 'avanet' else self.decoder(*x)
+        x = self.decoder(x, dem_grads) if self.decoder_type == 'avanet' else self.decoder(*x)
         x = self.segmentation_head(x)
         return x
 
@@ -179,17 +180,18 @@ class FlowLayer(nn.Module):
     def __init__(self, inplanes, outplanes, pixels_per_iter=4):
         super().__init__()
         self.pixels_per_iter = pixels_per_iter
+        self.down = nn.AvgPool2d(pixels_per_iter)
+        self.up = nn.UpsamplingBilinear2d(scale_factor=pixels_per_iter)
         self.register_buffer('theta', torch.tensor([[1, 0, 0], [0, 1, 0]]).unsqueeze(dim=0).float())
         self.conv1 = conv1x1(inplanes, outplanes)
         self.conv2 = conv1x1(inplanes, outplanes)
         self.sigmoid = nn.Sigmoid()
         self.merge = SeparableConv2d(2 * outplanes, outplanes, 3, padding=1)
-        self.postprocess = SeparableConv2d(outplanes, outplanes, 3, padding=1)
 
     def forward(self, x, grads):
-        # Only propagate features a maximum of 3/4 of the image size since more would be overkill
-        iters = (3 * x.shape[2]) // (4 * self.pixels_per_iter)
-        grads = 1.5 * grads / iters
+        x = self.down(x)
+        grads = self.down(grads)
+        grads = grads / grads.shape[2]
         grads = grads.permute(0, 2, 3, 1).contiguous()
 
         # compute absolute sample points from relativ offsets (grads)
@@ -203,6 +205,9 @@ class FlowLayer(nn.Module):
         m2 = self.sigmoid(m2)
         m1_sum = m1
         m2_sum = m2
+
+        # Only propagate features a maximum of 3/4 of the image size since more would be overkill
+        iters = m1.shape[2]
         for _ in range(iters):
             m1 = nn.functional.grid_sample(m1, grid1, align_corners=True)
             m2 = nn.functional.grid_sample(m2, grid2, align_corners=True)
@@ -212,7 +217,7 @@ class FlowLayer(nn.Module):
         m2 = self.sigmoid(m2_sum)
         x = torch.cat([m1, m2], dim=1)
         x = self.merge(x)
-        return self.postprocess(x)
+        return self.up(x)
 
 
 class FlowAttention(nn.Module):
