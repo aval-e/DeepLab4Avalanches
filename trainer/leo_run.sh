@@ -12,9 +12,9 @@ export PYTHONPATH=$PWD
 # #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "8_workers_4batches"
 
-exp_name="more_blocks_iters_noattention_scheduler"
+exp_name="deformable_all_more_ch"
 
-checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/deeplabv3+_sgd_lr1e-2/version_0/checkpoints/epoch=16.ckpt"
+checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/avanet/avanet_fixflow_4px/version_0/checkpoints/epoch=10-v0.ckpt"
 resume_training=False
 
 # Dataset hyperparameters
@@ -38,26 +38,27 @@ rand_rotation=180
 
 # Training hyperparameters
 seed=42
-deterministic=True
+deterministic=False
 gpus=2
 batch_size=4
 batch_augm=2
-accumulate_grad_batches=1
+accumulate_grad_batches=2
 max_epochs=20
 val_check_interval=0.5
 log_every_n_steps=100
 flush_logs_every_n_steps=100
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/avanet"
+log_dir="/cluster/scratch/bartonp/lightning_logs/adapt_resnet"
 benchmark=True
 
 
 # Model hyperparameters
 model='avanet'
-backbone='avanet'
+backbone='adapted_resnet'
+decoder='deeplab'
 optimiser="adam"
-lr=2e-4
+lr=5e-5
 lr_scheduler='multistep'
 scheduler_steps="16000 30000"
 scheduler_gamma=0.2
@@ -69,8 +70,8 @@ val_viz_interval=1
 val_viz_idx=4
 
 # Avanet options
-avanet_rep_stride_with_dil=False
-avanet_no_blocks="3 4 6 3"
+avanet_rep_stride_with_dil=True
+avanet_no_blocks="3 4 4 3"
 avanet_deformable=True
 avanet_px_per_iter=4
 avanet_grad_attention=False
@@ -112,6 +113,7 @@ python -m trainer.train \
 --benchmark $benchmark \
 --model $model \
 --backbone $backbone \
+--decoder $decoder \
 --optimiser $optimiser \
 --lr $lr \
 --momentum $momentum \

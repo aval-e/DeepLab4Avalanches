@@ -196,8 +196,8 @@ class OffsetNet(nn.Module):
         self.avgpool = nn.AvgPool2d(2)
         self.layers = nn.ModuleList(
             [nn.Sequential(BasicBlock(2, 18),
-                           BasicBlock(18, 18),
-                           BasicBlock(18, 18)),
+                           BasicBlock(18, 64),
+                           BasicBlock(64, 18)),
              nn.Sequential(nn.AvgPool2d(2),
                            BasicBlock(18, 18)),
              nn.Sequential(nn.AvgPool2d(2),
