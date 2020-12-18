@@ -113,10 +113,12 @@ class AdaptedResnet(ResNet):
         )
 
         # make first block in layer deformable
-        layers = [self.layer1, self.layer2, self.layer3, self.layer4]
+        layers = [self.layer1, self.layer2, self.layer3]
         for i in range(len(layers)):
             for j in range(len(layers[i])):
                 layers[i][j] = DeformableBasicBlock(layers[i][j])
+        for j in range(len(self.layer4)):
+            self.layer4[j] = SeDeformableBasicBlock(self.layer4[j])
 
         self.offsetnet = OffsetNet()
 
@@ -179,6 +181,39 @@ class DeformableBasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return (out, offsets)
+
+
+class SeDeformableBasicBlock(DeformableBasicBlock):
+    def __init__(self, basic_block):
+        super().__init__(basic_block=basic_block)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(self.conv2.out_channels, self.conv2.out_channels)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        x, offsets = x
+        identity = x
+
+        out = self.conv1(x, offsets)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        b, c, _, _ = out.shape
+        se = self.pool(out).view(b, c)
+        se = self.fc(se)
+        se = self.sigmoid(se).view(b, c, 1, 1)
+        out = out * se.expand_as(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
