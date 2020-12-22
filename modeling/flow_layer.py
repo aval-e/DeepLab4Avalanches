@@ -24,7 +24,6 @@ class FlowLayer(nn.Module):
     def forward(self, x, grads):
         # Only propagate features a maximum of 3/4 of the image size since more would be overkill
         iters = (3 * x.shape[2]) // (4 * self.pixels_per_iter)
-        print('Iters: ' + str(iters))
         grads = 1.5 * grads / iters
         grads = grads.permute(0, 2, 3, 1).contiguous()
 
@@ -33,11 +32,10 @@ class FlowLayer(nn.Module):
         grid1 = grid + grads
         grid2 = grid - grads
 
-        m1 = m2 = x
-        # m1 = self.conv1(x)
-        # m2 = self.conv2(x)
-        # m1 = self.sigmoid(m1)
-        # m2 = self.sigmoid(m2)
+        m1 = self.conv1(x)
+        m2 = self.conv2(x)
+        m1 = self.sigmoid(m1)
+        m2 = self.sigmoid(m2)
         m1_sum = m1
         m2_sum = m2
         for _ in range(iters):
@@ -45,14 +43,8 @@ class FlowLayer(nn.Module):
             m2 = nn.functional.grid_sample(m2, grid2, align_corners=True)
             m1_sum = m1_sum + m1
             m2_sum = m2_sum + m2
-            plt.imshow(tensor_to_image(m1))
-            plt.pause(0.02)
         m1 = self.sigmoid(m1_sum)
         m2 = self.sigmoid(m2_sum)
-        plt.imshow(tensor_to_image(m1))
-        plt.pause(0.02)
-        plt.show()
-        plt.pause(1)
         x = torch.cat([m1, m2], dim=1)
         x = self.merge(x)
         return self.postprocess(x)
