@@ -6,6 +6,7 @@ from kornia.utils.image import image_to_tensor, tensor_to_image
 from kornia.enhance.normalize import normalize_min_max
 from kornia.augmentation import RandomCrop
 import matplotlib.pyplot as plt
+import time
 
 
 class FlowLayer(nn.Module):
@@ -14,26 +15,36 @@ class FlowLayer(nn.Module):
     def __init__(self, inplanes, outplanes, pixels_per_iter=4):
         super().__init__()
         self.pixels_per_iter = pixels_per_iter
+        self.avgdown = nn.AvgPool2d(pixels_per_iter)
+        self.maxdown = nn.MaxPool2d(pixels_per_iter)
+        self.up = nn.UpsamplingBilinear2d(scale_factor=pixels_per_iter)
         self.register_buffer('theta', torch.tensor([[1, 0, 0], [0, 1, 0]]).unsqueeze(dim=0).float())
+        self.bn1 = nn.BatchNorm2d(inplanes)
         self.conv1 = conv1x1(inplanes, outplanes)
         self.conv2 = conv1x1(inplanes, outplanes)
         self.sigmoid = nn.Sigmoid()
+        self.bn2 = nn.BatchNorm2d(2 * outplanes)
         self.merge = SeparableConv2d(2 * outplanes, outplanes, 3, padding=1)
-        self.postprocess = SeparableConv2d(outplanes, outplanes, 3, padding=1)
 
     def forward(self, x, grads):
+        x = self.bn1(x)
+        m1 = self.conv1(x)
+        m2 = self.conv2(x)
+
         # Only propagate features a maximum of 3/4 of the image size since more would be overkill
-        iters = (3 * x.shape[2]) // (4 * self.pixels_per_iter)
+        m1 = self.maxdown(m1)  # keep avalanche features even if they are small
+        m2 = self.maxdown(m2)
+        grads = self.avgdown(grads)
+
+        iters = (3 * x.shape[2]) // (4 * 1)
         grads = 1.5 * grads / iters
         grads = grads.permute(0, 2, 3, 1).contiguous()
 
         # compute absolute sample points from relativ offsets (grads)
-        grid = nn.functional.affine_grid(self.theta.expand(x.shape[0], 2, 3), x.size(), align_corners=True)
+        grid = nn.functional.affine_grid(self.theta.expand(m1.shape[0], 2, 3), m1.size(), align_corners=True)
         grid1 = grid + grads
         grid2 = grid - grads
 
-        m1 = self.conv1(x)
-        m2 = self.conv2(x)
         m1 = self.sigmoid(m1)
         m2 = self.sigmoid(m2)
         m1_sum = m1
@@ -43,11 +54,12 @@ class FlowLayer(nn.Module):
             m2 = nn.functional.grid_sample(m2, grid2, align_corners=True)
             m1_sum = m1_sum + m1
             m2_sum = m2_sum + m2
-        m1 = self.sigmoid(m1_sum)
-        m2 = self.sigmoid(m2_sum)
-        x = torch.cat([m1, m2], dim=1)
+        x = torch.cat([m1_sum, m2_sum], dim=1)
+        x = x / iters  # ensure the same statistics independent of no. iterations and input size
+        x = self.bn2(x)
         x = self.merge(x)
-        return self.postprocess(x)
+        x = self.up(x)
+        return x
 
 
 class FlowAttention(nn.Module):
@@ -111,4 +123,6 @@ if __name__ == '__main__':
         plt.imshow(tensor_to_image(grad_viz))
         plt.show()
 
+        start = time.time()
         x = flowlayer(img, grads)
+        print(time.time() - start)
