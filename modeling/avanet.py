@@ -8,6 +8,7 @@ from segmentation_models_pytorch.encoders import get_encoder
 from segmentation_models_pytorch.deeplabv3.decoder import DeepLabV3PlusDecoder
 from modeling.backbones.avanet_backbone import AvanetBackbone, AdaptedResnet
 from modeling.reusable_blocks import conv1x1, conv3x3, SeparableConv2d, Bottleneck
+from modeling.flow_layer import FlowLayer, FlowAttention
 from utils.utils import str2bool
 
 
@@ -172,69 +173,3 @@ class AvanetDecoder(nn.Module):
             high_features = features if i == 0 and self.replace_stride_with_dilation else self.upsample(features)
         features = self.final(high_features)
         return features
-
-
-class FlowLayer(nn.Module):
-    """ Layer which implements flow propagation along a gradient field in both directions"""
-
-    def __init__(self, inplanes, outplanes, pixels_per_iter=4):
-        super().__init__()
-        self.pixels_per_iter = pixels_per_iter
-        self.register_buffer('theta', torch.tensor([[1, 0, 0], [0, 1, 0]]).unsqueeze(dim=0).float())
-        self.conv1 = conv1x1(inplanes, outplanes)
-        self.conv2 = conv1x1(inplanes, outplanes)
-        self.sigmoid = nn.Sigmoid()
-        self.merge = SeparableConv2d(2 * outplanes, outplanes, 3, padding=1)
-        self.postprocess = SeparableConv2d(outplanes, outplanes, 3, padding=1)
-
-    def forward(self, x, grads):
-        # Only propagate features a maximum of 3/4 of the image size since more would be overkill
-        iters = (3 * x.shape[2]) // (4 * self.pixels_per_iter)
-        grads = 1.5 * grads / iters
-        grads = grads.permute(0, 2, 3, 1).contiguous()
-
-        # compute absolute sample points from relativ offsets (grads)
-        grid = nn.functional.affine_grid(self.theta.expand(x.shape[0], 2, 3), x.size(), align_corners=True)
-        grid1 = grid + grads
-        grid2 = grid - grads
-
-        m1 = self.conv1(x)
-        m2 = self.conv2(x)
-        m1 = self.sigmoid(m1)
-        m2 = self.sigmoid(m2)
-        m1_sum = m1
-        m2_sum = m2
-        for _ in range(iters):
-            m1 = nn.functional.grid_sample(m1, grid1, align_corners=True)
-            m2 = nn.functional.grid_sample(m2, grid2, align_corners=True)
-            m1_sum = m1_sum + m1
-            m2_sum = m2_sum + m2
-        m1 = self.sigmoid(m1_sum)
-        m2 = self.sigmoid(m2_sum)
-        x = torch.cat([m1, m2], dim=1)
-        x = self.merge(x)
-        return self.postprocess(x)
-
-
-class FlowAttention(nn.Module):
-    """ Attention Layer for where to propagate information along gradient"""
-
-    def __init__(self, inplanes, replace_stride_with_dilation=False):
-        super().__init__()
-        self.replace_stride_with_dilation = replace_stride_with_dilation
-        self.upsample = nn.UpsamplingBilinear2d(scale_factor=2)
-        self.block1 = Bottleneck(inplanes[-1] + inplanes[-2], inplanes[-2])
-        self.block2 = Bottleneck(inplanes[-2] + inplanes[-3], inplanes[-3])
-        self.conv1x1 = conv1x1(inplanes[-3], 1)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        features = self.upsample(x[-1]) if not self.replace_stride_with_dilation else x[-1]
-        features = torch.cat([features, x[-2]], dim=1)
-        features = self.block1(features)
-        features = self.upsample(features)
-        features = torch.cat([features, x[-3]], dim=1)
-        features = self.block2(features)
-        features = self.conv1x1(features)
-        features = self.sigmoid(features)
-        return torch.cat(2 * [features], dim=1)
