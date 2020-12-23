@@ -78,10 +78,10 @@ class AvanetBackbone(nn.Module):
 
 
 class AdaptedResnet(ResNet):
-    def __init__(self, depth=5, pretrained=True):
+    def __init__(self, grad_feats, backbone='resnet34', depth=5, replace_stride_with_dilation=True, pretrained=True):
         super().__init__(block=torchvision.models.resnet.BasicBlock, layers=[3, 4, 6, 3])
         if pretrained:
-            settings = resnet_encoders['resnet34']["pretrained_settings"]['imagenet']
+            settings = resnet_encoders[backbone]["pretrained_settings"]['imagenet']
             self.load_state_dict(model_zoo.load_url(settings["url"]))
 
         self._depth = depth
@@ -107,23 +107,22 @@ class AdaptedResnet(ResNet):
             self.layer4,
         ])
 
-        self.make_dilated(
-            stage_list=[5],
-            dilation_list=[2],
-        )
+        if replace_stride_with_dilation:
+            self.make_dilated(
+                stage_list=[5],
+                dilation_list=[2],
+            )
 
         # make first block in layer deformable
-        layers = [self.layer1, self.layer2, self.layer3]
+        layers = [self.layer1, self.layer2, self.layer3, self.layer4]
         for i in range(len(layers)):
             for j in range(len(layers[i])):
                 layers[i][j] = DeformableBasicBlock(layers[i][j])
-        for j in range(len(self.layer4)):
-            self.layer4[j] = SeDeformableBasicBlock(self.layer4[j])
 
-        self.offsetnet = OffsetNet()
+        self.offsetnet = OffsetNet(grad_feats, replace_stride_with_dilation)
 
-    def forward(self, x, grads):
-        offsets = self.offsetnet(grads)
+    def forward(self, x, grad_feats):
+        offsets = self.offsetnet(grad_feats)
 
         features = []
         for i in range(2):
@@ -140,7 +139,7 @@ class AdaptedResnet(ResNet):
         x, _ = self.layer3([x, offsets[2]])
         features.append(x)
 
-        x, _ = self.layer4([x, offsets[2]])
+        x, _ = self.layer4([x, offsets[3]])
         features.append(x)
 
         return features
@@ -225,23 +224,20 @@ class SeDeformableBasicBlock(DeformableBasicBlock):
 
 
 class OffsetNet(nn.Module):
-    def __init__(self):
+    def __init__(self, in_channels, replace_stride_with_dilation):
         super(OffsetNet, self).__init__()
-        self.maxpool = nn.MaxPool2d(2)
-        self.avgpool = nn.AvgPool2d(2)
         self.layers = nn.ModuleList(
-            [nn.Sequential(BasicBlock(2, 18),
-                           BasicBlock(18, 64),
-                           BasicBlock(64, 18)),
+            [nn.Sequential(BasicBlock(in_channels, 18)),
              nn.Sequential(nn.AvgPool2d(2),
                            BasicBlock(18, 18)),
              nn.Sequential(nn.AvgPool2d(2),
-                           BasicBlock(18, 18))])
+                           BasicBlock(18, 18)),
+             nn.Sequential(nn.AvgPool2d(2) if not replace_stride_with_dilation else nn.Identity(),
+                           BasicBlock(18, 18))
+            ])
 
     def forward(self, x):
-        x = self.maxpool(x)
-        x = self.avgpool(x)
-
+        x = x[0]
         features = []
         for layer in self.layers:
             x = layer(x)

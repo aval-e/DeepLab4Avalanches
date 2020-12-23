@@ -215,3 +215,39 @@ class SeparableConv2d(nn.Sequential):
             bias=bias,
         )
         super().__init__(dephtwise_conv, pointwise_conv)
+
+
+class DeformableSeparableConv2d(nn.Module):
+
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            padding=0,
+            dilation=1,
+            bias=True,
+    ):
+        super().__init__()
+        self.dephtwise_conv = DeformConv2d(
+            in_channels,
+            in_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=in_channels,
+            bias=False,
+        )
+        self.pointwise_conv = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=1,
+            bias=bias,
+        )
+
+    def forward(self, x, offsets):
+        x = self.dephtwise_conv(x, offsets)
+        x = self.pointwise_conv(x)
+        return x

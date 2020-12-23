@@ -38,7 +38,8 @@ benchmark=True
 lr=1e-4
 in_channels=3
 model='avanet'
-backbone='avanet'
+backbone='adapted_resnet'
+decoder='avanet_new'
 avanet_rep_stride_with_dil=True
 avanet_no_blocks="3 3 3 2"
 avanet_deformable=True
@@ -74,6 +75,7 @@ python -m trainer.train \
 --lr $lr \
 --model $model \
 --backbone $backbone \
+--decoder $decoder \
 --avanet_rep_stride_with_dil $avanet_rep_stride_with_dil \
 --avanet_no_blocks $avanet_no_blocks \
 --avanet_deformable $avanet_deformable \

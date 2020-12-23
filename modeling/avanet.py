@@ -7,7 +7,8 @@ from segmentation_models_pytorch.base import SegmentationModel, SegmentationHead
 from segmentation_models_pytorch.encoders import get_encoder
 from segmentation_models_pytorch.deeplabv3.decoder import DeepLabV3PlusDecoder
 from modeling.backbones.avanet_backbone import AvanetBackbone, AdaptedResnet
-from modeling.reusable_blocks import conv1x1, conv3x3, SeparableConv2d, Bottleneck
+from modeling.reusable_blocks import conv1x1, conv3x3, SeparableConv2d, DeformableSeparableConv2d, Bottleneck, \
+    BasicBlock
 from modeling.flow_layer import FlowLayer, FlowAttention
 from utils.utils import str2bool
 
@@ -28,13 +29,17 @@ class Avanet(nn.Module):
         self.dem_bn = nn.BatchNorm2d(1)
         depth = 4
 
+        grad_feats = 64
+        self.grad_net = GradNet(grad_feats, replace_stride_with_dilation)
+
         if backbone == 'avanet':
             self.encoder = AvanetBackbone(replace_stride_with_dilation=replace_stride_with_dilation,
                                           no_blocks=no_blocks,
                                           deformable=deformable,
                                           groups=2)
         elif backbone == 'adapted_resnet':
-            self.encoder = AdaptedResnet()
+            self.encoder = AdaptedResnet(grad_feats,
+                                         replace_stride_with_dilation=replace_stride_with_dilation)
             depth = 5
         else:
             self.encoder = get_encoder(
@@ -51,13 +56,24 @@ class Avanet(nn.Module):
             depth = 5
 
         if decoder == 'avanet':
-            self.decoder = AvanetDecoder(
+            self.decoder = AvanetDecoderOld(
                 in_channels=self.encoder.out_channels,
                 out_channels=256,
                 depth=depth,
                 px_per_iter=px_per_iter,
                 grad_attention=grad_attention,
                 replace_stride_with_dilation=replace_stride_with_dilation
+            )
+        elif decoder == 'avanet_new':
+            self.decoder = AvanetDecoderNew(
+                in_channels=self.encoder.out_channels,
+                out_channels=512,
+                grad_feats=grad_feats,
+                replace_stride_with_dilation=replace_stride_with_dilation,
+                dspf_ch=(256, 128, 64),
+                dil_rates=(4, 8, 12),
+                pixels_per_iter=px_per_iter,
+                deformable=True
             )
         elif decoder == 'deeplab':
             self.decoder = DeepLabV3PlusDecoder(
@@ -69,7 +85,7 @@ class Avanet(nn.Module):
         else:
             raise NotImplementedError('decoder type not implemented')
 
-        upsampling = 2**(depth - 3)
+        upsampling = 2 ** (depth - 3)
         self.segmentation_head = SegmentationHead(
             in_channels=self.decoder.out_channels,
             out_channels=1,
@@ -93,8 +109,22 @@ class Avanet(nn.Module):
         dem = self.dem_bn(dem)
         x = torch.cat([x, dem], dim=1)
 
-        x = self.encoder(x, dem_grads) if self.backbone == 'avanet' or self.backbone == 'adapted_resnet' else self.encoder(x)
-        x = self.decoder(x, dem_grads) if self.decoder_type == 'avanet' else self.decoder(*x)
+        grad_feats = self.grad_net(torch.cat([dem_grads, dem], dim=1))
+
+        if self.backbone == 'avanet':
+            x = self.encoder(x, dem_grads)
+        elif self.backbone == 'adapted_resnet':
+            x = self.encoder(x, grad_feats)
+        else:
+            x = self.encoder(x)
+
+        if self.decoder_type == 'avanet':
+            x = self.decoder(x, dem_grads)
+        elif self.decoder_type == 'avanet_new':
+            x = self.decoder(x, dem_grads, grad_feats)
+        else:
+            x = self.decoder(*x)
+
         x = self.segmentation_head(x)
         return x
 
@@ -106,13 +136,112 @@ class Avanet(nn.Module):
         parser.add_argument('--avanet_rep_stride_with_dil', type=str2bool, default='False',
                             help='Replace stride with dilation in backbone')
         parser.add_argument('--avanet_no_blocks', type=int, nargs='+', default=(3, 3, 3, 2))
-        parser.add_argument('--avanet_deformable', type=str2bool, default='True',)
+        parser.add_argument('--avanet_deformable', type=str2bool, default='True', )
         parser.add_argument('--avanet_px_per_iter', type=int, default=4)
         parser.add_argument('--avanet_grad_attention', type=str2bool, default='True')
         return parser
 
 
-class AvanetDecoder(nn.Module):
+class GradNet(nn.Module):
+    def __init__(self, no_features, replace_stride_with_dilation):
+        super().__init__()
+        self.blocks = nn.Sequential(nn.AvgPool2d(4),
+                                    BasicBlock(3, 32),
+                                    BasicBlock(32, no_features)
+                                    )
+        self.avgpool = nn.AvgPool2d(2)
+        self.avgpool2 = nn.AvgPool2d(2) if not replace_stride_with_dilation else nn.Identity()
+
+    def forward(self, x):
+        out = []
+        x = self.blocks(x)
+        out.append(x)
+
+        x = self.avgpool(x)
+        out.append(x)
+
+        x = self.avgpool(x)
+        out.append(x)
+
+        x = self.avgpool2(x)
+        out.append(x)
+
+        return out
+
+
+class AvanetDecoderNew(nn.Module):
+    def __init__(self, in_channels, out_channels, grad_feats, replace_stride_with_dilation,
+                 dspf_ch=(64, 128, 256), dil_rates=(4, 8, 12), pixels_per_iter=4, deformable=True):
+        super().__init__()
+
+        self.out_channels = out_channels
+        self.deformable = deformable
+        self.replace_stride_with_dilation = replace_stride_with_dilation
+
+        if deformable:
+            self.dspfs = nn.ModuleList([
+                DSPFDeform(in_channels[-3], dspf_ch[0], grad_feats, dil_rates, pixels_per_iter),
+                DSPFDeform(in_channels[-2], dspf_ch[1], grad_feats, dil_rates, pixels_per_iter),
+                DSPFDeform(in_channels[-1], dspf_ch[2], grad_feats, dil_rates, pixels_per_iter),
+            ])
+        else:
+            self.dspfs = nn.ModuleList([
+                DSPF(in_channels[-3], dspf_ch[0], dil_rates, pixels_per_iter),
+                DSPF(in_channels[-2], dspf_ch[1], dil_rates, pixels_per_iter),
+                DSPF(in_channels[-1], dspf_ch[2], dil_rates, pixels_per_iter),
+            ])
+
+        skip_ch = 48
+        self.skip = nn.Sequential(
+            nn.Conv2d(in_channels[-4], skip_ch, kernel_size=1, bias=False),
+            nn.BatchNorm2d(skip_ch),
+            nn.ReLU(),
+        )
+
+        self.downsample = nn.AvgPool2d(2)
+
+        self.up_iters = (1, 2, 2) if replace_stride_with_dilation else (1, 2, 3)
+        self.up = nn.UpsamplingBilinear2d(scale_factor=2)
+
+        self.combine = nn.Sequential(
+            SeparableConv2d(
+                skip_ch + dspf_ch[0] + dspf_ch[1] + dspf_ch[2],
+                out_channels,
+                kernel_size=3,
+                padding=1,
+                bias=False,
+                ),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+
+    def forward(self, x, grads, grad_feats):
+        # make gradient field magnitude independent
+        for _ in range(3):
+            grads = self.downsample(grads)
+        grads = grads + 1e-6  # avoid dividing by zero
+        grads = grads / grads.norm(p=None, dim=1, keepdim=True)
+        grads2 = self.downsample(grads)
+        grads4 = self.downsample(grads2) if not self.replace_stride_with_dilation else grads2
+        grad_dir = [grads, grads2, grads4]
+
+        res = []
+        res.append(self.skip(x[-4]))
+
+        for i in range(3):
+            if self.deformable:
+                out = self.dspfs[i](x[-3+i], grad_dir[i], grad_feats[i+1])
+            else:
+                out = self.dspfs[i](x[-3+i], grad_dir[i])
+            for _ in range(self.up_iters[i]):
+                out = self.up(out)
+            res.append(out)
+        out = torch.cat(res, dim=1)
+        out = self.combine(out)
+        return out
+
+
+class AvanetDecoderOld(nn.Module):
     def __init__(self, in_channels, out_channels, depth=4, px_per_iter=1, grad_attention=False,
                  replace_stride_with_dilation=False):
         super().__init__()
@@ -173,3 +302,112 @@ class AvanetDecoder(nn.Module):
             high_features = features if i == 0 and self.replace_stride_with_dilation else self.upsample(features)
         features = self.final(high_features)
         return features
+
+
+class DSPFDeform(nn.Module):
+    def __init__(self, in_channels, out_channels, grad_feats, dilated_rates=(8, 16, 24), pixels_per_iter=4):
+        super().__init__()
+
+        self.conv1x1 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+
+        modules = []
+        ConvModule = DSPFSeparableConvDeformable
+        modules.append(ConvModule(in_channels, out_channels, grad_feats, dilated_rates[0]))
+        modules.append(ConvModule(in_channels, out_channels, grad_feats, dilated_rates[1]))
+        modules.append(ConvModule(in_channels, out_channels, grad_feats, dilated_rates[2]))
+        self.dilated_convs = nn.ModuleList(modules)
+
+        self.flow = FlowLayer(in_channels, out_channels, pixels_per_iter)
+
+        self.project = nn.Sequential(
+            nn.Conv2d(5 * out_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+
+    def forward(self, x, grad_dir, grad_feats):
+        res = []
+        res.append(self.conv1x1(x))
+        for conv in self.dilated_convs:
+            res.append(conv(x, grad_feats))
+        res.append(self.flow(x, grad_dir))
+        res = torch.cat(res, dim=1)
+        return self.project(res)
+
+
+class DSPF(nn.Module):
+    def __init__(self, in_channels, out_channels, dilated_rates=(8, 16, 24), pixels_per_iter=4):
+        super().__init__()
+
+        modules = []
+        ConvModule = DSPFSeparableConv
+        modules.append(nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+        )
+
+        modules.append(ConvModule(in_channels, out_channels, dilated_rates[0]))
+        modules.append(ConvModule(in_channels, out_channels, dilated_rates[1]))
+        modules.append(ConvModule(in_channels, out_channels, dilated_rates[2]))
+        self.convs = nn.ModuleList(modules)
+
+        self.flow = FlowLayer(in_channels, out_channels, pixels_per_iter)
+
+        self.project = nn.Sequential(
+            nn.Conv2d(5 * out_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+
+    def forward(self, x, grad_dir):
+        res = []
+        for conv in self.convs:
+            res.append(conv(x))
+        res.append(self.flow(x, grad_dir))
+        res = torch.cat(res, dim=1)
+        return self.project(res)
+
+
+class DSPFSeparableConvDeformable(nn.Module):
+    def __init__(self, in_channels, out_channels, grad_feats, dilation):
+        super().__init__()
+        self.offset_block = BasicBlock(grad_feats, 18)
+        self.conv = DeformableSeparableConv2d(
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            padding=dilation,
+            dilation=dilation,
+            bias=False,
+        )
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU()
+
+    def forward(self, x, grad_feats):
+        offsets = self.offset_block(grad_feats)
+        x = self.conv(x, offsets)
+        x = self.bn(x)
+        x = self.relu(x)
+        return x
+
+
+class DSPFSeparableConv(nn.Sequential):
+    def __init__(self, in_channels, out_channels, dilation):
+        super().__init__(
+            SeparableConv2d(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                padding=dilation,
+                dilation=dilation,
+                bias=False,
+            ),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
