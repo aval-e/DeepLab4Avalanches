@@ -75,6 +75,10 @@ avanet_no_blocks="3 4 4 3"
 avanet_deformable=True
 avanet_px_per_iter=4
 avanet_grad_attention=False
+decoder_out_ch=512
+decoder_dspf_ch="64 128 256"
+decoder_rates="4 8 12"
+decoder_deformable=True
 
 python -m trainer.train \
 --exp_name $exp_name \
@@ -130,3 +134,7 @@ python -m trainer.train \
 --avanet_deformable $avanet_deformable \
 --avanet_px_per_iter $avanet_px_per_iter \
 --avanet_grad_attention $avanet_grad_attention \
+--decoder_out_ch $decoder_out_ch \
+--decoder_dspf_ch $decoder_dspf_ch \
+--decoder_rates $decoder_rates \
+--decoder_deformable $decoder_deformable \

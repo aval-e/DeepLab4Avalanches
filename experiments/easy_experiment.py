@@ -47,7 +47,12 @@ class EasyExperiment(LightningModule):
                                 no_blocks=self.hparams.avanet_no_blocks,
                                 deformable=self.hparams.avanet_deformable,
                                 px_per_iter=self.hparams.avanet_px_per_iter,
-                                grad_attention=self.hparams.avanet_grad_attention)
+                                grad_attention=self.hparams.avanet_grad_attention,
+                                decoder_out_ch=self.hparams.decoder_out_ch,
+                                decoder_dspf_ch=self.hparams.decoder_dspf_ch,
+                                decoder_rates=self.hparams.decoder_rates,
+                                decoder_deformable=self.hparams.decoder_deformable,
+                                )
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)
         elif hparams.model == 'mask_rcnn':

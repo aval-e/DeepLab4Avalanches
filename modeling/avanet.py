@@ -21,6 +21,10 @@ class Avanet(nn.Module):
                  deformable=True,
                  px_per_iter=4,
                  grad_attention=True,
+                 decoder_out_ch=512,
+                 decoder_dspf_ch=(64, 128, 256),
+                 decoder_rates=(4, 8, 12),
+                 decoder_deformable=True,
                  ):
         super().__init__()
         self.backbone = backbone
@@ -73,13 +77,13 @@ class Avanet(nn.Module):
         elif decoder == 'avanet_new':
             self.decoder = AvanetDecoderNew(
                 in_channels=self.encoder.out_channels,
-                out_channels=512,
+                out_channels=decoder_out_ch,
                 grad_feats=grad_feats,
                 replace_stride_with_dilation=replace_stride_with_dilation,
-                dspf_ch=(256, 128, 64),
-                dil_rates=(4, 8, 12),
+                dspf_ch=decoder_dspf_ch,
+                dil_rates=decoder_rates,
                 pixels_per_iter=px_per_iter,
-                deformable=True
+                deformable=decoder_deformable
             )
         elif decoder == 'deeplab':
             self.decoder = DeepLabV3PlusDecoder(
@@ -145,6 +149,10 @@ class Avanet(nn.Module):
         parser.add_argument('--avanet_deformable', type=str2bool, default='True', )
         parser.add_argument('--avanet_px_per_iter', type=int, default=4)
         parser.add_argument('--avanet_grad_attention', type=str2bool, default='True')
+        parser.add_argument('--decoder_out_ch', type=int, default=512)
+        parser.add_argument('--decoder_dspf_ch', type=int, nargs='+', default=(64, 128, 256))
+        parser.add_argument('--decoder_rates', type=int, nargs='+', default=(4, 8, 12))
+        parser.add_argument('--decoder_deformable', type=str2bool, default=True)
         return parser
 
 
