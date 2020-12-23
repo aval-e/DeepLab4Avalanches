@@ -79,7 +79,8 @@ class AvanetBackbone(nn.Module):
 
 class AdaptedResnet(ResNet):
     def __init__(self, grad_feats, backbone='resnet34', depth=5, replace_stride_with_dilation=True, pretrained=True):
-        super().__init__(block=torchvision.models.resnet.BasicBlock, layers=[3, 4, 6, 3])
+        super().__init__(block=resnet_encoders[backbone]["params"]['block'],
+                         layers=resnet_encoders[backbone]["params"]['layers'])
         if pretrained:
             settings = resnet_encoders[backbone]["pretrained_settings"]['imagenet']
             self.load_state_dict(model_zoo.load_url(settings["url"]))
