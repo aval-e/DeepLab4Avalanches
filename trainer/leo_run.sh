@@ -6,13 +6,13 @@ export PYTHONPATH=$PWD
 
 # Parameters for bsub command
 #BSUB -n 10
-#BSUB -W 230
+#BSUB -W 1230
 #BSUB -R "rusage[ngpus_excl_p=2]"
 #BSUB -R "rusage[mem=6000]"
-# #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
-# #BSUB -o "8_workers_4batches"
+#BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
+# #BSUB -o "lsf.resnet34"
 
-exp_name="deformable_all_more_ch"
+exp_name="resnet18_8px"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/avanet/avanet_fixflow_4px/version_0/checkpoints/epoch=10-v0.ckpt"
 resume_training=False
@@ -25,7 +25,7 @@ val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
 dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
-tile_size=256
+tile_size=512
 aval_certainty=2
 bands="3 4"
 num_workers=2
@@ -49,18 +49,18 @@ log_every_n_steps=100
 flush_logs_every_n_steps=100
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/adapt_resnet"
+log_dir="/cluster/scratch/bartonp/lightning_logs/decoder/big"
 benchmark=True
 
 
 # Model hyperparameters
 model='avanet'
-backbone='adapted_resnet'
-decoder='deeplab'
+backbone='adapted_resnet18'
+decoder='avanet_new'
 optimiser="adam"
-lr=5e-5
+lr=1e-4
 lr_scheduler='multistep'
-scheduler_steps="16000 30000"
+scheduler_steps="8000 14000"
 scheduler_gamma=0.2
 momentum=0.9
 weight_decay=0.0
@@ -75,6 +75,7 @@ avanet_no_blocks="3 4 4 3"
 avanet_deformable=True
 avanet_px_per_iter=4
 avanet_grad_attention=False
+
 decoder_out_ch=512
 decoder_dspf_ch="64 128 256"
 decoder_rates="4 8 12"
