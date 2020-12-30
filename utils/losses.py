@@ -93,6 +93,16 @@ def focal_loss(prob, target, alpha=0.5, gamma=2):
     return loss
 
 
+def create_loss_weight_matrix(batch_size, patch_size, distance, min_value=0.2):
+    w = min_value * torch.ones([patch_size, patch_size])
+    for i in range(1, distance+1):
+        value = (i + (distance-i) * min_value) / distance
+        w[i:-i, i:-i] = value * torch.ones([patch_size - 2*i, patch_size - 2*i])
+    w = w.expand(batch_size, 1, -1, -1)
+    w.requires_grad = False
+    return w
+
+
 if __name__ == '__main__':
     # small test
     a = torch.tensor([[0, 1, 2],
