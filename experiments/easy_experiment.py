@@ -124,17 +124,25 @@ class EasyExperiment(LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
+
         pred = torch.round(y_hat)  # rounds probability to 0 or 1
         y_mask = data_utils.labels_to_mask(y)
 
-        bce_loss = self.bce_loss_val(y_hat, y_mask)
-        dice_score = soft_dice(y_mask, y_hat)
-        precision, recall, f1 = get_precision_recall_f1(y, pred)
-        recall1 = recall_for_label(y, pred, 1)
-        recall2 = recall_for_label(y, pred, 2)
-        recall3 = recall_for_label(y, pred, 3)
+        # crop to center
+        border = 50
+        y_hat_crop = y_hat[:, :, border:-border, border:-border]
+        y_crop = y[:, :, border:-border, border:-border]
+        pred_crop = pred[:, :, border:-border, border:-border]
+        y_mask_crop = y_mask[:, :, border:-border, border:-border]
 
-        _, _, f1_no_aval = get_precision_recall_f1(y_mask == 0, pred == 0)
+        bce_loss = self.bce_loss_val(y_hat_crop, y_mask_crop)
+        dice_score = soft_dice(y_mask_crop, y_hat_crop)
+        precision, recall, f1 = get_precision_recall_f1(y_crop, pred_crop)
+        recall1 = recall_for_label(y_crop, pred_crop, 1)
+        recall2 = recall_for_label(y_crop, pred_crop, 2)
+        recall3 = recall_for_label(y_crop, pred_crop, 3)
+
+        _, _, f1_no_aval = get_precision_recall_f1(y_mask_crop == 0, pred_crop == 0)
         f1_average = 0.5 * (f1_no_aval + f1)
 
         # Logging metrics
