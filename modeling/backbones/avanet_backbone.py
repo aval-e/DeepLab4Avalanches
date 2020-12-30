@@ -92,6 +92,13 @@ class AdaptedResnet(ResNet):
         del self.fc
         del self.avgpool
 
+        # self.conv1.stride = (1, 1)
+        # self.layer1[0].conv1.stride = (2, 2)
+        # self.layer1[0].downsample = nn.Sequential(
+        #         conv1x1(self.layer1[0].conv1.in_channels, self.layer1[0].conv1.out_channels * self.layer1[0].expansion, 2),
+        #         nn.BatchNorm2d(self.layer1[0].conv1.out_channels * self.layer1[0].expansion),
+        #     )
+
         self.stages = nn.ModuleList([
             nn.Identity(),
             nn.Sequential(self.conv1, self.bn1, self.relu),
@@ -112,16 +119,6 @@ class AdaptedResnet(ResNet):
         for i in range(len(layers)):
             for j in range(len(layers[i])):
                 layers[i][j] = DeformableBasicBlock(layers[i][j])
-
-        # replace redisual strides with average pool
-        for i in range(len(layers)):
-            for j in range(len(layers[i])):
-                if layers[i][j].downsample is not None:
-                    downsample = layers[i][j].downsample[0]
-                    norm = layers[i][j].downsample[1]
-                    pool = nn.AvgPool2d(downsample.stride[0])
-                    downsample.stride = (1, 1)
-                    layers[i][j].downsample = nn.Sequential(pool, downsample, norm)
 
         self.offsetnet = OffsetNet(grad_feats, replace_stride_with_dilation)
 
@@ -173,17 +170,12 @@ class DeformableBasicBlock(nn.Module):
         self.downsample = basic_block.downsample
         self.stride = basic_block.stride
 
-        self.pool1 = nn.Identity()
-        if self.stride != 1:
-            self.pool1 = nn.AvgPool2d(self.conv1.stride[0])
-            self.conv1.stride = (1, 1)
 
     def forward(self, x):
         x, offsets = x
         identity = x
 
-        out = self.pool1(x)
-        out = self.conv1(out, offsets)
+        out = self.conv1(x, offsets)
         out = self.bn1(out)
         out = self.relu(out)
 
@@ -196,7 +188,7 @@ class DeformableBasicBlock(nn.Module):
         out += identity
         out = self.relu(out)
 
-        return out, offsets
+        return (out, offsets)
 
 
 class SeDeformableBasicBlock(DeformableBasicBlock):
@@ -229,7 +221,7 @@ class SeDeformableBasicBlock(DeformableBasicBlock):
         out += identity
         out = self.relu(out)
 
-        return out, offsets
+        return (out, offsets)
 
 
 class OffsetNet(nn.Module):
@@ -252,3 +244,6 @@ class OffsetNet(nn.Module):
             x = layer(x)
             features.append(x)
         return features
+
+
+
