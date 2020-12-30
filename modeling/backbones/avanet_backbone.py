@@ -111,7 +111,7 @@ class AdaptedResnet(ResNet):
         layers = [self.layer1, self.layer2, self.layer3, self.layer4]
         for i in range(len(layers)):
             for j in range(len(layers[i])):
-                layers[i][j] = SeDeformableBasicBlock(layers[i][j])
+                layers[i][j] = DeformableBasicBlock(layers[i][j])
 
         # replace redisual strides with average pool
         for i in range(len(layers)):
@@ -210,8 +210,7 @@ class SeDeformableBasicBlock(DeformableBasicBlock):
         x, offsets = x
         identity = x
 
-        out = self.pool1(x)
-        out = self.conv1(out, offsets)
+        out = self.conv1(x, offsets)
         out = self.bn1(out)
         out = self.relu(out)
 
