@@ -194,15 +194,15 @@ class AvanetDecoderNew(nn.Module):
 
         if deformable:
             self.dspfs = nn.ModuleList([
-                DSPFDeform(in_channels[-3], dspf_ch[0], grad_feats, dil_rates, pixels_per_iter),
-                DSPFDeform(in_channels[-2], dspf_ch[1], grad_feats, dil_rates, pixels_per_iter),
-                DSPFDeform(in_channels[-1], dspf_ch[2], grad_feats, dil_rates, pixels_per_iter),
+                DSPPDeform(in_channels[-3], dspf_ch[0], grad_feats, dil_rates, pixels_per_iter),
+                DSPPDeform(in_channels[-2], dspf_ch[1], grad_feats, dil_rates, pixels_per_iter),
+                DSPPDeform(in_channels[-1], dspf_ch[2], grad_feats, dil_rates, pixels_per_iter),
             ])
         else:
             self.dspfs = nn.ModuleList([
-                DSPF(in_channels[-3], dspf_ch[0], dil_rates, pixels_per_iter),
-                DSPF(in_channels[-2], dspf_ch[1], dil_rates, pixels_per_iter),
-                DSPF(in_channels[-1], dspf_ch[2], dil_rates, pixels_per_iter),
+                DSPP(in_channels[-3], dspf_ch[0], dil_rates, pixels_per_iter),
+                DSPP(in_channels[-2], dspf_ch[1], dil_rates, pixels_per_iter),
+                DSPP(in_channels[-1], dspf_ch[2], dil_rates, pixels_per_iter),
             ])
 
         skip_ch = 48
@@ -316,6 +316,72 @@ class AvanetDecoderOld(nn.Module):
             high_features = features if i == 0 and self.replace_stride_with_dilation else self.upsample(features)
         features = self.final(high_features)
         return features
+
+
+class DSPPDeform(nn.Module):
+    def __init__(self, in_channels, out_channels, grad_feats, dilated_rates=(8, 16, 24, 32), pixels_per_iter=4):
+        super().__init__()
+
+        self.conv1x1 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+
+        modules = []
+        ConvModule = DSPFSeparableConvDeformable
+        modules.append(ConvModule(in_channels, out_channels, grad_feats, dilated_rates[0]))
+        modules.append(ConvModule(in_channels, out_channels, grad_feats, dilated_rates[1]))
+        modules.append(ConvModule(in_channels, out_channels, grad_feats, dilated_rates[2]))
+        modules.append(ConvModule(in_channels, out_channels, grad_feats, dilated_rates[3]))
+        self.dilated_convs = nn.ModuleList(modules)
+
+        self.project = nn.Sequential(
+            nn.Conv2d(5 * out_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+
+    def forward(self, x, grad_dir, grad_feats):
+        res = []
+        res.append(self.conv1x1(x))
+        for conv in self.dilated_convs:
+            res.append(conv(x, grad_feats))
+        res = torch.cat(res, dim=1)
+        return self.project(res)
+
+
+class DSPP(nn.Module):
+    def __init__(self, in_channels, out_channels, dilated_rates=(8, 16, 24, 32), pixels_per_iter=4):
+        super().__init__()
+
+        modules = []
+        ConvModule = DSPFSeparableConv
+        modules.append(nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+        )
+
+        modules.append(ConvModule(in_channels, out_channels, dilated_rates[0]))
+        modules.append(ConvModule(in_channels, out_channels, dilated_rates[1]))
+        modules.append(ConvModule(in_channels, out_channels, dilated_rates[2]))
+        modules.append(ConvModule(in_channels, out_channels, dilated_rates[3]))
+        self.convs = nn.ModuleList(modules)
+
+        self.project = nn.Sequential(
+            nn.Conv2d(5 * out_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+
+    def forward(self, x, grad_dir):
+        res = []
+        for conv in self.convs:
+            res.append(conv(x))
+        res = torch.cat(res, dim=1)
+        return self.project(res)
 
 
 class DSPFDeform(nn.Module):

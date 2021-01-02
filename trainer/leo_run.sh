@@ -78,7 +78,7 @@ avanet_grad_attention=False
 
 decoder_out_ch=512
 decoder_dspf_ch="64 128 256"
-decoder_rates="4 8 12"
+decoder_rates="4 8 12 16"
 decoder_deformable=True
 
 python -m trainer.train \
