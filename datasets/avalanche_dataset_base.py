@@ -52,6 +52,12 @@ class AvalancheDatasetBase(Dataset):
             self.dem = data_utils.build_padded_vrt(dem_path, vrt_padding)
             self.dem_ulx, self.dem_uly, _, _ = data_utils.get_raster_extent(self.dem)
 
+        for i in range(1, 5):
+            band = self.vrt.GetRasterBand(i)
+            band.SetColorInterpretation(0)
+            print(band.GetColorInterpretation())
+            print(band.GetRasterColorInterpretation())
+
     def __len__(self):
         raise NotImplementedError
 
