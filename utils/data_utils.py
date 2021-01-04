@@ -36,7 +36,7 @@ def build_padded_vrt(sources, padding=1000):
     vrt = gdal.BuildVRT('', sources)
     extent = get_raster_extent(vrt)
     extent = extent[0] - padding, extent[3] - padding, extent[2] + padding, extent[1] + padding
-    vrt = gdal.BuildVRT('', sources, options=gdal.BuildVRTOptions(outputBounds=extent))
+    vrt = gdal.BuildVRT('', sources, options=gdal.BuildVRTOptions(outputBounds=extent, resolution='highest'))
     return vrt
 
 

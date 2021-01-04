@@ -129,10 +129,18 @@ if __name__ == '__main__':
     # run test
 
     # home
-    data_folder = '/home/patrick/ecovision/data/2018'
-    ava_file = 'avalanches0118_endversion.shp'
-    region_file = 'Region_Selection.shp'
-    dem_path = '/home/patrick/ecovision/data/2018/avalanches0118_endversion.tif'
+    # data_folder = '/home/patrick/ecovision/data/2018'
+    # ava_file = 'avalanches0118_endversion.shp'
+    # region_file = 'Region_Selection.shp'
+    # dem_path = '/home/patrick/ecovision/data/2018/avalanches0118_endversion.tif'
+
+    # hard drive
+    username = 'bartonp'
+    year = '19'
+    data_folder = '/media/' + username + '/Seagate Expansion Drive/SLF_Avaldata/20' + year
+    ava_file = 'avalanches01' + year + '_endversion.shp'
+    region_file = 'Val_area_20' + year + '.shp'
+    dem_path = None
 
     # pfpc
     # data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
