@@ -8,7 +8,7 @@ from experiments.inst_segm import InstSegmentation
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
 from datasets.avalanche_inst_dataset import AvalancheInstDataset
 from datasets.davos_gt_dataset import DavosGtDataset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 from pytorch_lightning.callbacks.lr_monitor import LearningRateMonitor
 from utils.utils import str2bool, ba_collate_fn, inst_collate_fn
 
@@ -70,6 +70,22 @@ def main(hparams):
                            hflip_p=hparams.hflip_p,
                            rand_rot=hparams.rand_rotation,
                            )
+    if hparams.train_root_dir2:
+        train_set2 = my_dataset(hparams.train_root_dir2,
+                                hparams.train_ava_file2,
+                                hparams.train_region_file2,
+                                dem_path=hparams.dem_dir,
+                                tile_size=hparams.tile_size,
+                                bands=hparams.bands,
+                                certainty=hparams.aval_certainty,
+                                batch_augm=hparams.batch_augm,
+                                means=hparams.means,
+                                stds=hparams.stds,
+                                random=True,
+                                hflip_p=hparams.hflip_p,
+                                rand_rot=hparams.rand_rotation,
+                                )
+        train_set = ConcatDataset([train_set, train_set2])
 
     val_set = my_dataset(hparams.val_root_dir,
                          hparams.val_ava_file,
@@ -85,6 +101,23 @@ def main(hparams):
                          hflip_p=0,
                          rand_rot=0,
                          )
+    if hparams.val_root_dir2:
+        val_set2 = my_dataset(hparams.val_root_dir2,
+                              hparams.val_ava_file2,
+                              hparams.val_region_file2,
+                              dem_path=hparams.dem_dir,
+                              tile_size=512,
+                              bands=hparams.bands,
+                              certainty=None,
+                              batch_augm=0,
+                              means=hparams.means,
+                              stds=hparams.stds,
+                              random=False,
+                              hflip_p=0,
+                              rand_rot=0,
+                              )
+        val_set = ConcatDataset([val_set, val_set2])
+
     loader_batch_size = hparams.batch_size // hparams.batch_augm if hparams.batch_augm > 0 else hparams.batch_size
     train_loader = DataLoader(train_set, batch_size=loader_batch_size, shuffle=True, num_workers=hparams.num_workers,
                               drop_last=True, pin_memory=True, collate_fn=my_collate_fn)
@@ -103,6 +136,18 @@ def main(hparams):
                               means=hparams.means,
                               stds=hparams.stds,
                               )
+    if hparams.val_gt_file2:
+        test_set2 = DavosGtDataset(hparams.val_root_dir2,
+                                   hparams.val_gt_file2,
+                                   hparams.val_ava_file2,
+                                   dem_path=hparams.dem_dir,
+                                   tile_size=256,
+                                   bands=hparams.bands,
+                                   means=hparams.means,
+                                   stds=hparams.stds,
+                                   )
+        test_set = ConcatDataset([test_set, test_set2])
+
     test_loader = DataLoader(test_set, batch_size=hparams.batch_size, shuffle=False, num_workers=hparams.num_workers,
                              drop_last=False, pin_memory=True)
     trainer.test(test_dataloaders=test_loader)
@@ -141,6 +186,22 @@ if __name__ == "__main__":
                         help='directory of the DEM within root_dir')
     parser.add_argument('--val_gt_file', type=str, default='Methodenvergleich2018.shp',
                         help='File name of gt comparison data in davos')
+
+    # use these when combining two datasets - 2018 and 2019
+    parser.add_argument('--train_root_dir2', type=str, default='',
+                        help='root directory of the training set 2')
+    parser.add_argument('--train_ava_file2', type=str, default='',
+                        help='File name of avalanche shapefile in root directory of training set 2')
+    parser.add_argument('--train_region_file2', type=str, default='',
+                        help='File name of shapefile in root directory defining training area 2')
+    parser.add_argument('--val_root_dir2', type=str, default='',
+                        help='root directory of the validation set 2')
+    parser.add_argument('--val_ava_file2', type=str, default='',
+                        help='File name of avalanche shapefile in root directory of training set 2')
+    parser.add_argument('--val_region_file2', type=str, default='',
+                        help='File name of shapefile in root directory defining validation area 2')
+    parser.add_argument('--val_gt_file2', type=str, default='',
+                        help='File name of gt comparison data in davos 2')
 
     # Model specific args
     parser = EasyExperiment.add_model_specific_args(parser)

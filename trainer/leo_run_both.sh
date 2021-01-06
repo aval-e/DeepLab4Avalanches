@@ -6,25 +6,31 @@ export PYTHONPATH=$PWD
 
 # Parameters for bsub command
 #BSUB -n 10
-#BSUB -W 239
-#BSUB -R "rusage[ngpus_excl_p=4]"
+#BSUB -W 500
+#BSUB -R "rusage[ngpus_excl_p=2]"
 #BSUB -R "rusage[mem=6000]"
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="19_deeplabv3+_resnet18"
+exp_name="both_resnet18"
 
-checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/year_comparison/resnet18_dspp/version_0/checkpoints/epoch=16.ckpt"
+checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/avanet/avanet_fixflow_4px/version_0/checkpoints/epoch=10-v0.ckpt"
 resume_training=False
 
 # Dataset hyperparameters
-train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2019"
-train_ava_file="avalanches0119_endversion.shp"
-train_region_file="Train_area_2019.shp"
+train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
+train_ava_file="avalanches0118_endversion.shp"
+train_region_file="Train_area_2018.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
-val_region_file="Val_area_2019.shp"
-val_gt_file="Methodenvergleich2019.shp"
+val_region_file="Val_area_2018.shp"
+train_root_dir2="/cluster/scratch/bartonp/slf_avalanches/2019"
+train_ava_file2="avalanches0119_endversion.shp"
+train_region_file2="Train_area_2019.shp"
+val_root_dir2="$train_root_dir2"
+val_ava_file2="$train_ava_file2"
+val_region_file2="Val_area_2019.shp"
+val_gt_file2="Methodenvergleich2019.shp"
 dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size=512
 aval_certainty=2
@@ -55,18 +61,18 @@ benchmark=True
 
 
 # Model hyperparameters
-model='deeplabv3+'
-backbone='resnet18'
+model='avanet'
+backbone='adapted_resnet18'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
 lr_scheduler='multistep'
-scheduler_steps="6000 14000"
+scheduler_steps="10000 16000"
 scheduler_gamma=0.2
 momentum=0.9
 weight_decay=0.0
-in_channels=5
-train_viz_interval=1000
+in_channels=3
+train_viz_interval=2000
 val_viz_interval=1
 val_viz_idx=4
 
@@ -94,7 +100,13 @@ python -m trainer.train \
 --val_root_dir $val_root_dir \
 --val_ava_file $val_ava_file \
 --val_region_file $val_region_file \
---val_gt_file $val_gt_file \
+--train_root_dir2 $train_root_dir2 \
+--train_ava_file2 $train_ava_file2 \
+--train_region_file2 $train_region_file2 \
+--val_root_dir2 $val_root_dir2 \
+--val_ava_file2 $val_ava_file2 \
+--val_region_file2 $val_region_file2 \
+--val_gt_file2 $val_gt_file2 \
 --dem_dir "$dem_dir" \
 --tile_size $tile_size \
 --aval_certainty $aval_certainty \

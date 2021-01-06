@@ -38,13 +38,15 @@ benchmark=True
 lr=1e-4
 in_channels=3
 model='avanet'
-backbone='adapted_resnet'
+backbone='adapted_resnet18'
 decoder='avanet_new'
-avanet_rep_stride_with_dil=True
+avanet_rep_stride_with_dil=False
 avanet_no_blocks="3 3 3 2"
 avanet_deformable=True
 avanet_px_per_iter=4
 avanet_grad_attention=False
+
+decoder_rates="4 8 12 16"
 
 
 python -m trainer.train \
@@ -81,6 +83,7 @@ python -m trainer.train \
 --avanet_deformable $avanet_deformable \
 --avanet_px_per_iter $avanet_px_per_iter \
 --avanet_grad_attention $avanet_grad_attention \
+--decoder_rates $decoder_rates \
 --in_channels $in_channels \
 --limit_train_batches $limit_train_batches \
 --limit_val_batches $limit_val_batches \

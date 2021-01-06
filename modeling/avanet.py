@@ -151,7 +151,7 @@ class Avanet(nn.Module):
         parser.add_argument('--avanet_grad_attention', type=str2bool, default='True')
         parser.add_argument('--decoder_out_ch', type=int, default=512)
         parser.add_argument('--decoder_dspf_ch', type=int, nargs='+', default=(64, 128, 256))
-        parser.add_argument('--decoder_rates', type=int, nargs='+', default=(4, 8, 12))
+        parser.add_argument('--decoder_rates', type=int, nargs='+', default=(4, 8, 12, 16))
         parser.add_argument('--decoder_deformable', type=str2bool, default=True)
         return parser
 
