@@ -6,24 +6,24 @@ export PYTHONPATH=$PWD
 
 # Parameters for bsub command
 #BSUB -n 10
-#BSUB -W 420
-#BSUB -R "rusage[ngpus_excl_p=2]"
+#BSUB -W 239
+#BSUB -R "rusage[ngpus_excl_p=4]"
 #BSUB -R "rusage[mem=6000]"
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="resnet18_dspp_no_noise"
+exp_name="19_deeplabv3+_resnet18"
 
-checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/avanet/avanet_fixflow_4px/version_0/checkpoints/epoch=10-v0.ckpt"
+checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/year_comparison/resnet18_dspp/version_0/checkpoints/epoch=16.ckpt"
 resume_training=False
 
 # Dataset hyperparameters
-train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
-train_ava_file="avalanches0118_endversion.shp"
-train_region_file="Train_area_2018.shp"
+train_root_dir="/cluster/scratch/bartonp/slf_avalanches/2019"
+train_ava_file="avalanches0119_endversion.shp"
+train_region_file="Train_area_2019.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
-val_region_file="Val_area_2018.shp"
+val_region_file="Val_area_2019.shp"
 dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size=512
 aval_certainty=2
@@ -49,23 +49,23 @@ log_every_n_steps=100
 flush_logs_every_n_steps=100
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/decoder/big"
+log_dir="/cluster/scratch/bartonp/lightning_logs/year_comparison"
 benchmark=True
 
 
 # Model hyperparameters
-model='avanet'
-backbone='adapted_resnet18'
+model='deeplabv3+'
+backbone='resnet18'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
 lr_scheduler='multistep'
-scheduler_steps="8000 14000"
+scheduler_steps="6000 14000"
 scheduler_gamma=0.2
 momentum=0.9
 weight_decay=0.0
-in_channels=3
-train_viz_interval=2000
+in_channels=5
+train_viz_interval=1000
 val_viz_interval=1
 val_viz_idx=4
 
