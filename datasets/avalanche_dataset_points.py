@@ -125,22 +125,89 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
         return parser
 
 
+class AvalancheDatasetPointsEval(AvalancheDatasetBase):
+    """
+    SLF Avalanche Dataset. Samples chosen intelligently to avoid overlaps and cover larger avalanches
+
+    :param root_dir: directory in which all data is located
+    :param aval_file: shapefile name located in root_dir of the avalanches
+    :param region_file: shapefile containing polygon specifying which area will be considered by the Dataset
+    :param dem_path: file path of digital elevation model if it is to be used. Default: None
+    :param tile_size: patch size to use for training
+    :param bands: list of band indexes to read from optical images. Default None gets all
+    :param means: list of means for each band in the optical imagery used for standardisation
+    :param stds: list of standard deviations for each band in the optical imagery for standardisation
+    :return pytorch dataset to be used with dataloader
+    """
+
+    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=512, bands=None, means=None, stds=None):
+
+        super().__init__(root_dir, aval_file, dem_path, tile_size, bands, means, stds)
+        # del self.aval_raster
+
+        self.to_tensor = ToTensor()
+
+        # get avalanche shapes with geopandas
+        region = gpd.read_file(os.path.join(root_dir, region_file))
+        aval_path = os.path.join(root_dir, aval_file)
+        self.avalanches = gpd.read_file(aval_path)
+        self.avalanches = data_utils.get_avalanches_in_region(self.avalanches, region)
+        self.sample_points = data_utils.generate_sample_points(self.avalanches, region, self.tile_size)
+
+    def __len__(self):
+        return len(self.sample_points)
+
+    def __getitem__(self, idx):
+        """
+        Get a sample from the dataset.
+        :param idx: index
+        :return: [image, rasterised avalanches] as list. Rasterised avalanches is a tensor with one channel for each avalanche
+        """
+        p = self.sample_points.iloc[idx]
+
+        px_offset = np.array(2 * [self.tile_size // 2])
+        vrt_offset = np.array([p.x - self.ulx, self.uly - p.y])
+        vrt_offset = vrt_offset / self.pixel_w - px_offset
+        aval_offset = np.array([p.x - self.aval_ulx, self.aval_uly - p.y])
+        aval_offset = aval_offset / self.pixel_w - px_offset
+
+        image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size,
+                                                  means=self.means, stds=self.stds, bands=self.bands)
+
+        # add DEM after changing brightness etc but before rotating and flipping
+        if self.dem:
+            dem_offset = np.array([p.x - self.dem_ulx, self.dem_uly - p.y])
+            dem_offset = dem_offset / self.pixel_w - px_offset
+            dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size,
+                                                          means=[2800], stds=[1000])
+            image = np.concatenate([image, dem_image], axis=2)
+
+        offset_gpd = (p.x - px_offset[0] * self.pixel_w, p.y + px_offset[1] * self.pixel_w)
+        masks = data_utils.rasterise_geopandas(self.avalanches, 2*[self.tile_size], offset_gpd, individual=True)
+
+        image = self.to_tensor(image)
+        masks = self.to_tensor(masks)
+
+        return image, masks
+
+
 if __name__ == '__main__':
     # run test
 
     # home
-    # data_folder = '/home/patrick/ecovision/data/2018'
-    # ava_file = 'avalanches0118_endversion.shp'
-    # region_file = 'Region_Selection.shp'
+    data_folder = '/home/patrick/ecovision/data/2018'
+    ava_file = 'avalanches0118_endversion.shp'
+    region_file = 'Region_Selection.shp'
+    dem_path = None
     # dem_path = '/home/patrick/ecovision/data/2018/avalanches0118_endversion.tif'
 
     # hard drive
-    username = 'bartonp'
-    year = '19'
-    data_folder = '/media/' + username + '/Seagate Expansion Drive/SLF_Avaldata/20' + year
-    ava_file = 'avalanches01' + year + '_endversion.shp'
-    region_file = 'Val_area_20' + year + '.shp'
-    dem_path = None
+    # username = 'bartonp'
+    # year = '19'
+    # data_folder = '/media/' + username + '/Seagate Expansion Drive/SLF_Avaldata/20' + year
+    # ava_file = 'avalanches01' + year + '_endversion.shp'
+    # region_file = 'Val_area_20' + year + '.shp'
+    # dem_path = None
 
     # pfpc
     # data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'
@@ -148,9 +215,12 @@ if __name__ == '__main__':
     # region_file = 'Val_area_2018.shp'
     # dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif'
 
-    my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=256, dem_path=dem_path,
-                                        random=True, batch_augm=1, rand_rot=180)
-    dataloader = DataLoader(my_dataset, batch_size=2, shuffle=False, num_workers=2, collate_fn=utils.ba_collate_fn)
+    my_dataset = AvalancheDatasetPointsEval(data_folder, ava_file, region_file, tile_size=256, dem_path=dem_path)
+    dataloader = DataLoader(my_dataset, batch_size=1, shuffle=False, num_workers=0, collate_fn=utils.default_collate)
+
+    # my_dataset = AvalancheDatasetPoints(data_folder, ava_file, region_file, tile_size=256, dem_path=dem_path,
+    #                                     random=True, batch_augm=1, rand_rot=180)
+    # dataloader = DataLoader(my_dataset, batch_size=2, shuffle=False, num_workers=2, collate_fn=utils.ba_collate_fn)
 
     for batch in iter(dataloader):
         image, shp_image = batch

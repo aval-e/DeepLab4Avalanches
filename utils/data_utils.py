@@ -128,7 +128,7 @@ def get_numpy_from_ogr_shapefile(shapefile, ref_raster, offset=(0, 0), res=None)
     return shape_raster.ReadAsArray()
 
 
-def rasterise_geopandas(dataset, tile_size, offset, burn_val=1):
+def rasterise_geopandas(dataset, tile_size, offset, burn_val=1, res=1.5, individual=False):
     """
     Rasterise geopandas dataset and return numpy array
 
@@ -136,11 +136,22 @@ def rasterise_geopandas(dataset, tile_size, offset, burn_val=1):
     :param tile_size: size of the output patch
     :param offset: position of top left corner. Make sure this is in the correct CRS
     :param burn_val: value to write where there is a shape. Background is zero.
+    :param res: resolution of raster (meters per pixel)
+    :param individual: whether to rasterise each avalanche into a separate channel
     """
-    transform = affine.Affine(1.5, 0, offset[0], 0, -1.5, offset[1])
+    transform = affine.Affine(res, 0, offset[0], 0, -res, offset[1])
 
-    shapes = ((geom, value) for geom, value in zip(dataset.geometry, len(dataset)*[burn_val]))
-    raster = rasterio.features.rasterize(shapes, tile_size, transform=transform, dtype=np.single)
+    # first get subset of avalanches intersecting patch before rasterising them
+    subset = dataset.cx[offset[0]: offset[0] + res * tile_size[0], offset[1] + -res * tile_size[1]: offset[1]:]
+    shapes = ((geom, value) for geom, value in zip(subset.geometry, len(dataset)*[burn_val]))
+
+    raster = []
+    if individual:
+        for shape in shapes:
+            raster.append(rasterio.features.rasterize([shape], tile_size, transform=transform, dtype=np.single))
+        raster = np.stack(raster, axis=2)
+    else:
+        raster = rasterio.features.rasterize(shapes, tile_size, transform=transform, dtype=np.single)
     return raster
 
 
