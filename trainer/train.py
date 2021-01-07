@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use('Agg')  # dont open plots when training
+
 import os
 from argparse import ArgumentParser
 from pytorch_lightning import Trainer, seed_everything, Callback
