@@ -86,7 +86,7 @@ class AdaptedResnet(ResNet):
             self.load_state_dict(model_zoo.load_url(settings["url"]))
 
         self._depth = depth
-        self.out_channels = (3, 64, 64, 128, 256, 512)
+        self.out_channels = resnet_encoders[backbone]["params"]['out_channels']
         self._in_channels = 3
 
         del self.fc

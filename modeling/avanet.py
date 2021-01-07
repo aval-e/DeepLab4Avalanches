@@ -51,6 +51,11 @@ class Avanet(nn.Module):
                                          backbone='resnet34',
                                          replace_stride_with_dilation = replace_stride_with_dilation)
             depth = 5
+        elif backbone == 'adapted_resnet50':
+            self.encoder = AdaptedResnet(grad_feats,
+                                         backbone='resnet50',
+                                         replace_stride_with_dilation = replace_stride_with_dilation)
+            depth = 5
         else:
             self.encoder = get_encoder(
                 backbone,

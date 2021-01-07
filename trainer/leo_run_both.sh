@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="both_myresnet34"
+exp_name="both_myresnet50"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/avanet/avanet_fixflow_4px/version_0/checkpoints/epoch=10-v0.ckpt"
 resume_training=False
@@ -62,7 +62,7 @@ benchmark=True
 
 # Model hyperparameters
 model='avanet'
-backbone='adapted_resnet34'
+backbone='adapted_resnet50'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
