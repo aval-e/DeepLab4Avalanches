@@ -25,7 +25,6 @@ def main(hparams):
                                      certainty=None,
                                      means=hparams.means,
                                      stds=hparams.stds,
-                                     transform=ToTensor(),
                                      )
 
     val_loader = DataLoader(val_set, batch_size=1, shuffle=True, num_workers=hparams.num_workers,

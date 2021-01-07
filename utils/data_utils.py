@@ -135,7 +135,7 @@ def rasterise_geopandas(dataset, tile_size, offset, burn_val=1, res=1.5, individ
     :param dataset: geopandas dataset to be rasterised
     :param tile_size: size of the output patch
     :param offset: position of top left corner. Make sure this is in the correct CRS
-    :param burn_val: value to write where there is a shape. Background is zero.
+    :param burn_val: value to write where there is a shape. Background is zero. If string, it is interpreted as an attribute
     :param res: resolution of raster (meters per pixel)
     :param individual: whether to rasterise each avalanche into a separate channel
     """
@@ -143,7 +143,10 @@ def rasterise_geopandas(dataset, tile_size, offset, burn_val=1, res=1.5, individ
 
     # first get subset of avalanches intersecting patch before rasterising them
     subset = dataset.cx[offset[0]: offset[0] + res * tile_size[0], offset[1] + -res * tile_size[1]: offset[1]:]
-    shapes = ((geom, value) for geom, value in zip(subset.geometry, len(dataset)*[burn_val]))
+    if isinstance(burn_val, str):
+        shapes = ((sample.geometry, sample[burn_val]) for _, sample in subset.iterrows())
+    else:
+        shapes = ((geom, value) for geom, value in zip(subset.geometry, len(subset) * [burn_val]))
 
     raster = []
     if individual:

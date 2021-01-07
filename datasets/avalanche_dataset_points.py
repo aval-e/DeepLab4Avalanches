@@ -140,8 +140,8 @@ class AvalancheDatasetPointsEval(AvalancheDatasetBase):
     :return pytorch dataset to be used with dataloader
     """
 
-    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=512, bands=None, means=None, stds=None):
-
+    def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=512, bands=None, means=None,
+                 stds=None):
         super().__init__(root_dir, aval_file, dem_path, tile_size, bands, means, stds)
         # del self.aval_raster
 
@@ -183,7 +183,8 @@ class AvalancheDatasetPointsEval(AvalancheDatasetBase):
             image = np.concatenate([image, dem_image], axis=2)
 
         offset_gpd = (p.x - px_offset[0] * self.pixel_w, p.y + px_offset[1] * self.pixel_w)
-        masks = data_utils.rasterise_geopandas(self.avalanches, 2*[self.tile_size], offset_gpd, individual=True)
+        masks = data_utils.rasterise_geopandas(self.avalanches, 2 * [self.tile_size], offset_gpd, individual=True,
+                                               burn_val='aval_shape')
 
         image = self.to_tensor(image)
         masks = self.to_tensor(masks)
@@ -226,6 +227,7 @@ if __name__ == '__main__':
         image, shp_image = batch
         image = image.permute(0, 2, 3, 1)
         shp_image = shp_image.permute(0, 2, 3, 1)
+        shp_image, _ = shp_image.max(dim=3, keepdim=True)
 
         viz_utils.plot_avalanches_by_certainty(image, shp_image, dem=my_dataset.dem)
         input('Press key for another sample')
