@@ -50,6 +50,7 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
         aval_path = os.path.join(root_dir, aval_file)
         self.avalanches = gpd.read_file(aval_path)
         self.avalanches = data_utils.get_avalanches_in_region(self.avalanches, region)
+        self.all_avalanches = self.avalanches
         if certainty:
             self.avalanches = self.avalanches[self.avalanches.aval_shape <= certainty]
         self.sample_points = data_utils.generate_sample_points(self.avalanches, region, self.tile_size)
@@ -78,7 +79,11 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
 
             image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size,
                                                       means=self.means, stds=self.stds, bands=self.bands)
-            mask = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
+            # mask = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
+            offset_gpd = (p.x - px_offset[0] * self.pixel_w, p.y + px_offset[1] * self.pixel_w)
+            mask = data_utils.rasterise_geopandas(self.all_avalanches, 2 * [self.tile_size], offset_gpd, individual=False,
+                                                   burn_val='aval_shape')
+            mask = np.expand_dims(mask, axis=2)
 
             # augment one of brightness and contrast
             if self.random:

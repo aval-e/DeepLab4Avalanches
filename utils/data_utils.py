@@ -143,11 +143,14 @@ def rasterise_geopandas(dataset, tile_size, offset, burn_val=1, res=1.5, individ
 
     # first get subset of avalanches intersecting patch before rasterising them
     subset = dataset.cx[offset[0]: offset[0] + res * tile_size[0], offset[1] + -res * tile_size[1]: offset[1]:]
+    if len(subset) == 0:
+        return np.zeros(tile_size)
+
     if isinstance(burn_val, str):
         shapes = ((sample.geometry, sample[burn_val]) for _, sample in subset.iterrows())
     else:
         shapes = ((geom, value) for geom, value in zip(subset.geometry, len(subset) * [burn_val]))
-
+    
     raster = []
     if individual:
         for shape in shapes:
