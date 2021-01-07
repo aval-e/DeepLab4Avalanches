@@ -7,12 +7,12 @@ export PYTHONPATH=$PWD
 # Parameters for bsub command
 #BSUB -n 10
 #BSUB -W 239
-#BSUB -R "rusage[ngpus_excl_p=4]"
+#BSUB -R "rusage[ngpus_excl_p=2]"
 #BSUB -R "rusage[mem=6000]"
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="19_deeplabv3+_resnet18"
+exp_name="19_resnet18_certainty3"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/year_comparison/resnet18_dspp/version_0/checkpoints/epoch=16.ckpt"
 resume_training=False
@@ -27,7 +27,7 @@ val_region_file="Val_area_2019.shp"
 val_gt_file="Methodenvergleich2019.shp"
 dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size=512
-aval_certainty=2
+aval_certainty=3
 bands="3 4"
 num_workers=2
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
@@ -55,13 +55,13 @@ benchmark=True
 
 
 # Model hyperparameters
-model='deeplabv3+'
-backbone='resnet18'
+model='avanet'
+backbone='adapted_resnet18'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
 lr_scheduler='multistep'
-scheduler_steps="6000 14000"
+scheduler_steps="5000 14000"
 scheduler_gamma=0.2
 momentum=0.9
 weight_decay=0.0

@@ -7,9 +7,9 @@ export PYTHONPATH=$PWD
 # Parameters for bsub command
 #BSUB -n 10
 #BSUB -W 500
-#BSUB -R "rusage[ngpus_excl_p=2]"
+#BSUB -R "rusage[ngpus_excl_p=4]"
 #BSUB -R "rusage[mem=6000]"
-#BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
+#BSUB -R "select[gpu_model0==GeForceRTX2080Ti]"
 # #BSUB -o "lsf.resnet34"
 
 exp_name="both_resnet18"
@@ -46,8 +46,8 @@ rand_rotation=180
 # Training hyperparameters
 seed=42
 deterministic=False
-gpus=2
-batch_size=4
+gpus=4
+batch_size=2
 batch_augm=2
 accumulate_grad_batches=2
 max_epochs=20

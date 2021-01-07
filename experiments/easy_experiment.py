@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use('Agg')
+
 import torch
 import argparse
 import csv
