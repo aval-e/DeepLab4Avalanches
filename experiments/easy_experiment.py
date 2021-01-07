@@ -2,6 +2,7 @@ import torch
 import argparse
 import csv
 import os
+import warnings
 from torch.nn import BCELoss
 from modeling.deep_lab_v4 import DeepLabv4, Deeplabv5
 from modeling.avanet import Avanet
@@ -91,7 +92,7 @@ class EasyExperiment(LightningModule):
             lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, self.hparams.scheduler_steps,
                                                                 gamma=self.hparams.scheduler_gamma)
             scheduler = {'scheduler': lr_scheduler,
-                         'interval': 'step'}
+                         'interval': 'epoch'}
             return [optimizer], [scheduler]
         elif self.hparams.lr_scheduler == 'plateau':
             scheduler = {
@@ -208,6 +209,11 @@ class EasyExperiment(LightningModule):
             aggr_outputs[key] = []
             for el in outputs:
                 aggr_outputs[key].extend(el[key])
+
+        if not os.path.exists(self.logger.log_dir):
+            warnings.warn('Log dir not found. Dumping to stdout instead of csv:\n ')
+            print(aggr_outputs)
+            return
 
         csv_name = os.path.join(self.logger.log_dir, 'davos_test_IDs.csv')
         print('Saving test ids to: ' + csv_name)

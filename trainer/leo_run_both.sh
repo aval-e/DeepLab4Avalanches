@@ -6,13 +6,13 @@ export PYTHONPATH=$PWD
 
 # Parameters for bsub command
 #BSUB -n 10
-#BSUB -W 500
+#BSUB -W 600
 #BSUB -R "rusage[ngpus_excl_p=4]"
 #BSUB -R "rusage[mem=6000]"
-#BSUB -R "select[gpu_model0==GeForceRTX2080Ti]"
+#BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="both_resnet18"
+exp_name="both_myresnet34"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/avanet/avanet_fixflow_4px/version_0/checkpoints/epoch=10-v0.ckpt"
 resume_training=False
@@ -50,25 +50,25 @@ gpus=4
 batch_size=2
 batch_augm=2
 accumulate_grad_batches=2
-max_epochs=20
-val_check_interval=0.5
-log_every_n_steps=100
-flush_logs_every_n_steps=100
+max_epochs=18
+val_check_interval=1.0
+log_every_n_steps=200
+flush_logs_every_n_steps=200
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/year_comparison"
+log_dir="/cluster/scratch/bartonp/lightning_logs/presentation"
 benchmark=True
 
 
 # Model hyperparameters
 model='avanet'
-backbone='adapted_resnet18'
+backbone='adapted_resnet34'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
 lr_scheduler='multistep'
-scheduler_steps="10000 16000"
-scheduler_gamma=0.2
+scheduler_steps="10"
+scheduler_gamma=0.25
 momentum=0.9
 weight_decay=0.0
 in_channels=3

@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="resnet18_dspp_no_noise"
+exp_name="18_myresnet34"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/avanet/avanet_fixflow_4px/version_0/checkpoints/epoch=10-v0.ckpt"
 resume_training=False
@@ -43,25 +43,25 @@ gpus=2
 batch_size=4
 batch_augm=2
 accumulate_grad_batches=2
-max_epochs=20
-val_check_interval=0.5
-log_every_n_steps=100
-flush_logs_every_n_steps=100
+max_epochs=18
+val_check_interval=1.0
+log_every_n_steps=200
+flush_logs_every_n_steps=200
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/decoder/big"
+log_dir="/cluster/scratch/bartonp/lightning_logs/presentation"
 benchmark=True
 
 
 # Model hyperparameters
 model='avanet'
-backbone='adapted_resnet18'
+backbone='adapted_resnet34'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
 lr_scheduler='multistep'
-scheduler_steps="8000 14000"
-scheduler_gamma=0.2
+scheduler_steps="10"
+scheduler_gamma=0.25
 momentum=0.9
 weight_decay=0.0
 in_channels=3

@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="19_resnet18_certainty3"
+exp_name="19_myresnet34"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/year_comparison/resnet18_dspp/version_0/checkpoints/epoch=16.ckpt"
 resume_training=False
@@ -27,7 +27,7 @@ val_region_file="Val_area_2019.shp"
 val_gt_file="Methodenvergleich2019.shp"
 dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size=512
-aval_certainty=3
+aval_certainty=2
 bands="3 4"
 num_workers=2
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
@@ -44,28 +44,28 @@ gpus=2
 batch_size=4
 batch_augm=2
 accumulate_grad_batches=2
-max_epochs=20
-val_check_interval=0.5
-log_every_n_steps=100
-flush_logs_every_n_steps=100
+max_epochs=18
+val_check_interval=1.0
+log_every_n_steps=200
+flush_logs_every_n_steps=200
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/year_comparison"
+log_dir="/cluster/scratch/bartonp/lightning_logs/presentation"
 benchmark=True
 
 
 # Model hyperparameters
 model='avanet'
-backbone='adapted_resnet18'
+backbone='adapted_resnet34'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
 lr_scheduler='multistep'
-scheduler_steps="5000 14000"
-scheduler_gamma=0.2
+scheduler_steps="10"
+scheduler_gamma=0.25
 momentum=0.9
 weight_decay=0.0
-in_channels=5
+in_channels=3
 train_viz_interval=1000
 val_viz_interval=1
 val_viz_idx=4

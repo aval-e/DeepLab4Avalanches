@@ -8,7 +8,7 @@ resume_training=False
 # Dataset hyperparameters
 train_root_dir="/home/pf/pfstud/bartonp/slf_avalanches/2018"
 train_ava_file="avalanches0118_endversion.shp"
-train_region_file="Train_area_2018.shp"
+train_region_file="Val_area_2018.shp"
 val_root_dir="$train_root_dir"
 val_ava_file="$train_ava_file"
 val_region_file="Val_area_2018.shp"
@@ -38,7 +38,7 @@ log_dir="/scratch/bartonp/lightning_logs"
 
 # Model hyperparameters
 model='avanet'
-backbone='adapted_resnet'
+backbone='adapted_resnet18'
 decoder='deeplab'
 optimiser="adam"
 lr=5e-5
