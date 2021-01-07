@@ -93,7 +93,26 @@ def focal_loss(prob, target, alpha=0.5, gamma=2):
     return loss
 
 
+def per_aval_accuracy(predictions, targets, threshold=0.5):
+    """ Accuracy per avalanche"""
+    soft = []
+    hard = []
+    area = []
+    for i in range(predictions.shape[0]):
+        prediction = predictions[i, :, :, :]
+        target = targets[i, :, :, :]
+        for mask in target:
+            masked_pred = prediction[mask]
+            size = mask.sum()
+            soft.append(masked_pred.sum() / size)
+            hard.append(masked_pred[masked_pred >= threshold].sum() / size)
+            area.append(size * 2.25)  # multiply by 1.5^2 to get meters^2
+    return {'soft': soft, 'hard': hard, 'area': area}
+
+
 def create_loss_weight_matrix(batch_size, patch_size, distance, min_value=0.2):
+    """ Creates a matrix for weighting loss less near the patch edges. Linear interpolation is used from the patch edge
+        with min_value, to 'distance' pixels inward from which the value will be 1"""
     w = min_value * torch.ones([patch_size, patch_size])
     for i in range(1, distance+1):
         value = (i + (distance-i) * min_value) / distance

@@ -18,7 +18,7 @@ class AvalancheDatasetBase(Dataset):
     :param stds: list of standard deviations for each band in the optical imagery for standardisation
     """
 
-    def __init__(self, root_dir, aval_file, dem_path=None, tile_size=(256, 256), bands=None, means=None, stds=None):
+    def __init__(self, root_dir, aval_file, dem_path=None, tile_size=256, bands=None, means=None, stds=None):
         print('Creating Avalanche Dataset...')
         self.tile_size = tile_size
         self.bands = bands
