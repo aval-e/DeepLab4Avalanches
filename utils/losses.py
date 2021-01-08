@@ -93,21 +93,41 @@ def focal_loss(prob, target, alpha=0.5, gamma=2):
     return loss
 
 
-def per_aval_accuracy(predictions, targets, threshold=0.5):
-    """ Accuracy per avalanche"""
-    soft = []
-    hard = []
-    area = []
+def per_aval_accuracy(predictions, targets, detection_thresh=(0.3, 0.5, 0.7)):
+    """ Accuracy per avalanche with thresholded predictions"""
+    d = {'cover': []}
+    thresh_keys = []
+    for thresh in detection_thresh:
+        key = 'acc_' + str[thresh]
+        thresh_keys.append(key)
+        d[key] = []
+
     for i in range(predictions.shape[0]):
         prediction = predictions[i, :, :, :]
         target = targets[i, :, :, :]
         for mask in target:
-            masked_pred = prediction[mask]
+            acc = prediction[mask].sum() / mask.sum()
+            d['cover'].append(acc)
+            for i in range(len(detection_thresh)):
+                d[thresh_keys[i]].append(acc > detection_thresh[i])
+    return d
+
+
+def per_aval_info(y_hats, targets):
+    """ Some useful info and soft metrics from predicted probabilities"""
+    soft_recall = []
+    area = []
+    certainty = []
+    for i in range(y_hats.shape[0]):
+        y_hat = y_hats[i, :, :, :]
+        target = targets[i, :, :, :]
+        for mask in target:
+            masked_pred = y_hat[mask]
             size = mask.sum()
-            soft.append(masked_pred.sum() / size)
-            hard.append(masked_pred[masked_pred >= threshold].sum() / size)
+            soft_recall.append(masked_pred.sum() / size)
             area.append(size * 2.25)  # multiply by 1.5^2 to get meters^2
-    return {'soft': soft, 'hard': hard, 'area': area}
+            certainty.append(mask.max())
+    return {'soft_recall': soft_recall, 'area_m2': area, 'certainty': certainty}
 
 
 def create_loss_weight_matrix(batch_size, patch_size, distance, min_value=0.2):
@@ -120,6 +140,11 @@ def create_loss_weight_matrix(batch_size, patch_size, distance, min_value=0.2):
     w = w.expand(batch_size, 1, -1, -1)
     w.requires_grad = False
     return w
+
+
+def crop_to_center(tensor, border=50):
+    """ Takes a torch tensor of shape BxCxHxW and crops by border pixels in the spatial dimensions"""
+    return tensor[:, :, border:-border, border:-border]
 
 
 if __name__ == '__main__':

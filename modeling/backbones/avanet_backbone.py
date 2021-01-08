@@ -92,13 +92,6 @@ class AdaptedResnet(ResNet):
         del self.fc
         del self.avgpool
 
-        # self.conv1.stride = (1, 1)
-        # self.layer1[0].conv1.stride = (2, 2)
-        # self.layer1[0].downsample = nn.Sequential(
-        #         conv1x1(self.layer1[0].conv1.in_channels, self.layer1[0].conv1.out_channels * self.layer1[0].expansion, 2),
-        #         nn.BatchNorm2d(self.layer1[0].conv1.out_channels * self.layer1[0].expansion),
-        #     )
-
         self.stages = nn.ModuleList([
             nn.Identity(),
             nn.Sequential(self.conv1, self.bn1, self.relu),

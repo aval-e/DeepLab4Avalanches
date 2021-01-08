@@ -11,7 +11,7 @@ from modeling.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import LightningModule
 from torchvision.models.detection.mask_rcnn import maskrcnn_resnet50_fpn
 from utils.data_augmentation import center_crop_batch
-from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice, focal_loss
+from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice, crop_to_center
 from utils import viz_utils, data_utils
 from utils.utils import nanmean
 from argparse import ArgumentParser
@@ -126,11 +126,10 @@ class EasyExperiment(LightningModule):
         y_mask = data_utils.labels_to_mask(y)
 
         # crop to center
-        border = 50
-        y_hat_crop = y_hat[:, :, border:-border, border:-border]
-        y_crop = y[:, :, border:-border, border:-border]
-        pred_crop = pred[:, :, border:-border, border:-border]
-        y_mask_crop = y_mask[:, :, border:-border, border:-border]
+        y_hat_crop = crop_to_center(y_hat)
+        y_crop = crop_to_center(y)
+        pred_crop = crop_to_center(pred)
+        y_mask_crop = crop_to_center(y_mask)
 
         bce_loss = self.bce_loss(y_hat_crop, y_mask_crop)
         dice_score = soft_dice(y_mask_crop, y_hat_crop)
