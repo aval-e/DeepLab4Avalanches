@@ -93,7 +93,7 @@ def focal_loss(prob, target, alpha=0.5, gamma=2):
     return loss
 
 
-def per_aval_accuracy(predictions, targets, detection_thresh=(0.3, 0.5, 0.7)):
+def per_aval_accuracy(predictions, targets, detection_thresh=(0.5, 0.7, 0.8)):
     """ Accuracy per avalanche with thresholded predictions"""
     d = {'cover': []}
     thresh_keys = []
@@ -126,7 +126,7 @@ def per_aval_info(y_hats, targets):
             size = mask.sum()
             soft_recall.append(masked_pred.sum() / size)
             area.append(size * 2.25)  # multiply by 1.5^2 to get meters^2
-            certainty.append(mask.max())
+            certainty.append(mask.max().item())
     return {'soft_recall': soft_recall, 'area_m2': area, 'certainty': certainty}
 
 

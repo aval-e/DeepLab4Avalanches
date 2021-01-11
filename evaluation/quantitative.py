@@ -1,16 +1,12 @@
-import os
 import torch
+import pandas
+import numpy as np
+from tqdm import tqdm
 from torch.nn import BCELoss
-from argparse import ArgumentParser
-from pytorch_lightning import Trainer, seed_everything, Callback
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning import seed_everything
 from experiments.easy_experiment import EasyExperiment
-from datasets.davos_gt_dataset import DavosGtDataset
 from datasets.avalanche_dataset_points import AvalancheDatasetPointsEval
-from torch.utils.data import DataLoader, random_split, ConcatDataset
-from torchvision.transforms import ToTensor
-from utils.utils import str2bool
-from utils.viz_utils import viz_predictions, save_fig
+from torch.utils.data import DataLoader, ConcatDataset
 from utils.losses import crop_to_center, get_precision_recall_f1, soft_dice, per_aval_accuracy, per_aval_info
 from utils import data_utils
 
@@ -32,7 +28,7 @@ def load_test_set(hparams, year='both'):
                                               aval_file18,
                                               region_file18,
                                               dem_path=hparams.dem_dir,
-                                              tile_size=512,
+                                              tile_size=hparams.tile_size,
                                               bands=hparams.bands,
                                               means=hparams.means,
                                               stds=hparams.stds,
@@ -42,7 +38,7 @@ def load_test_set(hparams, year='both'):
                                                aval_file19,
                                                region19,
                                                dem_path=hparams.dem_dir,
-                                               tile_size=512,
+                                               tile_size=hparams.tile_size,
                                                bands=hparams.bands,
                                                means=hparams.means,
                                                stds=hparams.stds,
@@ -55,7 +51,7 @@ def load_test_set(hparams, year='both'):
     return test_set
 
 
-def calc_metrics(y_individual, y_hat, thresholds=(0.4, 0.5, 0.6)):
+def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.4, 0.5, 0.6)):
     y_individual = crop_to_center(y_individual)
     y_hat = crop_to_center(y_hat)
 
@@ -67,10 +63,9 @@ def calc_metrics(y_individual, y_hat, thresholds=(0.4, 0.5, 0.6)):
     aval_info = per_aval_info(y_hat, y_individual)
 
     # soft metrics
-    metrics = {}
-    metrics['bce'] = bce(y_hat, y_mask)
-    metrics['soft_dice'] = soft_dice(y_mask, y_hat)
-    metrics['soft_recall'] = aval_info['soft_recall']
+    soft_metrics['bce'].append(bce(y_hat, y_mask))
+    soft_metrics['soft_dice'].append(soft_dice(y_mask, y_hat))
+    soft_metrics['soft_recall'].append(aval_info['soft_recall'])
 
     # hard metrics
     for threshold in thresholds:
@@ -79,48 +74,105 @@ def calc_metrics(y_individual, y_hat, thresholds=(0.4, 0.5, 0.6)):
         _, _, f1_no_aval = get_precision_recall_f1(y_mask == 0, pred == 0)
         f1_avg = 0.5 * (f1_no_aval + f1)
 
-        metrics[str(threshold) + '_precision'] = precision
-        metrics[str(threshold) + '_recall'] = recall
-        metrics[str(threshold) + '_f1'] = f1
-        metrics[str(threshold) + '_f1_avg'] = f1_avg
+        hard_metrics[threshold]['precision'].append(precision)
+        hard_metrics[threshold]['recall'].append(recall)
+        hard_metrics[threshold]['f1'].append(f1)
+        hard_metrics[threshold]['f1_avg'].append(f1_avg)
 
         # per avalanche metrics
         accuracy = per_aval_accuracy(pred, y_individual)
         for key, val in accuracy.items():
-            metrics[str(threshold) + '_' + key] = val
+            hard_metrics[threshold][key].extend(val)
         add statistics
 
-    return metrics
 
-def save_metrics(file, metrics):
+    return soft_metrics, hard_metrics
+
+
+def create_empty_metrics(thresholds, hard_metric_names):
+    soft_metrics = {}
+    soft_metrics['bce'] = []
+    soft_metrics['soft_dice'] = []
+    soft_metrics['soft_recall'] = []
+
+    hard_metrics = {}
+    for threshold in thresholds:
+        thresh_m = {}
+        for m in hard_metric_names:
+            thresh_m[m] = []
+        hard_metrics[threshold] = thresh_m
+
+    return soft_metrics, hard_metrics
+
+
+def append_avg_metrics_to_dataframe(df, name, metrics):
+    soft, hard = metrics
+
+    avg_metrics = {}
+
+    detected = np.array(hard['0.5']['acc_0.7'])
+    areas = np.array(hard['0.5']['area_m2'])
+    certainties = np.array(hard['0.5']['certainty'])
+
+    # calc statistics
+    avg_metrics[('0.5', '0.7_detected_area')] = areas[detected].mean().item()
+    avg_metrics[('0.5', '0.7_undetected_area')] = areas[~detected].mean().item()
+    avg_metrics[('0.5', '0.7_acc_c1')] = detected[certainties == 1].mean().item()
+    avg_metrics[('0.5', '0.7_acc_c2')] = detected[certainties == 2].mean().item()
+    avg_metrics[('0.5', '0.7_acc_c3')] = detected[certainties == 3].mean().item()
+
+    # average metrics
+    for key, val in soft.items():
+        avg_metrics[(key, None)] = np.array(val).mean().item()
+    for thresh, hm in hard.items():
+        for key, val in hard.items():
+            avg_metrics[(thresh, key)] = np.array(val).mean().item()
+
+    df = df.loc[name, :] = avg_metrics
+    return df
 
 
 def main():
+    output_path = 'metrics'
 
-    checkpoints = {'name': path,
+    checkpoints = [{'Name': name, 'Year': 'both', 'path': path},
+                  ]
 
-                    }
+    seed_everything(42)
 
-    metrics file
+    thresholds = (0.4, 0.5, 0.6)
 
+    # create dataframe to store results
+    stats_names = ['0.7_detected_area', '0.7_undetected_area', '0.7_acc_c1', '0.7_acc_c2', '0.7_acc_c3']
+    hard_metric_names = ['precision', 'recall', 'F1', 'F1_avg', 'acc_0.5', 'acc_0.7', 'acc_0.8', 'cover_acc']
+    myColumns = pandas.MultiIndex.from_tuples([('BCE', None), ('soft_dice', None), ('soft_recall', None),
+                                   (thresholds[0], hard_metric_names), (thresholds[1], hard_metric_names.extend(stats_names)),
+                                   (thresholds[2], hard_metric_names)])
+    myIndex = pandas.Index(data=['Name', 'Year'])
+    df = pandas.DataFrame(columns=myColumns, index=myIndex)
     
     with torch.no_grad():
-        for name, ckpt_path in checkpoints.items():
-            model = load_model(ckpt_path)
+        for checkpoint in checkpoints:
+            model = load_model(checkpoint['path'])
 
-            dataset = load_test_set(model.hparams, year)
+            dataset = load_test_set(model.hparams, checkpoint['Year'])
             test_loader = DataLoader(dataset, batch_size=4, shuffle=False, num_workers=4,
                                      drop_last=False, pin_memory=True)
-            for batch in test_loader:
+
+            metrics = create_empty_metrics(thresholds, hard_metric_names)
+
+            for batch in tqdm(iter(test_loader), desc='Testing: ' + checkpoint['Name']):
                 x, y = batch
                 y_hat = model(x)
 
-                metrics = calc_metrics(y, y_hat)
-                append metrics
+                # Todo: Check if metrics need to be returned or if appending within function is enough
+                calc_metrics(*metrics, y, y_hat, thresholds)
 
-            dump metrics in csv file
+            df = append_avg_metrics_to_dataframe(df, checkpoint['Name'], metrics)
+            df.to_csv(output_path + '.csv')
 
-            methoden vergleich
+    # export results
+    df.to_excel(output_path)
 
 
 if __name__ == '__main__':
