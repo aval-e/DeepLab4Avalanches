@@ -1,4 +1,5 @@
 import torch
+import math
 
 
 def calc_pred_stats(gt, pred):
@@ -95,10 +96,10 @@ def focal_loss(prob, target, alpha=0.5, gamma=2):
 
 def per_aval_accuracy(predictions, targets, detection_thresh=(0.5, 0.7, 0.8)):
     """ Accuracy per avalanche with thresholded predictions"""
-    d = {'cover': []}
+    d = {'acc_cover': []}
     thresh_keys = []
     for thresh in detection_thresh:
-        key = 'acc_' + str[thresh]
+        key = 'acc_' + str(thresh)
         thresh_keys.append(key)
         d[key] = []
 
@@ -106,10 +107,11 @@ def per_aval_accuracy(predictions, targets, detection_thresh=(0.5, 0.7, 0.8)):
         prediction = predictions[i, :, :, :]
         target = targets[i, :, :, :]
         for mask in target:
-            acc = prediction[mask].sum() / mask.sum()
-            d['cover'].append(acc)
+            mask_sum = mask.sum().item()
+            acc = prediction[:, mask > 0].sum().item() / mask_sum if mask_sum else float('NaN')
+            d['acc_cover'].append(acc)
             for i in range(len(detection_thresh)):
-                d[thresh_keys[i]].append(acc > detection_thresh[i])
+                d[thresh_keys[i]].append(acc > detection_thresh[i] if not math.isnan(acc) else float('NaN'))
     return d
 
 
@@ -122,9 +124,9 @@ def per_aval_info(y_hats, targets):
         y_hat = y_hats[i, :, :, :]
         target = targets[i, :, :, :]
         for mask in target:
-            masked_pred = y_hat[mask]
-            size = mask.sum()
-            soft_recall.append(masked_pred.sum() / size)
+            masked_pred = y_hat[:, mask > 0]
+            size = (mask > 0).sum().item()
+            soft_recall.append(masked_pred.sum().item() / size if size else float('NaN'))
             area.append(size * 2.25)  # multiply by 1.5^2 to get meters^2
             certainty.append(mask.max().item())
     return {'soft_recall': soft_recall, 'area_m2': area, 'certainty': certainty}

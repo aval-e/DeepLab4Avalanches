@@ -1,3 +1,4 @@
+import os
 import torch
 import pandas
 import numpy as np
@@ -23,10 +24,11 @@ def load_model(checkpoint):
 
 
 def load_test_set(hparams, year='both'):
+    root_dir = '/home/pf/pfstud/bartonp/slf_avalanches/'
     if year == '18' or year =='both':
-        test_set = AvalancheDatasetPointsEval(root_dir18,
-                                              aval_file18,
-                                              region_file18,
+        test_set = AvalancheDatasetPointsEval(root_dir + '2018',
+                                              'avalanches0118_endversion.shp',
+                                              'Test_area_2018.shp',
                                               dem_path=hparams.dem_dir,
                                               tile_size=hparams.tile_size,
                                               bands=hparams.bands,
@@ -34,10 +36,10 @@ def load_test_set(hparams, year='both'):
                                               stds=hparams.stds,
                                         )
     if year == '19' or 'both':
-        test_set2 = AvalancheDatasetPointsEval(train_root_dir19,
-                                               aval_file19,
-                                               region19,
-                                               dem_path=hparams.dem_dir,
+        test_set2 = AvalancheDatasetPointsEval(root_dir + '2019',
+                                               'avalanches0119_endversion.shp',
+                                               'Test_area_2019.shp',
+                                               dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif',
                                                tile_size=hparams.tile_size,
                                                bands=hparams.bands,
                                                means=hparams.means,
@@ -56,16 +58,20 @@ def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.
     y_hat = crop_to_center(y_hat)
 
     # compress gt avalanches into one image with more certain avalanches on top
-    y, _ = y_individual.max(dim=1, keepdim=True)
-    y[y > 0] = y_individual[y > 0].min(dim=1, keepdim=True)
+    y = y_individual.clone()
+    y[y == 0] = 10
+    y, _ = y_individual.min(dim=1, keepdim=True)
+    y[y == 10] = 0
 
     y_mask = data_utils.labels_to_mask(y)  # binary mask ignoring avalanche certainty
     aval_info = per_aval_info(y_hat, y_individual)
 
     # soft metrics
-    soft_metrics['bce'].append(bce(y_hat, y_mask))
-    soft_metrics['soft_dice'].append(soft_dice(y_mask, y_hat))
-    soft_metrics['soft_recall'].append(aval_info['soft_recall'])
+    soft_metrics['bce'].append(bce(y_hat, y_mask).item())
+    soft_metrics['soft_dice'].append(soft_dice(y_mask, y_hat).item())
+    soft_metrics['soft_recall'].extend(aval_info['soft_recall'])
+    soft_metrics['area_m2'].extend(aval_info['area_m2'])
+    soft_metrics['certainty'].extend(aval_info['certainty'])
 
     # hard metrics
     for threshold in thresholds:
@@ -74,26 +80,27 @@ def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.
         _, _, f1_no_aval = get_precision_recall_f1(y_mask == 0, pred == 0)
         f1_avg = 0.5 * (f1_no_aval + f1)
 
-        hard_metrics[threshold]['precision'].append(precision)
-        hard_metrics[threshold]['recall'].append(recall)
-        hard_metrics[threshold]['f1'].append(f1)
-        hard_metrics[threshold]['f1_avg'].append(f1_avg)
+        # Todo: check metrics when no label - precision should not be 0
+        hard_metrics[threshold]['precision'].append(precision.item())
+        hard_metrics[threshold]['recall'].append(recall.item())
+        hard_metrics[threshold]['f1'].append(f1.item())
+        hard_metrics[threshold]['f1_avg'].append(f1_avg.item())
 
         # per avalanche metrics
         accuracy = per_aval_accuracy(pred, y_individual)
         for key, val in accuracy.items():
             hard_metrics[threshold][key].extend(val)
-        add statistics
-
 
     return soft_metrics, hard_metrics
 
 
-def create_empty_metrics(thresholds, hard_metric_names):
+def create_empty_metrics(thresholds, hard_metric_names, stat_names):
     soft_metrics = {}
     soft_metrics['bce'] = []
     soft_metrics['soft_dice'] = []
     soft_metrics['soft_recall'] = []
+    soft_metrics['area_m2'] = []
+    soft_metrics['certainty'] = []
 
     hard_metrics = {}
     for threshold in thresholds:
@@ -101,41 +108,51 @@ def create_empty_metrics(thresholds, hard_metric_names):
         for m in hard_metric_names:
             thresh_m[m] = []
         hard_metrics[threshold] = thresh_m
+    for m in stat_names:
+        hard_metrics[thresholds[1]][m] = []
 
     return soft_metrics, hard_metrics
 
 
-def append_avg_metrics_to_dataframe(df, name, metrics):
+def append_avg_metrics_to_dataframe(df, name, year, metrics):
     soft, hard = metrics
 
     avg_metrics = {}
 
-    detected = np.array(hard['0.5']['acc_0.7'])
-    areas = np.array(hard['0.5']['area_m2'])
-    certainties = np.array(hard['0.5']['certainty'])
+    detected = np.array(hard[0.5]['acc_0.7'])
+    areas = np.array(soft['area_m2'])
+    certainties = np.array(soft['certainty'])
 
     # calc statistics
-    avg_metrics[('0.5', '0.7_detected_area')] = areas[detected].mean().item()
-    avg_metrics[('0.5', '0.7_undetected_area')] = areas[~detected].mean().item()
-    avg_metrics[('0.5', '0.7_acc_c1')] = detected[certainties == 1].mean().item()
-    avg_metrics[('0.5', '0.7_acc_c2')] = detected[certainties == 2].mean().item()
-    avg_metrics[('0.5', '0.7_acc_c3')] = detected[certainties == 3].mean().item()
+    # df.append[(name, year), :] = np.nanmean(areas[detected == 1]).item()
+    avg_metrics[('0.5', '0.7_detected_area')] = np.nanmean(areas[detected == 1]).item()
+    avg_metrics[('0.5', '0.7_undetected_area')] = np.nanmean(areas[detected == 0]).item()
+    avg_metrics[('0.5', '0.7_acc_c1')] = np.nanmean(detected[certainties == 1]).item()
+    avg_metrics[('0.5', '0.7_acc_c2')] = np.nanmean(detected[certainties == 2]).item()
+    avg_metrics[('0.5', '0.7_acc_c3')] = np.nanmean(detected[certainties == 3]).item()
 
     # average metrics
     for key, val in soft.items():
-        avg_metrics[(key, None)] = np.array(val).mean().item()
+        avg_metrics[(key, None)] = np.nanmean(np.array(val)).item()
     for thresh, hm in hard.items():
-        for key, val in hard.items():
-            avg_metrics[(thresh, key)] = np.array(val).mean().item()
+        for key, val in hm.items():
+            avg_metrics[(thresh, key)] = np.nanmean(np.array(val)).item()
 
-    df = df.loc[name, :] = avg_metrics
+    quick_hack_name = name + '_' + year
+    df.loc[quick_hack_name, :] = avg_metrics
+
+    # avg_metrics[('Name', None)] = name
+    # avg_metrics[('Year', None)] = year
+    # df.append(avg_metrics, ignore_index=True)
     return df
 
 
 def main():
-    output_path = 'metrics'
+    output_path = '/scratch/bartonp/avamap/lightning_logs/eval/quantitative/'
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
-    checkpoints = [{'Name': name, 'Year': 'both', 'path': path},
+    checkpoints = [{'Name': '18_myresnet', 'Year': '19', 'path': '/scratch/bartonp/checkpoints/presentation/18_myresnet34/version_0/checkpoints/epoch=14.ckpt'},
                   ]
 
     seed_everything(42)
@@ -144,35 +161,46 @@ def main():
 
     # create dataframe to store results
     stats_names = ['0.7_detected_area', '0.7_undetected_area', '0.7_acc_c1', '0.7_acc_c2', '0.7_acc_c3']
-    hard_metric_names = ['precision', 'recall', 'F1', 'F1_avg', 'acc_0.5', 'acc_0.7', 'acc_0.8', 'cover_acc']
-    myColumns = pandas.MultiIndex.from_tuples([('BCE', None), ('soft_dice', None), ('soft_recall', None),
-                                   (thresholds[0], hard_metric_names), (thresholds[1], hard_metric_names.extend(stats_names)),
-                                   (thresholds[2], hard_metric_names)])
-    myIndex = pandas.Index(data=['Name', 'Year'])
+    hard_metric_names = ['precision', 'recall', 'f1', 'f1_avg', 'acc_0.5', 'acc_0.7', 'acc_0.8', 'acc_cover']
+    hard_metric_and_stat_names = hard_metric_names.copy()
+    hard_metric_and_stat_names.extend(stats_names)
+    index_tuples = [('BCE', None), ('soft_dice', None), ('soft_recall', None)]
+    index_tuples.extend([(thresholds[0], name) for name in hard_metric_names])
+    index_tuples.extend([(thresholds[1], name) for name in hard_metric_and_stat_names])
+    index_tuples.extend([(thresholds[2], name) for name in hard_metric_names])
+    myColumns = pandas.MultiIndex.from_tuples(index_tuples)
+    myIndex = pandas.Index(data=['Name'])
+    # myIndex = pandas.MultiIndex.from_tuples([('Name', 'Year')])
     df = pandas.DataFrame(columns=myColumns, index=myIndex)
-    
+    # index = df.index
+    # print(index)
+
     with torch.no_grad():
         for checkpoint in checkpoints:
             model = load_model(checkpoint['path'])
 
             dataset = load_test_set(model.hparams, checkpoint['Year'])
-            test_loader = DataLoader(dataset, batch_size=4, shuffle=False, num_workers=4,
+            test_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0,
                                      drop_last=False, pin_memory=True)
 
-            metrics = create_empty_metrics(thresholds, hard_metric_names)
+            metrics = create_empty_metrics(thresholds, hard_metric_names, stats_names)
 
-            for batch in tqdm(iter(test_loader), desc='Testing: ' + checkpoint['Name']):
+            for j, batch in enumerate(tqdm(iter(test_loader), desc='Testing: ' + checkpoint['Name'])):
+                if j > 10:
+                    break
                 x, y = batch
+                x = x.cuda()
+                y = y.cuda()
                 y_hat = model(x)
 
                 # Todo: Check if metrics need to be returned or if appending within function is enough
                 calc_metrics(*metrics, y, y_hat, thresholds)
 
-            df = append_avg_metrics_to_dataframe(df, checkpoint['Name'], metrics)
-            df.to_csv(output_path + '.csv')
+            df = append_avg_metrics_to_dataframe(df, checkpoint['Name'], checkpoint['Year'], metrics)
+            df.to_csv(output_path + 'metrics.csv')
 
     # export results
-    df.to_excel(output_path)
+    df.to_excel(output_path + 'metrics.xlsx')
 
 
 if __name__ == '__main__':
