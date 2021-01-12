@@ -28,14 +28,14 @@ def load_test_set(hparams, year='both'):
     if year == '18' or year =='both':
         test_set = AvalancheDatasetPointsEval(root_dir + '2018',
                                               'avalanches0118_endversion.shp',
-                                              'Test_area_2018.shp',
+                                              'Val_area_2018.shp',
                                               dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif',
                                               tile_size=hparams.tile_size,
                                               bands=hparams.bands,
                                               means=hparams.means,
                                               stds=hparams.stds,
                                         )
-    if year == '19' or 'both':
+    if year == '19' or year == 'both':
         test_set2 = AvalancheDatasetPointsEval(root_dir + '2019',
                                                'avalanches0119_endversion.shp',
                                                'Test_area_2019.shp',
@@ -60,7 +60,7 @@ def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.
     # compress gt avalanches into one image with more certain avalanches on top
     y = y_individual.clone()
     y[y == 0] = 10
-    y, _ = y_individual.min(dim=1, keepdim=True)
+    y, _ = y.min(dim=1, keepdim=True)
     y[y == 10] = 0
 
     y_mask = data_utils.labels_to_mask(y)  # binary mask ignoring avalanche certainty
@@ -173,20 +173,19 @@ def main():
             model = load_model(checkpoint['path'])
 
             dataset = load_test_set(model.hparams, checkpoint['Year'])
-            test_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0,
+            test_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=4,
                                      drop_last=False, pin_memory=True)
 
             metrics = create_empty_metrics(thresholds, hard_metric_names)
 
             for j, batch in enumerate(tqdm(iter(test_loader), desc='Testing: ' + checkpoint['Name'])):
-                if j > 5:
-                    break
+                # if j > 50:
+                #     break
                 x, y = batch
                 x = x.cuda()
                 y = y.cuda()
                 y_hat = model(x)
 
-                # Todo: Check if metrics need to be returned or if appending within function is enough
                 calc_metrics(*metrics, y, y_hat, thresholds)
 
             df = append_avg_metrics_to_dataframe(df, checkpoint['Name'], checkpoint['Year'], metrics, myColumns)

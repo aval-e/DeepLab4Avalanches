@@ -107,7 +107,7 @@ def per_aval_accuracy(predictions, targets, detection_thresh=(0.5, 0.7, 0.8)):
         prediction = predictions[i, :, :, :]
         target = targets[i, :, :, :]
         for mask in target:
-            mask_sum = mask.sum().item()
+            mask_sum = (mask > 0).sum().item()
             acc = prediction[:, mask > 0].sum().item() / mask_sum if mask_sum else float('NaN')
             d['acc_cover'].append(acc)
             for i in range(len(detection_thresh)):
