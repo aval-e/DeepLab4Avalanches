@@ -147,7 +147,7 @@ def main():
 
     checkpoint_folder = '/cluster/scratch/bartonp/lightning_logs/presentation/'
     checkpoints = [{'Name': 'both_myresnet18', 'Year': 'both',
-                    'path': checkpoint_folder + '34_myresnet18/version_0/checkpoints/epoch=16.ckpt'},
+                    'path': checkpoint_folder + 'both_myresnet18/version_0/checkpoints/epoch=16.ckpt'},
                    {'Name': 'both_deeplabv3+_resnet18', 'Year': 'both',
                     'path': checkpoint_folder + 'both_deeplabv3+_resnet18/version_0/checkpoints/epoch=16.ckpt'},
                    {'Name': 'both_deeplabv3+_resnet50', 'Year': 'both',
