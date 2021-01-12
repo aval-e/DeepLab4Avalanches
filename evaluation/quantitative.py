@@ -29,7 +29,7 @@ def load_test_set(hparams, year='both'):
         test_set = AvalancheDatasetPointsEval(root_dir + '2018',
                                               'avalanches0118_endversion.shp',
                                               'Test_area_2018.shp',
-                                              dem_path=hparams.dem_dir,
+                                              dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif',
                                               tile_size=hparams.tile_size,
                                               bands=hparams.bands,
                                               means=hparams.means,
@@ -94,7 +94,7 @@ def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.
     return soft_metrics, hard_metrics
 
 
-def create_empty_metrics(thresholds, hard_metric_names, stat_names):
+def create_empty_metrics(thresholds, hard_metric_names):
     soft_metrics = {}
     soft_metrics['bce'] = []
     soft_metrics['soft_dice'] = []
@@ -108,13 +108,11 @@ def create_empty_metrics(thresholds, hard_metric_names, stat_names):
         for m in hard_metric_names:
             thresh_m[m] = []
         hard_metrics[threshold] = thresh_m
-    for m in stat_names:
-        hard_metrics[thresholds[1]][m] = []
 
     return soft_metrics, hard_metrics
 
 
-def append_avg_metrics_to_dataframe(df, name, year, metrics):
+def append_avg_metrics_to_dataframe(df, name, year, metrics, columns):
     soft, hard = metrics
 
     avg_metrics = {}
@@ -124,26 +122,21 @@ def append_avg_metrics_to_dataframe(df, name, year, metrics):
     certainties = np.array(soft['certainty'])
 
     # calc statistics
-    # df.append[(name, year), :] = np.nanmean(areas[detected == 1]).item()
-    avg_metrics[('0.5', '0.7_detected_area')] = np.nanmean(areas[detected == 1]).item()
-    avg_metrics[('0.5', '0.7_undetected_area')] = np.nanmean(areas[detected == 0]).item()
-    avg_metrics[('0.5', '0.7_acc_c1')] = np.nanmean(detected[certainties == 1]).item()
-    avg_metrics[('0.5', '0.7_acc_c2')] = np.nanmean(detected[certainties == 2]).item()
-    avg_metrics[('0.5', '0.7_acc_c3')] = np.nanmean(detected[certainties == 3]).item()
+    avg_metrics[(0.5, '0.7_detected_area')] = np.nanmean(areas[detected == 1]).item()
+    avg_metrics[(0.5, '0.7_undetected_area')] = np.nanmean(areas[detected == 0]).item()
+    avg_metrics[(0.5, '0.7_acc_c1')] = np.nanmean(detected[certainties == 1]).item()
+    avg_metrics[(0.5, '0.7_acc_c2')] = np.nanmean(detected[certainties == 2]).item()
+    avg_metrics[(0.5, '0.7_acc_c3')] = np.nanmean(detected[certainties == 3]).item()
 
     # average metrics
     for key, val in soft.items():
-        avg_metrics[(key, None)] = np.nanmean(np.array(val)).item()
+        avg_metrics[(0, key)] = np.nanmean(np.array(val)).item()
     for thresh, hm in hard.items():
         for key, val in hm.items():
             avg_metrics[(thresh, key)] = np.nanmean(np.array(val)).item()
 
-    quick_hack_name = name + '_' + year
-    df.loc[quick_hack_name, :] = avg_metrics
-
-    # avg_metrics[('Name', None)] = name
-    # avg_metrics[('Year', None)] = year
-    # df.append(avg_metrics, ignore_index=True)
+    s = pandas.Series(data=avg_metrics, index=columns, name=name)
+    df.loc[(name, year), :] = s
     return df
 
 
@@ -152,7 +145,10 @@ def main():
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    checkpoints = [{'Name': '18_myresnet', 'Year': '19', 'path': '/scratch/bartonp/checkpoints/presentation/18_myresnet34/version_0/checkpoints/epoch=14.ckpt'},
+    checkpoints = [{'Name': '18_myresnet', 'Year': '18',
+                    'path': '/scratch/bartonp/checkpoints/presentation/18_myresnet34/version_0/checkpoints/epoch=14.ckpt'},
+                   {'Name': '18_deeplabv3+', 'Year': '18',
+                    'path': '/scratch/bartonp/checkpoints/presentation/18_deeplabv3+/version_0/checkpoints/epoch=14.ckpt'},
                   ]
 
     seed_everything(42)
@@ -164,16 +160,13 @@ def main():
     hard_metric_names = ['precision', 'recall', 'f1', 'f1_avg', 'acc_0.5', 'acc_0.7', 'acc_0.8', 'acc_cover']
     hard_metric_and_stat_names = hard_metric_names.copy()
     hard_metric_and_stat_names.extend(stats_names)
-    index_tuples = [('BCE', None), ('soft_dice', None), ('soft_recall', None)]
-    index_tuples.extend([(thresholds[0], name) for name in hard_metric_names])
-    index_tuples.extend([(thresholds[1], name) for name in hard_metric_and_stat_names])
-    index_tuples.extend([(thresholds[2], name) for name in hard_metric_names])
+    index_tuples = [(0, 'bce'), (0, 'soft_dice'), (0, 'soft_recall')]
+    for thresh in thresholds:
+        index_tuples.extend([(thresh, name) for name in hard_metric_names])
+    index_tuples.extend([(thresholds[1], name) for name in stats_names])
     myColumns = pandas.MultiIndex.from_tuples(index_tuples)
-    myIndex = pandas.Index(data=['Name'])
-    # myIndex = pandas.MultiIndex.from_tuples([('Name', 'Year')])
+    myIndex = pandas.MultiIndex.from_tuples([('Name', 'Year')])
     df = pandas.DataFrame(columns=myColumns, index=myIndex)
-    # index = df.index
-    # print(index)
 
     with torch.no_grad():
         for checkpoint in checkpoints:
@@ -183,10 +176,10 @@ def main():
             test_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0,
                                      drop_last=False, pin_memory=True)
 
-            metrics = create_empty_metrics(thresholds, hard_metric_names, stats_names)
+            metrics = create_empty_metrics(thresholds, hard_metric_names)
 
             for j, batch in enumerate(tqdm(iter(test_loader), desc='Testing: ' + checkpoint['Name'])):
-                if j > 10:
+                if j > 5:
                     break
                 x, y = batch
                 x = x.cuda()
@@ -196,7 +189,7 @@ def main():
                 # Todo: Check if metrics need to be returned or if appending within function is enough
                 calc_metrics(*metrics, y, y_hat, thresholds)
 
-            df = append_avg_metrics_to_dataframe(df, checkpoint['Name'], checkpoint['Year'], metrics)
+            df = append_avg_metrics_to_dataframe(df, checkpoint['Name'], checkpoint['Year'], metrics, myColumns)
             df.to_csv(output_path + 'metrics.csv')
 
     # export results
