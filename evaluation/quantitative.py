@@ -141,17 +141,23 @@ def append_avg_metrics_to_dataframe(df, name, year, metrics, columns):
 
 
 def main():
-    output_path = '/cluster/scratch/bartonp/lightning_logs/metrics/resnets/'
+    output_path = '/cluster/scratch/bartonp/lightning_logs/metrics/ablation/'
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    checkpoint_folder = '/cluster/scratch/bartonp/lightning_logs/presentation/'
-    checkpoints = [{'Name': 'both_myresnet18', 'Year': 'both',
-                    'path': checkpoint_folder + 'both_myresnet18/version_0/checkpoints/epoch=16.ckpt'},
-                   {'Name': 'both_deeplabv3+_resnet18', 'Year': 'both',
-                    'path': checkpoint_folder + 'both_deeplabv3+_resnet18/version_0/checkpoints/epoch=16.ckpt'},
-                   {'Name': 'both_deeplabv3+_resnet50', 'Year': 'both',
-                    'path': checkpoint_folder + 'both_deeplabv3+_resnet50/version_0/checkpoints/epoch=16.ckpt'},
+    checkpoint_folder = '/cluster/scratch/bartonp/lightning_logs/presentation/ablation'
+    checkpoints = [{'Name': 'both_deeplabv3+_no_dem', 'Year': 'both',
+                    'path': checkpoint_folder + 'both_deeplabv3+_no_dem/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': 'both_deeplabv3+_4ch', 'Year': 'both',
+                    'path': checkpoint_folder + 'both_deeplabv3+_4ch/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': 'both_myresnet18_deeplab_decoder', 'Year': 'both',
+                    'path': checkpoint_folder + 'both_myresnet18_deeplab_decoder/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': 'both_myresnet18_nodeform_decoder', 'Year': 'both',
+                    'path': checkpoint_folder + 'both_myresnet18_nodeform_decoder/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': 'both_myresnet18_nodeform_backbone', 'Year': 'both',
+                    'path': checkpoint_folder + 'both_myresnet18_nodeform_backbone/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': 'both_myresnet34_certainty3', 'Year': 'both',
+                    'path': checkpoint_folder + 'both_myresnet34_certainty3/version_0/checkpoints/epoch\=15.ckpt'},
                   ]
 
     seed_everything(42)
