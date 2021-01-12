@@ -24,12 +24,12 @@ def load_model(checkpoint):
 
 
 def load_test_set(hparams, year='both'):
-    root_dir = '/home/pf/pfstud/bartonp/slf_avalanches/'
+    root_dir = '/cluster/scratch/bartonp/slf_avalanches/'
     if year == '18' or year =='both':
         test_set = AvalancheDatasetPointsEval(root_dir + '2018',
                                               'avalanches0118_endversion.shp',
-                                              'Val_area_2018.shp',
-                                              dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif',
+                                              'Test_area_2018.shp',
+                                              dem_path=hparams.dem_path,
                                               tile_size=hparams.tile_size,
                                               bands=hparams.bands,
                                               means=hparams.means,
@@ -39,7 +39,7 @@ def load_test_set(hparams, year='both'):
         test_set2 = AvalancheDatasetPointsEval(root_dir + '2019',
                                                'avalanches0119_endversion.shp',
                                                'Test_area_2019.shp',
-                                               dem_path='/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056.tif',
+                                               dem_path=hparams.dem_path,
                                                tile_size=hparams.tile_size,
                                                bands=hparams.bands,
                                                means=hparams.means,
@@ -141,14 +141,31 @@ def append_avg_metrics_to_dataframe(df, name, year, metrics, columns):
 
 
 def main():
-    output_path = '/scratch/bartonp/avamap/lightning_logs/eval/quantitative/'
+    output_path = '/cluster/scratch/bartonp/lightning_logs/metrics/generalisation/'
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    checkpoints = [{'Name': '18_myresnet', 'Year': '18',
-                    'path': '/scratch/bartonp/checkpoints/presentation/18_myresnet34/version_0/checkpoints/epoch=14.ckpt'},
-                   {'Name': '18_deeplabv3+', 'Year': '18',
-                    'path': '/scratch/bartonp/checkpoints/presentation/18_deeplabv3+/version_0/checkpoints/epoch=14.ckpt'},
+    checkpoint_folder = '/cluster/scratch/bartonp/lightning_logs/presentation/'
+    checkpoints = [{'Name': '18_myresnet34', 'Year': '19',
+                    'path': checkpoint_folder + '18_myresnet34/version_0/checkpoints/epoch=14.ckpt'},
+                   {'Name': 'both_myresnet34', 'Year': '19',
+                    'path': checkpoint_folder + 'both_myresnet34/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': '18_deeplabv3+', 'Year': '19',
+                    'path': checkpoint_folder + '18_deeplabv3+/version_0/checkpoints/epoch=14.ckpt'},
+                   {'Name': 'both_deeplabv3+', 'Year': '19',
+                    'path': checkpoint_folder + 'both_deeplabv3+/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': '19_myresnet34', 'Year': '18',
+                    'path': checkpoint_folder + '19_myresnet34/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': 'both_myresnet34', 'Year': '18',
+                    'path': checkpoint_folder + 'both_myresnet34/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': '19_deeplabv3+', 'Year': '18',
+                    'path': checkpoint_folder + '19_deeplabv3+/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': 'both_deeplabv3+', 'Year': '18',
+                    'path': checkpoint_folder + 'both_deeplabv3+/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': 'both_myresnet34', 'Year': 'both',
+                    'path': checkpoint_folder + 'both_myresnet34/version_0/checkpoints/epoch=16.ckpt'},
+                   {'Name': 'both_deeplabv3+', 'Year': 'both',
+                    'path': checkpoint_folder + 'both_deeplabv3+/version_0/checkpoints/epoch=16.ckpt'},
                   ]
 
     seed_everything(42)
@@ -189,7 +206,9 @@ def main():
                 calc_metrics(*metrics, y, y_hat, thresholds)
 
             df = append_avg_metrics_to_dataframe(df, checkpoint['Name'], checkpoint['Year'], metrics, myColumns)
-            df.to_csv(output_path + 'metrics.csv')
+
+            # save backup in case an error occours later on
+            df.to_excel(output_path + 'metrics_backup.xlsx')
 
     # export results
     df.to_excel(output_path + 'metrics.xlsx')
