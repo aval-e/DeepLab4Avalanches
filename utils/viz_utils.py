@@ -142,7 +142,7 @@ def overlay_avalanches_by_certainty(image, aval_image):
         return i.clamp(0, 1)
 
 
-def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None):
+def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None, transpose=False):
     """ Visualise predictions during training or for qualitative evaluation
 
     :param x: input satellite image and may include dem
@@ -169,10 +169,11 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None):
         if pred is not None:
             pred = numpy_from_torch(pred)
 
-        fig, axs = plt.subplots(3 if pred is None else 4, x.shape[0], sharex=True, sharey=True, squeeze=False,
+        shape = (3 if pred is None else 4, x.shape[0])
+        fig, axs = plt.subplots(shape[0], shape[1], sharex=True, sharey=True, squeeze=False,
                                 gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, facecolor='black')
         j = 2
-        for i in range(x.shape[0]):
+        for i in range(shape[1]):
             axs[0, i].imshow(x_only[i, :, :, :])
             axs[1, i].imshow(y_over[i, :, :, :])
             axs[2, i].imshow(x_only[i, :, :, :])
@@ -187,6 +188,14 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None):
                                   alpha=0.5)
                 axs[0, i].set_title('Gt status: ' + STATUS_2_STR[gt[i]])
 
+        if transpose:
+            fig2, axs2 = plt.subplots(shape[1], shape[0], sharex=True, sharey=True, squeeze=False,
+                                    gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, facecolor='black')
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    axs2[j, i] = axs[i, j]
+            fig, axs = fig2, axs2
+
         # make figure aspect ratio fit content
         if not isinstance(fig_size, (list, tuple)):
             s = 1 if fig_size is None else fig_size
@@ -194,6 +203,9 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None):
             fig_size = (s * fig_size[0], s * fig_size[1])
             if gt is not None:
                 fig_size[1] += 0.5
+
+            if transpose:
+                fig_size = [fig_size[1], fig_size[0]]
 
         for ax in axs.ravel():
             ax.set_axis_off()
