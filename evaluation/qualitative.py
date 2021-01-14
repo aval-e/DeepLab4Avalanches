@@ -1,77 +1,98 @@
 import os
-from argparse import ArgumentParser
+import torch
 from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
-from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor
+from torch.utils.data import DataLoader, ConcatDataset
 from utils.viz_utils import viz_predictions, save_fig
+from utils.losses import crop_to_center
+
+save_dir = '/scratch/bartonp/images/presentation'
+
+checkpoint_dir = '/home/pf/pfstud/bartonp/checkpoints/'
+checkpoints = [checkpoint_dir + 'both_deeplabv3+/version_0/checkpoints/epoch=16.ckpt',
+               checkpoint_dir + 'both_myresnet34/version_0/checkpoints/epoch=16.ckpt'
+               ]
+
+dem_dir = '/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif'
+
+def load_test_set(hparams, year='both'):
+    root_dir = '/home/pf/pfstud/bartonp/slf_avalanches/'
+    if year == '18' or year == 'both':
+        test_set = AvalancheDatasetPoints(root_dir + '2018',
+                                          'avalanches0118_endversion.shp',
+                                          'Test_area_2018.shp',
+                                          dem_path=dem_dir,
+                                          random=False,
+                                          tile_size=hparams.tile_size,
+                                          bands=hparams.bands,
+                                          certainty=None,
+                                          means=hparams.means,
+                                          stds=hparams.stds,
+                                          )
+    if year == '19' or year == 'both':
+        test_set2 = AvalancheDatasetPoints(root_dir + '2019',
+                                           'avalanches0119_endversion.shp',
+                                           'Test_area_2019.shp',
+                                           dem_path=dem_dir,
+                                           random=False,
+                                           tile_size=hparams.tile_size,
+                                           bands=hparams.bands,
+                                           certainty=None,
+                                           means=hparams.means,
+                                           stds=hparams.stds,
+                                           )
+    if year == '19':
+        test_set = test_set2
+    elif year == 'both':
+        test_set = ConcatDataset([test_set, test_set2])
+
+    return test_set
 
 
-def main(hparams):
-    if not os.path.exists(hparams.save_dir):
-        os.makedirs(hparams.save_dir)
+def main():
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
-    model = EasyExperiment.load_from_checkpoint(hparams.checkpoint)
-    model.eval()
+    models = []
+    for checkpoint in checkpoints:
+        model = EasyExperiment.load_from_checkpoint(checkpoint)
+        model.eval()
+        model.freeze()
+        model.cuda()
+        models.append(model)
 
-    print('Preparing dataset...')
-    val_set = AvalancheDatasetPoints(hparams.val_root_dir,
-                                     hparams.val_ava_file,
-                                     hparams.val_region_file,
-                                     dem_path=hparams.dem_dir,
-                                     random=False,
-                                     tile_size=hparams.tile_size,
-                                     bands=hparams.bands,
-                                     certainty=None,
-                                     means=hparams.means,
-                                     stds=hparams.stds,
-                                     )
+    test_set = load_test_set(models[0].hparams, year='both')
 
-    val_loader = DataLoader(val_set, batch_size=1, shuffle=True, num_workers=hparams.num_workers,
+    val_loader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=6,
                             drop_last=False, pin_memory=True)
 
     print('Starting loop')
     for batch in iter(val_loader):
         x, y = batch
-        y_hat = model(x)
+        x = x.cuda()
+        y = y.cuda()
 
-        fig = viz_predictions(x, y, y_hat, dem=val_set.dem)
+        y_hat = []
+        for model in models:
+            y_hat.append(model(x))
+        x = torch.cat(len(y_hat) * [x], dim=0)
+        y = torch.cat(len(y_hat) * [y], dim=0)
+        y_hat = torch.cat(y_hat, dim=0)
+
+        # x = crop_to_center(x)
+        # y = crop_to_center(y)
+        # y_hat = crop_to_center(y_hat)
+
+        fig = viz_predictions(x, y, y_hat, dem=models[0].hparams.dem_dir, fig_size=4)
         fig.show()
 
         name = input("Enter name to save under or press enter to skip:\n")
         if name:
             print('saving...')
-            save_fig(fig, hparams.save_dir, name)
+            save_fig(fig, save_dir, name)
         else:
             print('skipping...')
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description='train avalanche mapping network')
-
-    # checkpoint path
-    parser.add_argument('checkpoint', type=str, help='Path to checkpoint to be loaded')
-    parser.add_argument('--save_dir', type=str, help='directory under which to save figures')
-
-    # Dataset Args
-    parser = AvalancheDatasetPoints.add_argparse_args([parser])
-
-    # Dataset paths
-    parser.add_argument('--train_root_dir', type=str, default='/home/patrick/ecovision/data/2018',
-                        help='root directory of the training set')
-    parser.add_argument('--train_ava_file', type=str, default='avalanches0118_endversion.shp',
-                        help='File name of avalanche shapefile in root directory of training set')
-    parser.add_argument('--train_region_file', type=str, default='Region_Selection.shp',
-                        help='File name of shapefile in root directory defining training area')
-    parser.add_argument('--val_root_dir', type=str, default='/home/patrick/ecovision/data/2018',
-                        help='root directory of the validation set')
-    parser.add_argument('--val_ava_file', type=str, default='avalanches0118_endversion.shp',
-                        help='File name of avalanche shapefile in root directory of training set')
-    parser.add_argument('--val_region_file', type=str, default='Region_Selection.shp',
-                        help='File name of shapefile in root directory defining validation area')
-    parser.add_argument('--dem_dir', type=str, default=None,
-                        help='directory of the DEM within root_dir')
-
-    hparams = parser.parse_args()
-
-    main(hparams)
+    main()
