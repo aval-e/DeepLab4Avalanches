@@ -82,8 +82,10 @@ def main():
         # x = crop_to_center(x)
         # y = crop_to_center(y)
         # y_hat = crop_to_center(y_hat)
+        
+        pred = (y_hat + 0.1).round()
 
-        fig = viz_predictions(x, y, y_hat, dem=models[0].hparams.dem_dir, fig_size=4, transpose=True)
+        fig = viz_predictions(x, y, y_hat, pred, dem=models[0].hparams.dem_dir, fig_size=4, transpose=True)
         fig.show()
 
         name = input("Enter name to save under or press enter to skip:\n")

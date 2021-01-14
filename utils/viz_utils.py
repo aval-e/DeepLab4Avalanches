@@ -179,7 +179,7 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None, tr
             axs = axs.transpose()
 
         j = 2
-        for i in range(shape[1]):
+        for i in range(shape[0] if transpose else shape[1]):
             axs[0, i].imshow(x_only[i, :, :, :])
             axs[1, i].imshow(y_over[i, :, :, :])
             axs[2, i].imshow(x_only[i, :, :, :])
