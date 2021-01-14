@@ -170,8 +170,14 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None, tr
             pred = numpy_from_torch(pred)
 
         shape = (3 if pred is None else 4, x.shape[0])
+        if transpose:
+            shape = (shape[1], shape[0])
         fig, axs = plt.subplots(shape[0], shape[1], sharex=True, sharey=True, squeeze=False,
                                 gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, facecolor='black')
+
+        if transpose:
+            axs = axs.transpose()
+
         j = 2
         for i in range(shape[1]):
             axs[0, i].imshow(x_only[i, :, :, :])
@@ -187,14 +193,6 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None, tr
                 axs[0, i].scatter(x.shape[1] / 2, x.shape[2] / 2, c=STATUS_COLORS[gt[i]], s=20 ** 2, marker=(5, 0),
                                   alpha=0.5)
                 axs[0, i].set_title('Gt status: ' + STATUS_2_STR[gt[i]])
-
-        if transpose:
-            fig2, axs2 = plt.subplots(shape[1], shape[0], sharex=True, sharey=True, squeeze=False,
-                                    gridspec_kw={'wspace': 0.01, 'hspace': 0.01}, facecolor='black')
-            for i in range(shape[0]):
-                for j in range(shape[1]):
-                    axs2[j, i] = axs[i, j]
-            fig, axs = fig2, axs2
 
         # make figure aspect ratio fit content
         if not isinstance(fig_size, (list, tuple)):
