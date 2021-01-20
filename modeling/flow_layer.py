@@ -12,8 +12,9 @@ import time
 class FlowLayer(nn.Module):
     """ Layer which implements flow propagation along a gradient field in both directions"""
 
-    def __init__(self, inplanes, outplanes, pixels_per_iter=4):
+    def __init__(self, inplanes, outplanes, iterations=10, pixels_per_iter=4):
         super().__init__()
+        self.iters = iterations
         self.pixels_per_iter = pixels_per_iter
         self.avgdown = nn.AvgPool2d(pixels_per_iter)
         self.maxdown = nn.MaxPool2d(pixels_per_iter)
@@ -23,7 +24,6 @@ class FlowLayer(nn.Module):
         self.conv1 = conv1x1(inplanes, outplanes)
         self.conv2 = conv1x1(inplanes, outplanes)
         self.sigmoid = nn.Sigmoid()
-        self.bn2 = nn.BatchNorm2d(2 * outplanes)
         self.merge = SeparableConv2d(2 * outplanes, outplanes, 3, padding=1)
 
     def forward(self, x, grads):
@@ -31,13 +31,12 @@ class FlowLayer(nn.Module):
         m1 = self.conv1(x)
         m2 = self.conv2(x)
 
-        # Only propagate features a maximum of 3/4 of the image size since more would be overkill
         m1 = self.maxdown(m1)  # keep avalanche features even if they are small
         m2 = self.maxdown(m2)
         grads = self.avgdown(grads)
 
-        iters = (3 * x.shape[2]) // (4 * 1)
-        grads = 1.5 * grads / iters
+        # get grads in absolute terms such that results remain independant of input size
+        grads = grads / m1.shape[2]
         grads = grads.permute(0, 2, 3, 1).contiguous()
 
         # compute absolute sample points from relativ offsets (grads)
@@ -49,14 +48,13 @@ class FlowLayer(nn.Module):
         m2 = self.sigmoid(m2)
         m1_sum = m1
         m2_sum = m2
-        for _ in range(iters):
+        for _ in range(self.iters):
             m1 = nn.functional.grid_sample(m1, grid1, align_corners=True)
             m2 = nn.functional.grid_sample(m2, grid2, align_corners=True)
             m1_sum = m1_sum + m1
             m2_sum = m2_sum + m2
         x = torch.cat([m1_sum, m2_sum], dim=1)
-        x = x / iters  # ensure the same statistics independent of no. iterations and input size
-        x = self.bn2(x)
+        x = x / self.iters  # ensure the same statistics independent of no. iterations
         x = self.merge(x)
         x = self.up(x)
         return x

@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="19_myresnet18_weighted_bce"
+exp_name="19_myresnet18_flowlayers"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/year_comparison/resnet18_dspp/version_0/checkpoints/epoch=16.ckpt"
 resume_training=False
@@ -38,7 +38,7 @@ hflip_p=0.5
 rand_rotation=180
 
 # Training hyperparameters
-loss='weighted_bce'
+loss='bce'
 seed=42
 deterministic=False
 gpus=2
@@ -80,7 +80,7 @@ avanet_grad_attention=False
 
 decoder_out_ch=512
 decoder_dspf_ch="64 128 256"
-decoder_rates="4 8 12 16"
+decoder_rates="4 8 12"
 decoder_deformable=True
 
 python -m trainer.train \

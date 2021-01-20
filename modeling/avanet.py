@@ -199,15 +199,15 @@ class AvanetDecoderNew(nn.Module):
 
         if deformable:
             self.dspfs = nn.ModuleList([
-                DSPPDeform(in_channels[-3], dspf_ch[0], grad_feats, dil_rates, pixels_per_iter),
-                DSPPDeform(in_channels[-2], dspf_ch[1], grad_feats, dil_rates, pixels_per_iter),
-                DSPPDeform(in_channels[-1], dspf_ch[2], grad_feats, dil_rates, pixels_per_iter),
+                DSPFDeform(in_channels[-3], dspf_ch[0], grad_feats, dil_rates, pixels_per_iter),
+                DSPFDeform(in_channels[-2], dspf_ch[1], grad_feats, dil_rates, pixels_per_iter),
+                DSPFDeform(in_channels[-1], dspf_ch[2], grad_feats, dil_rates, pixels_per_iter),
             ])
         else:
             self.dspfs = nn.ModuleList([
-                DSPP(in_channels[-3], dspf_ch[0], dil_rates, pixels_per_iter),
-                DSPP(in_channels[-2], dspf_ch[1], dil_rates, pixels_per_iter),
-                DSPP(in_channels[-1], dspf_ch[2], dil_rates, pixels_per_iter),
+                DSPF(in_channels[-3], dspf_ch[0], dil_rates, pixels_per_iter),
+                DSPF(in_channels[-2], dspf_ch[1], dil_rates, pixels_per_iter),
+                DSPF(in_channels[-1], dspf_ch[2], dil_rates, pixels_per_iter),
             ])
 
         skip_ch = 48

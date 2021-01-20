@@ -54,6 +54,8 @@ avanet_deformable=True
 avanet_px_per_iter=4
 avanet_grad_attention=False
 
+decoder_rates="4 8 12"
+
 python -m trainer.train \
 --exp_name $exp_name \
 --date "$(date +"%d.%m.%y")" \
@@ -99,6 +101,7 @@ python -m trainer.train \
 --avanet_deformable $avanet_deformable \
 --avanet_px_per_iter $avanet_px_per_iter \
 --avanet_grad_attention $avanet_grad_attention \
+--decoder_rates $decoder_rates \
 --limit_train_batches 1.0 \
 --limit_val_batches 1.0 \
 --profiler True \

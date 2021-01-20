@@ -30,7 +30,7 @@ class EasyExperiment(LightningModule):
         self.val_no = 0
 
         self.bce_loss = BCELoss()
-        self.bce_loss_edges = BCELoss(weight=create_loss_weight_matrix(hparams.batch_size, hparams.patch_size,distance=100, min_value=0.1))
+        self.bce_loss_edges = BCELoss(weight=create_loss_weight_matrix(hparams.batch_size, hparams.tile_size,distance=100, min_value=0.1))
 
         if hparams.model == 'deeplab':
             self.model = DeepLabV3(self.hparams.backbone, in_channels=hparams.in_channels, encoder_weights='imagenet')
@@ -127,7 +127,7 @@ class EasyExperiment(LightningModule):
         else:
             warnings.warn('no such loss defined: ' + self.hparams.loss)
 
-        self.log('train_loss/bce', loss.item(), on_epoch=True, sync_dist=True)
+        self.log('train_loss/bce', loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             fig = viz_utils.viz_predictions(x, y, y_hat, dem=self.hparams.dem_dir, fig_size=2)
