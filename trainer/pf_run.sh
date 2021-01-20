@@ -24,6 +24,7 @@ hflip_p=0.5
 rand_rotation=180
 
 # Training hyperparameters
+loss='weighted_bce'
 seed=42
 deterministic=False
 gpus=1
@@ -39,7 +40,7 @@ log_dir="/scratch/bartonp/lightning_logs"
 # Model hyperparameters
 model='avanet'
 backbone='adapted_resnet18'
-decoder='deeplab'
+decoder='avanet_new'
 optimiser="adam"
 lr=5e-5
 in_channels=3
@@ -73,6 +74,7 @@ python -m trainer.train \
 --stds $stds \
 --hflip_p $hflip_p \
 --rand_rotation $rand_rotation \
+--loss $loss \
 --seed $seed \
 --deterministic $deterministic \
 --gpus $gpus \

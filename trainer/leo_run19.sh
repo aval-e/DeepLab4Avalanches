@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="19_myresnet34"
+exp_name="19_myresnet18_weighted_bce"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/year_comparison/resnet18_dspp/version_0/checkpoints/epoch=16.ckpt"
 resume_training=False
@@ -38,6 +38,7 @@ hflip_p=0.5
 rand_rotation=180
 
 # Training hyperparameters
+loss='weighted_bce'
 seed=42
 deterministic=False
 gpus=2
@@ -50,13 +51,13 @@ log_every_n_steps=200
 flush_logs_every_n_steps=200
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/presentation"
+log_dir="/cluster/scratch/bartonp/lightning_logs/losses"
 benchmark=True
 
 
 # Model hyperparameters
 model='avanet'
-backbone='adapted_resnet34'
+backbone='adapted_resnet18'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
@@ -104,6 +105,7 @@ python -m trainer.train \
 --stds $stds \
 --hflip_p $hflip_p \
 --rand_rotation $rand_rotation \
+--loss $loss \
 --seed $seed \
 --deterministic $deterministic \
 --gpus $gpus \

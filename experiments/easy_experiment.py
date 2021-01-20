@@ -4,6 +4,7 @@ import csv
 import os
 import warnings
 from torch.nn import BCELoss
+from torch.nn import functional as F
 from modeling.deep_lab_v4 import DeepLabv4, Deeplabv5
 from modeling.avanet import Avanet
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
@@ -11,7 +12,7 @@ from modeling.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import LightningModule
 from torchvision.models.detection.mask_rcnn import maskrcnn_resnet50_fpn
 from utils.data_augmentation import center_crop_batch
-from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice, crop_to_center
+from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice, crop_to_center, focal_loss, create_loss_weight_matrix
 from utils import viz_utils, data_utils
 from utils.utils import nanmean
 from argparse import ArgumentParser
@@ -29,6 +30,7 @@ class EasyExperiment(LightningModule):
         self.val_no = 0
 
         self.bce_loss = BCELoss()
+        self.bce_loss_edges = BCELoss(weight=create_loss_weight_matrix(hparams.batch_size, hparams.patch_size,distance=100, min_value=0.1))
 
         if hparams.model == 'deeplab':
             self.model = DeepLabV3(self.hparams.backbone, in_channels=hparams.in_channels, encoder_weights='imagenet')
@@ -109,9 +111,23 @@ class EasyExperiment(LightningModule):
         x, y = batch
         y_hat = self(x)
         y_mask = data_utils.labels_to_mask(y)
-        loss = self.bce_loss(y_hat, y_mask)
+        if self.hparams.loss == 'bce':
+            loss = self.bce_loss(y_hat, y_mask)
+        elif self.hparams.loss == 'focal':
+            loss = focal_loss(y_hat, y_mask)
+        elif self.hparams.loss == 'weighted_bce':
+            weight = y.clone()
+            weight.requires_grad = False
+            weight[weight == 0] = 1
+            weight[weight == 3] = 4
+            weight = 1 / weight
+            loss = F.binary_cross_entropy(y_hat, y_mask, weight)
+        elif self.hparams.loss == 'bce_edges':
+            loss = self.bce_loss_edges(y_hat, y_mask)
+        else:
+            warnings.warn('no such loss defined: ' + self.hparams.loss)
 
-        self.log('train_loss/bce', loss, on_epoch=True, sync_dist=True)
+        self.log('train_loss/bce', loss.item(), on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
             fig = viz_utils.viz_predictions(x, y, y_hat, dem=self.hparams.dem_dir, fig_size=2)
@@ -235,6 +251,7 @@ class EasyExperiment(LightningModule):
         parser = Avanet.add_model_specific_args(parser)
 
         # optimisation
+        parser.add_argument('--loss', type=str, default='bce', help='Type of loss to use for training')
         parser.add_argument('--optimiser', type=str, default='adam', help="optimisation algorithm. 'adam' or 'sgd'")
         parser.add_argument('--lr', type=float, default=1e-3, help="learning rate of optimisation algorithm")
         parser.add_argument('--lr_scheduler', type=str, default=None,
