@@ -118,9 +118,9 @@ class EasyExperiment(LightningModule):
         elif self.hparams.loss == 'weighted_bce':
             weight = y.clone()
             weight.requires_grad = False
-            weight[weight == 0] = 1
+            weight[weight < 1] = 2
             weight[weight == 3] = 4
-            weight = 1 / weight
+            weight = 2 / weight
             loss = F.binary_cross_entropy(y_hat, y_mask, weight)
         elif self.hparams.loss == 'bce_edges':
             loss = self.bce_loss_edges(y_hat, y_mask)
