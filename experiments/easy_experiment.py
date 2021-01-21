@@ -12,7 +12,8 @@ from modeling.self_attention_unet import SelfAttentionUNet
 from pytorch_lightning import LightningModule
 from torchvision.models.detection.mask_rcnn import maskrcnn_resnet50_fpn
 from utils.data_augmentation import center_crop_batch
-from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice, crop_to_center, focal_loss, create_loss_weight_matrix
+from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice, crop_to_center, focal_loss, \
+    create_loss_weight_matrix, weighted_bce
 from utils import viz_utils, data_utils
 from utils.utils import nanmean
 from argparse import ArgumentParser
@@ -30,7 +31,8 @@ class EasyExperiment(LightningModule):
         self.val_no = 0
 
         self.bce_loss = BCELoss()
-        self.bce_loss_edges = BCELoss(weight=create_loss_weight_matrix(hparams.batch_size, hparams.tile_size,distance=100, min_value=0.1))
+        self.edge_weight = create_loss_weight_matrix(hparams.batch_size, hparams.tile_size, distance=100, min_value=0.1)
+        self.bce_loss_edges = BCELoss(weight=self.edge_weight)
 
         if hparams.model == 'deeplab':
             self.model = DeepLabV3(self.hparams.backbone, in_channels=hparams.in_channels, encoder_weights='imagenet')
@@ -116,12 +118,7 @@ class EasyExperiment(LightningModule):
         elif self.hparams.loss == 'focal':
             loss = focal_loss(y_hat, y_mask)
         elif self.hparams.loss == 'weighted_bce':
-            weight = y.clone()
-            weight.requires_grad = False
-            weight[weight < 1] = 2
-            weight[weight == 3] = 4
-            weight = 2 / weight
-            loss = F.binary_cross_entropy(y_hat, y_mask, weight)
+            loss = weighted_bce(y_hat, y_mask, y, self.edge_weight)
         elif self.hparams.loss == 'bce_edges':
             loss = self.bce_loss_edges(y_hat, y_mask)
         else:

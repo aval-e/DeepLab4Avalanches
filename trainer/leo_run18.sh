@@ -37,6 +37,7 @@ hflip_p=0.5
 rand_rotation=180
 
 # Training hyperparameters
+loss=weighted_bce
 seed=42
 deterministic=False
 gpus=2
@@ -102,6 +103,7 @@ python -m trainer.train \
 --stds $stds \
 --hflip_p $hflip_p \
 --rand_rotation $rand_rotation \
+--loss $loss \
 --seed $seed \
 --deterministic $deterministic \
 --gpus $gpus \

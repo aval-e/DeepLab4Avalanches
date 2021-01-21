@@ -1,5 +1,6 @@
 import torch
 import math
+from torch.nn import functional as F
 
 
 def calc_pred_stats(gt, pred):
@@ -92,6 +93,26 @@ def focal_loss(prob, target, alpha=0.5, gamma=2):
     loss = target * pos_loss + (1 - target) * neg_loss
     loss = loss.mean()
     return loss
+
+
+def weighted_bce(y_hat, target, labels, weight_multiplier):
+    """ Calculates the weighted BCE such that certain labels have 2x and created labels 0.5x the weight of background
+     and estimated pixels.
+
+     :param y_hat: predicted probability
+     :param target: true label. 1 for avalanche 0 for background
+     :param labels: like target but with certainty 1: exact, 2: estimated, 3: created
+     :param weight_multiplier: Additional weight mask to be multiplied element-wise.
+     """
+    weight = labels.clone()
+    weight.requires_grad = False
+    weight[weight < 1] = 2
+    weight[weight == 3] = 4
+    weight = 2 / weight
+
+    # apply mask
+    weight = weight * weight_multiplier
+    return F.binary_cross_entropy(y_hat, target, weight)
 
 
 def per_aval_accuracy(predictions, targets, detection_thresh=(0.5, 0.7, 0.8)):

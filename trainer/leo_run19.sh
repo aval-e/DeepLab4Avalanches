@@ -38,7 +38,7 @@ hflip_p=0.5
 rand_rotation=180
 
 # Training hyperparameters
-loss='bce'
+loss=weighted_bce
 seed=42
 deterministic=False
 gpus=2
