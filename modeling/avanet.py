@@ -118,11 +118,9 @@ class Avanet(nn.Module):
     def forward(self, x):
         # calculate dem gradients and magnitude
         dem = x[:, [-1], :, :]
-        x = x[:, :-1, :, :]
         dem_grads = self.spatial_grad(dem).squeeze(dim=1)
         dem = torch.sqrt(torch.square(dem_grads[:, [0], :, :]) + torch.square(dem_grads[:, [1], :, :]))
         dem = self.dem_bn(dem)
-        x = torch.cat([x, dem], dim=1)
 
         grad_feats = self.grad_net(torch.cat([dem_grads, dem], dim=1))
 
