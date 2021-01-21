@@ -138,7 +138,7 @@ class Avanet(nn.Module):
         else:
             x = self.decoder(*x)
 
-        x = self.segmentation_head(x)
+        x[-1] = self.segmentation_head(x[-1])
         return x
 
     @staticmethod
@@ -232,6 +232,12 @@ class AvanetDecoderNew(nn.Module):
             nn.ReLU(),
         )
 
+        self.conv1x1 = nn.ModuleList([
+            conv1x1(dspf_ch[0], 1),
+            conv1x1(dspf_ch[1], 1),
+            conv1x1(dspf_ch[2], 1)
+        ])
+
     def forward(self, x, grads, grad_feats):
         # make gradient field magnitude independent
         for _ in range(3):
@@ -245,6 +251,7 @@ class AvanetDecoderNew(nn.Module):
         res = []
         res.append(self.skip(x[-4]))
 
+        outputs = []
         for i in range(3):
             if self.deformable:
                 out = self.dspfs[i](x[-3+i], grad_dir[i], grad_feats[i+1])
@@ -253,9 +260,11 @@ class AvanetDecoderNew(nn.Module):
             for _ in range(self.up_iters[i]):
                 out = self.up(out)
             res.append(out)
+            outputs.append(self.conv1x1[i](out))
         out = torch.cat(res, dim=1)
         out = self.combine(out)
-        return out
+        outputs.append(out)
+        return outputs
 
 
 class AvanetDecoderOld(nn.Module):
