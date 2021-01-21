@@ -31,7 +31,7 @@ class EasyExperiment(LightningModule):
         self.val_no = 0
 
         self.bce_loss = BCELoss()
-        self.edge_weight = create_loss_weight_matrix(hparams.batch_size, hparams.tile_size, distance=100, min_value=0.1)
+        self.register_buffer('edge_weight', create_loss_weight_matrix(hparams.batch_size, hparams.tile_size, distance=100, min_value=0.1))
         self.bce_loss_edges = BCELoss(weight=self.edge_weight)
 
         if hparams.model == 'deeplab':
