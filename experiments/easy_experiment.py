@@ -81,7 +81,10 @@ class EasyExperiment(LightningModule):
         self.logger.log_hyperparams(self.hparams, metrics=metric_placeholder)
 
     def forward(self, x):
-        return [torch.sigmoid(item) for item in self.model(x)]
+        x = self.model(x)
+        if isinstance(x, list):
+            return [torch.sigmoid(item) for item in x]
+        return torch.sigmoid(x)
 
     def configure_optimizers(self):
         if self.hparams.optimiser == 'adam':
@@ -111,36 +114,39 @@ class EasyExperiment(LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self(x)
+        y_hats = self(x)
         y_mask = data_utils.labels_to_mask(y)
-        if self.hparams.loss == 'bce':
-            loss = torch.tensor(0.0)
-            for y_hat_ in y_hat:
-                y_hat_ = F.interpolate(y_hat_, x.shape[2:], mode='bilinear', align_corners=True)
-                loss = loss + self.bce_loss(y_hat_, y_mask)
-        elif self.hparams.loss == 'focal':
-            loss = focal_loss(y_hat, y_mask)
-        elif self.hparams.loss == 'weighted_bce':
-            loss = torch.tensor(0.0)
-            for y_hat_ in y_hat:
-                y_hat_ = F.interpolate(y_hat_, x.shape[2:], mode='bilinear', align_corners=True)
-                loss = loss + weighted_bce(y_hat_, y_mask, y, self.edge_weight)
-        elif self.hparams.loss == 'bce_edges':
-            loss = self.bce_loss_edges(y_hat, y_mask)
-        else:
-            warnings.warn('no such loss defined: ' + self.hparams.loss)
 
-        self.log('train_loss/bce', loss, on_epoch=True, sync_dist=True)
+        total_loss = torch.tensor(0.0)
+        if not isinstance(y_hats, list):
+            y_hats = [y_hats]
+        for k, y_hat in enumerate(y_hats):
+            y_hat = F.interpolate(y_hat, x.shape[2:], mode='bilinear', align_corners=True)
+
+            if self.hparams.loss == 'bce':
+                loss = self.bce_loss(y_hat, y_mask)
+            elif self.hparams.loss == 'focal':
+                loss = focal_loss(y_hat, y_mask)
+            elif self.hparams.loss == 'weighted_bce':
+                loss = weighted_bce(y_hat, y_mask, y, self.edge_weight)
+            elif self.hparams.loss == 'bce_edges':
+                loss = self.bce_loss_edges(y_hat, y_mask)
+            else:
+                warnings.warn('no such loss defined: ' + self.hparams.loss)
+
+            multiplier = 1 if k == 0 else 0.25
+            total_loss = total_loss + multiplier * loss
+
+        self.log('train_loss/bce', total_loss, on_epoch=True, sync_dist=True)
         # Log random images
         if self.global_step % self.hparams.train_viz_interval == 0:
-            fig = viz_utils.viz_predictions(x, y, y_hat[-1], dem=self.hparams.dem_dir, fig_size=2)
+            fig = viz_utils.viz_predictions(x, y, y_hats[0], dem=self.hparams.dem_dir, fig_size=2)
             self.logger.experiment.add_figure("Training Sample", fig, self.global_step)
-        return loss
+        return total_loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        y_hat = y_hat[-1]
 
         pred = torch.round(y_hat)  # rounds probability to 0 or 1
         y_mask = data_utils.labels_to_mask(y)

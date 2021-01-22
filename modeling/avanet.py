@@ -138,7 +138,10 @@ class Avanet(nn.Module):
         else:
             x = self.decoder(*x)
 
-        x[-1] = self.segmentation_head(x[-1])
+        if self.training:
+            x[0] = self.segmentation_head(x[0])
+        else:
+            x = self.segmentation_head(x)
         return x
 
     @staticmethod
@@ -263,8 +266,10 @@ class AvanetDecoderNew(nn.Module):
             outputs.append(self.conv1x1[i](out))
         out = torch.cat(res, dim=1)
         out = self.combine(out)
-        outputs.append(out)
-        return outputs
+        if self.training:
+            outputs.insert(0, out)
+            out = outputs
+        return out
 
 
 class AvanetDecoderOld(nn.Module):
