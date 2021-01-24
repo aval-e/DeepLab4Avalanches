@@ -1,12 +1,9 @@
 import torch
-import torchvision
 import torch.nn as nn
-from torch.nn.functional import grid_sample
 from torch.utils import model_zoo
 from segmentation_models_pytorch.encoders.resnet import resnet_encoders
 from modeling.reusable_blocks import Bottleneck, DeformableBlock, SeBlock, BasicBlock
 from torchvision.ops.deform_conv import DeformConv2d
-from kornia.filters.sobel import SpatialGradient
 from torchvision.models.resnet import ResNet, conv1x1
 from segmentation_models_pytorch.encoders import _utils as utils
 

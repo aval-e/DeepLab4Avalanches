@@ -134,7 +134,7 @@ class EasyExperiment(LightningModule):
             else:
                 warnings.warn('no such loss defined: ' + self.hparams.loss)
 
-            multiplier = 1 if k == 0 else 0.25
+            multiplier = 1.0 if k == 0 else 0.25
             total_loss = total_loss + multiplier * loss
 
         self.log('train_loss/bce', total_loss, on_epoch=True, sync_dist=True)

@@ -119,18 +119,19 @@ class DeformableBlock(Bottleneck):
     def __init__(self, inplanes, planes, stride=1, groups=1,
                  base_width=64, dilation=1, norm_layer=None):
         super(DeformableBlock, self).__init__(inplanes, planes, stride, groups, base_width, dilation, norm_layer)
-        self.conv_offsets = conv3x3(18, 18, stride, groups, dilation)
+        self.conv_offsets = conv3x3(inplanes, 18, stride, 1, dilation)
         self.conv2 = DeformConv2d(self.conv2.in_channels, self.conv2.out_channels, 3, stride, dilation,
                                   dilation, groups, bias=True)
 
     def forward(self, x):
         identity = x
 
+        offsets = self.conv_offsets(x)
+
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
 
-        offsets = self.conv_offsets(out[:, -18:, :, :])
         out = self.conv2(out, offsets)
 
         out = self.bn2(out)
