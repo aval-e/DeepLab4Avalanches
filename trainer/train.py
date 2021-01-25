@@ -47,7 +47,7 @@ def main(hparams):
             model = my_experiment(hparams)
             resume_ckpt = hparams.checkpoint
         else:
-            model = my_experiment.load_from_checkpoint(hparams.checkpoint, hparams=hparams)
+            model = my_experiment.load_from_checkpoint(hparams.checkpoint, hparams=hparams, strict=False)
             resume_ckpt = None
     else:
         model = my_experiment(hparams)

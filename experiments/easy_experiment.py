@@ -131,6 +131,8 @@ class EasyExperiment(LightningModule):
                 loss = weighted_bce(y_hat, y_mask, y, self.edge_weight)
             elif self.hparams.loss == 'bce_edges':
                 loss = self.bce_loss_edges(y_hat, y_mask)
+            elif self.hparams.loss == 'soft_dice':
+                loss = soft_dice(y_mask, y_hat)
             else:
                 warnings.warn('no such loss defined: ' + self.hparams.loss)
 

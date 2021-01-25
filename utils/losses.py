@@ -160,7 +160,7 @@ def create_loss_weight_matrix(batch_size, patch_size, distance, min_value=0.2):
     for i in range(1, distance+1):
         value = (i + (distance-i) * min_value) / distance
         w[i:-i, i:-i] = value * torch.ones([patch_size - 2*i, patch_size - 2*i])
-    w = w.expand(batch_size, 1, -1, -1)
+    w = w.expand(batch_size, 1, -1, -1).clone()
     w.requires_grad = False
     return w
 
