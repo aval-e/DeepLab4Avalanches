@@ -14,6 +14,9 @@ from utils.utils import str2bool
 
 
 class Avanet(nn.Module):
+    """
+    For testing different network architectures for avalanche mapping.
+    """
     def __init__(self, backbone='avanet',
                  decoder='avanet',
                  replace_stride_with_dilation=False,

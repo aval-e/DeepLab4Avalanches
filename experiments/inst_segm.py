@@ -7,6 +7,8 @@ from utils.utils import nanmean
 
 
 class InstSegmentation(EasyExperiment):
+    """ Adapted version of EasyExperiment for instance segmentation rather than semantic segmentation
+        """
 
     def forward(self, *args, **kwargs):
         x = self.model(*args, **kwargs)

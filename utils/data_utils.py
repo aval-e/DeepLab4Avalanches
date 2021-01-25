@@ -220,12 +220,12 @@ def get_avalanches_in_region(avalanches, region):
 
 
 def labels_to_mask(labels):
-    """ Convert image labels to mask of zeros and ones"""
+    """ Convert image labels to mask of zeros and ones. Returns binary mask of avalanches ignoring their certainty"""
     return (labels != 0).float()
 
 
 def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=200):
-    """ Inteligently choose samples such that there is no overlap but large avalanches are covered
+    """ Intelligently choose samples such that there is no overlap but large avalanches are covered
         Also add samples with no avalanche present
 
         :param avalanches: geopandas geoseries of avalanche polygons

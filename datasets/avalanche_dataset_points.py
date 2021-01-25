@@ -38,6 +38,7 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
         self.random = random
         self.ba = batch_augm if batch_augm > 1 else 1
 
+        # init data augmentation
         self.to_tensor = ToTensor()
         self.rand_rotation = RandomRotation(rand_rot)
         self.rand_flip = RandomHorizontalFlip(hflip_p)
@@ -52,6 +53,7 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
         self.avalanches = data_utils.get_avalanches_in_region(self.avalanches, region)
         if certainty:
             self.avalanches = self.avalanches[self.avalanches.aval_shape <= certainty]
+
         self.sample_points = data_utils.generate_sample_points(self.avalanches, region, self.tile_size)
 
     def __len__(self):
@@ -61,12 +63,14 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
         """
         Get a sample from the dataset.
         :param idx: index
-        :return: [image, rasterised avalanches] as list
+        :return: (image, rasterised avalanches) as tuple or a list of these if using batch augmentation
         """
         p = self.sample_points.iloc[idx]
 
+        # Get sample with different augmentation if using batch augmentation
         samples = []
         for sample in range(self.ba):
+            # Calculate offsets for each raster such that the same patch is retrieved
             px_offset = np.array(2 * [self.tile_size // 2])
             if self.random:
                 max_diff = self.tile_size // 3
@@ -76,6 +80,7 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
             aval_offset = np.array([p.x - self.aval_ulx, self.aval_uly - p.y])
             aval_offset = aval_offset / self.pixel_w - px_offset
 
+            # retrieve the corresponding patch with gdal
             image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size,
                                                       means=self.means, stds=self.stds, bands=self.bands)
             mask = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
@@ -113,7 +118,7 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
 
     @staticmethod
     def add_argparse_args(parent_parser):
-        # add all dataset hparams to argparse
+        """ add all dataset hparams to argparse """
         parser = super(AvalancheDatasetPoints, AvalancheDatasetPoints).add_argparse_args(parent_parser)
         parser = ArgumentParser(parents=[parser], add_help=False)
         parser.add_argument('--batch_augm', type=int, default=0, help='the amount of batch augmentation to use')
@@ -127,7 +132,10 @@ class AvalancheDatasetPoints(AvalancheDatasetBase):
 
 class AvalancheDatasetPointsEval(AvalancheDatasetBase):
     """
-    SLF Avalanche Dataset. Samples chosen intelligently to avoid overlaps and cover larger avalanches
+    Variation of AvalancheDatasetPoints used for evaluation.
+
+    Returns avalanches in a tensor with one channel for each individual avalanche. When there are no avalanches present
+    a tensor with only one channels with zeros is returned. Does not contain any data augmentation.
 
     :param root_dir: directory in which all data is located
     :param aval_file: shapefile name located in root_dir of the avalanches
@@ -143,11 +151,10 @@ class AvalancheDatasetPointsEval(AvalancheDatasetBase):
     def __init__(self, root_dir, aval_file, region_file, dem_path=None, tile_size=512, bands=None, means=None,
                  stds=None):
         super().__init__(root_dir, aval_file, dem_path, tile_size, bands, means, stds)
-        # del self.aval_raster
 
         self.to_tensor = ToTensor()
 
-        # get avalanche shapes with geopandas
+        # get avalanche shapes with geopandas such that individual instances can be seperated
         region = gpd.read_file(os.path.join(root_dir, region_file))
         aval_path = os.path.join(root_dir, aval_file)
         self.avalanches = gpd.read_file(aval_path)
@@ -161,15 +168,14 @@ class AvalancheDatasetPointsEval(AvalancheDatasetBase):
         """
         Get a sample from the dataset.
         :param idx: index
-        :return: [image, rasterised avalanches] as list. Rasterised avalanches is a tensor with one channel for each avalanche
+        :return: (image, rasterised avalanches) as tuple. Raserised_avalanches is a tensor with one channel for each avalanche.
         """
         p = self.sample_points.iloc[idx]
 
+        # Calculate offsets such that the same patch is retrieved from all data sources
         px_offset = np.array(2 * [self.tile_size // 2])
         vrt_offset = np.array([p.x - self.ulx, self.uly - p.y])
         vrt_offset = vrt_offset / self.pixel_w - px_offset
-        aval_offset = np.array([p.x - self.aval_ulx, self.aval_uly - p.y])
-        aval_offset = aval_offset / self.pixel_w - px_offset
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size,
                                                   means=self.means, stds=self.stds, bands=self.bands)
@@ -182,6 +188,7 @@ class AvalancheDatasetPointsEval(AvalancheDatasetBase):
                                                           means=[2800], stds=[1000])
             image = np.concatenate([image, dem_image], axis=2)
 
+        # rasterise avalanches individually such that per avalanche metrics can be calculated
         offset_gpd = (p.x - px_offset[0] * self.pixel_w, p.y + px_offset[1] * self.pixel_w)
         masks = data_utils.rasterise_geopandas(self.avalanches, 2 * [self.tile_size], offset_gpd, individual=True,
                                                burn_val='aval_shape')
