@@ -109,13 +109,6 @@ class Avanet(nn.Module):
             upsampling=upsampling,
         )
 
-        # module validate whether predicted avalanches are possible and adapt accordingly
-        self.verification = Verification()
-        for parameter in self.parameters():
-            parameter.requires_grad = False
-        for parameter in self.verification.parameters():
-            parameter.requires_grad = True
-
         self._init_weights()
 
     def _init_weights(self):
@@ -125,7 +118,6 @@ class Avanet(nn.Module):
     def forward(self, x):
         # calculate dem gradients and magnitude
         dem = x[:, [-1], :, :]
-        im = x[:, [1], :, :]
         dem_grads = self.spatial_grad(dem).squeeze(dim=1)
         dem = torch.sqrt(torch.square(dem_grads[:, [0], :, :]) + torch.square(dem_grads[:, [1], :, :]))
         dem = self.dem_bn(dem)
@@ -147,14 +139,10 @@ class Avanet(nn.Module):
             x = self.decoder(*x)
 
         if self.training:
-            x = self.segmentation_head(x[0])
+            x[0] = self.segmentation_head(x[0])
         else:
             x = self.segmentation_head(x)
-
-        y = torch.cat([x, dem, im], dim=1)
-        y = self.verification(y)
-        # y = [y, x] if self.training else y
-        return y
+        return x
 
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -520,27 +508,3 @@ class DSPFSeparableConv(nn.Sequential):
             nn.BatchNorm2d(out_channels),
             nn.ReLU(),
         )
-
-
-class Verification(nn.Module):
-    def __init__(self):
-        super(Verification, self).__init__()
-
-        self.resnet = get_encoder('resnet18', 3, weights='imagenet')
-        self.resnet.make_dilated(
-            stage_list=[4, 5],
-            dilation_list=[2, 4]
-        )
-
-        self.head = SegmentationHead(
-            in_channels=512,
-            out_channels=1,
-            activation=None,
-            kernel_size=1,
-            upsampling=8,
-        )
-
-    def forward(self, x):
-        x = self.resnet(x)
-        x = self.head(x[-1])
-        return x
