@@ -5,7 +5,7 @@ import os
 import warnings
 from torch.nn import BCELoss
 from torch.nn import functional as F
-from modeling.deep_lab_v4 import DeepLabv4, Deeplabv5
+from modeling.deep_lab_v4 import DeepLabv4
 from modeling.avanet import Avanet
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
 from modeling.self_attention_unet import SelfAttentionUNet

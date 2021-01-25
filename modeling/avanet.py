@@ -44,6 +44,7 @@ class Avanet(nn.Module):
                                           no_blocks=no_blocks,
                                           deformable=deformable,
                                           groups=2)
+            depth = 5
         elif backbone == 'adapted_resnet18':
             self.encoder = AdaptedResnet(grad_feats,
                                          backbone='resnet18',
