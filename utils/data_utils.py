@@ -92,6 +92,17 @@ def get_all_bands_as_numpy(raster, offset=(0, 0), res=None, bands=None, means=No
     return image
 
 
+def redistribute_satellite_data(image):
+    """ Redistributes the input data to spread it more evenly.
+
+    The input data was found to bi bimodal with a large spike on the negative side of the standardised data
+    from the shadows. Multiplying negative values by 3 as well as by themselves was found to result in a better spread
+    of data.
+    """
+    image[image < 0] = -3 * image[image < 0] ** 2
+    return image
+
+
 def get_numpy_from_ogr_shapefile(shapefile, ref_raster, offset=(0, 0), res=None):
     """
     Rasterises shapefile and return numpy array. The shapefile should be opened with ogr.
