@@ -48,7 +48,8 @@ class EasyExperiment(LightningModule):
         elif hparams.model == 'deeplabv4':
             self.model = DeepLabv4(self.hparams.backbone, in_channels=hparams.in_channels)
         elif hparams.model == 'avanet':
-            self.model = Avanet(backbone=self.hparams.backbone,
+            self.model = Avanet(in_channels=hparams.in_channels,
+                                backbone=self.hparams.backbone,
                                 decoder=self.hparams.decoder,
                                 replace_stride_with_dilation=self.hparams.avanet_rep_stride_with_dil,
                                 no_blocks=self.hparams.avanet_no_blocks,

@@ -81,7 +81,8 @@ class AvanetBackbone(nn.Module):
 
 
 class AdaptedResnet(ResNet):
-    def __init__(self, grad_feats, backbone='resnet34', depth=5, replace_stride_with_dilation=True, pretrained=True):
+    def __init__(self, grad_feats, in_channels=3, backbone='resnet34', depth=5, replace_stride_with_dilation=True,
+                 pretrained=True):
         super().__init__(block=resnet_encoders[backbone]["params"]['block'],
                          layers=resnet_encoders[backbone]["params"]['layers'])
         if pretrained:
@@ -90,7 +91,9 @@ class AdaptedResnet(ResNet):
 
         self._depth = depth
         self.out_channels = resnet_encoders[backbone]["params"]['out_channels']
-        self._in_channels = 3
+        self._in_channels = in_channels
+
+        self._setup_first_conv(in_channels)
 
         del self.fc
         del self.avgpool
@@ -148,6 +151,21 @@ class AdaptedResnet(ResNet):
                 module=stages[stage_indx],
                 dilation_rate=dilation_rate,
             )
+
+    def _setup_first_conv(self, in_channels):
+        """ Steup first convolution for network to work with any number of input channels. Use pretrained weights of
+        those channels available duplicating them if more channels are used.
+        """
+        new_conv1 = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        with torch.no_grad():
+            if in_channels <= 3:
+                new_conv1.weight[:, :, :, :] = self.conv1.weight[:, 0:in_channels, :, :]
+            else:
+                new_conv1.weight[:, 0:3, :, :] = self.conv1.weight
+                for i in range(3, in_channels):
+                    new_conv1.weight[:, i, :, :] = new_conv1.weight[:, 0, :, :]
+
+        self.conv1 = new_conv1
 
 
 class DeformableBasicBlock(nn.Module):
