@@ -1,4 +1,5 @@
 import os
+import torch
 import numpy as np
 from osgeo import gdal, ogr
 import geopandas as gpd
@@ -100,6 +101,12 @@ def redistribute_satellite_data(image):
     of data.
     """
     image[image < 0] = -3 * image[image < 0] ** 2
+    return image
+
+
+def undo_redistribute_satellite_data(image):
+    """ Reverses effects of redistribute_satellite_data for visualisation"""
+    image[image < 0] = -torch.sqrt(-image[image < 0]/3)
     return image
 
 

@@ -4,6 +4,7 @@ from torchvision.utils import make_grid
 import torch
 import os
 from utils.lookup import INSTLABEL_2_STR, STATUS_2_STR, STATUS_COLORS
+from utils.data_utils import undo_redistribute_satellite_data
 
 
 def plot_avalanches_by_certainty(image, aval_image, dem=None):
@@ -158,6 +159,7 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None, tr
     with torch.no_grad():
         # if less than 3 channels, duplicate first channel for rgb image
         x_only = select_rgb_channels_from_batch(x, dem)
+        x_only = undo_redistribute_satellite_data(x_only)
         x_only = (x_only - x_only.min()) / (x_only.max() - x_only.min())
         y_over = overlay_avalanches_by_certainty(x_only, y)
         y_over = y_over.clamp(0, 1)
@@ -209,15 +211,25 @@ def viz_predictions(x, y, y_hat, pred=None, dem=None, gt=None, fig_size=None, tr
             ax.set_axis_off()
         fig.set_size_inches(*fig_size)
         fig.subplots_adjust(0, 0, 1, 1)
+        if transpose:
+            fig.text(0.005, 0.01, 'SPOT6 \N{COPYRIGHT SIGN} Airbus DS2018/2019',
+                     fontsize=9, color='white',
+                     ha='left', va='bottom', alpha=0.7)
+        else:
+            fig.text(0.01, 0.98, 'SPOT6 \N{COPYRIGHT SIGN} Airbus DS2018/2019',
+                     fontsize=9, color='white',
+                     ha='left', va='bottom', alpha=0.7)
         return fig
 
 
 def save_fig(fig, dir, name):
+    """ Save a matplotlib figure"""
     fig_path = os.path.join(dir, name)
     fig.savefig(fig_path, bbox_inches='tight', pad_inches=0, facecolor=fig.get_facecolor())
 
 
 def numpy_from_torch(tensor):
+    """ Utility to convert torch tensor to numpy for visualing with matplotlib"""
     if tensor.ndim == 4:
         return tensor.permute(0, 2, 3, 1).cpu().numpy()
     elif tensor.ndim == 3:
