@@ -49,17 +49,18 @@ class EasyExperiment(LightningModule):
             self.model = DeepLabv4(self.hparams.backbone, in_channels=hparams.in_channels)
         elif hparams.model == 'avanet':
             self.model = Avanet(in_channels=hparams.in_channels,
-                                backbone=self.hparams.backbone,
-                                decoder=self.hparams.decoder,
-                                replace_stride_with_dilation=self.hparams.avanet_rep_stride_with_dil,
-                                no_blocks=self.hparams.avanet_no_blocks,
-                                deformable=self.hparams.avanet_deformable,
-                                px_per_iter=self.hparams.avanet_px_per_iter,
-                                grad_attention=self.hparams.avanet_grad_attention,
-                                decoder_out_ch=self.hparams.decoder_out_ch,
-                                decoder_dspf_ch=self.hparams.decoder_dspf_ch,
-                                decoder_rates=self.hparams.decoder_rates,
-                                decoder_deformable=self.hparams.decoder_deformable,
+                                dem=bool(hparams.dem_dir),
+                                backbone=hparams.backbone,
+                                decoder=hparams.decoder,
+                                replace_stride_with_dilation=hparams.avanet_rep_stride_with_dil,
+                                no_blocks=hparams.avanet_no_blocks,
+                                deformable=hparams.avanet_deformable,
+                                px_per_iter=hparams.avanet_px_per_iter,
+                                grad_attention=hparams.avanet_grad_attention,
+                                decoder_out_ch=hparams.decoder_out_ch,
+                                decoder_dspf_ch=hparams.decoder_dspf_ch,
+                                decoder_rates=hparams.decoder_rates,
+                                decoder_deformable=hparams.decoder_deformable,
                                 )
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)

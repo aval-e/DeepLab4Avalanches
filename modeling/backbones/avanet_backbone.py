@@ -81,8 +81,21 @@ class AvanetBackbone(nn.Module):
 
 
 class AdaptedResnet(ResNet):
-    def __init__(self, grad_feats, in_channels=3, backbone='resnet34', depth=5, replace_stride_with_dilation=True,
-                 pretrained=True):
+    """ Version of the resnet that uses deformable convolutions in all its layers.
+
+     Offsets for the deformable convolutions are calculated by a seperate network.
+     :param grad_feats: general gradient features as calculated by another network
+     :param in_channels: number of input channels including the DEM if used
+     :param dem: whether one of the input channels represents the DEM. Parameters will be initialised differently for
+        the DEM channel.
+     :param backbone: Resnet backbone to be adapted. Works for resnet18, resnet34 and resnet50
+     :param depth: Depth of the network
+     :param replace_stride_with_dilation: whether to replace the stride in the last layer with dilation. Results in a
+        higher resolution output but also required more computation.
+     :param pretrained: whether to use pretrained weights
+     """
+    def __init__(self, grad_feats, in_channels=3, dem=True, backbone='resnet18', depth=5,
+                 replace_stride_with_dilation=True, pretrained=True):
         super().__init__(block=resnet_encoders[backbone]["params"]['block'],
                          layers=resnet_encoders[backbone]["params"]['layers'])
         if pretrained:
@@ -93,7 +106,7 @@ class AdaptedResnet(ResNet):
         self.out_channels = resnet_encoders[backbone]["params"]['out_channels']
         self._in_channels = in_channels
 
-        self._setup_first_conv(in_channels)
+        self._setup_first_conv(in_channels, dem)
 
         del self.fc
         del self.avgpool
@@ -108,12 +121,12 @@ class AdaptedResnet(ResNet):
         ])
 
         if replace_stride_with_dilation:
-            self.make_dilated(
+            self._make_dilated(
                 stage_list=[5],
                 dilation_list=[2],
             )
 
-        # make first block in layer deformable
+        # make all blocks in layers deformable
         layers = [self.layer1, self.layer2, self.layer3, self.layer4]
         for i in range(len(layers)):
             for j in range(len(layers[i])):
@@ -144,7 +157,7 @@ class AdaptedResnet(ResNet):
 
         return features
 
-    def make_dilated(self, stage_list, dilation_list):
+    def _make_dilated(self, stage_list, dilation_list):
         stages = self.stages
         for stage_indx, dilation_rate in zip(stage_list, dilation_list):
             utils.replace_strides_with_dilation(
@@ -152,9 +165,15 @@ class AdaptedResnet(ResNet):
                 dilation_rate=dilation_rate,
             )
 
-    def _setup_first_conv(self, in_channels):
-        """ Steup first convolution for network to work with any number of input channels. Use pretrained weights of
+    def _setup_first_conv(self, in_channels, dem=True):
+        """ Setup first convolution for network to work with any number of input channels. Use pretrained weights of
         those channels available duplicating them if more channels are used.
+
+        Make the weights corresponding the DEM channel random rather than pretrained, due to its different distribution
+        statistics compared to rgb images.
+
+        :param in_channels: total number of input channels
+        :param dem: whether the last input channel corresponds to the DEM
         """
         new_conv1 = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         with torch.no_grad():
@@ -164,6 +183,12 @@ class AdaptedResnet(ResNet):
                 new_conv1.weight[:, 0:3, :, :] = self.conv1.weight
                 for i in range(3, in_channels):
                     new_conv1.weight[:, i, :, :] = new_conv1.weight[:, 0, :, :]
+
+            # make dem channel use a random distribution
+            if dem:
+                dem_conv = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+                nn.init.kaiming_normal_(dem_conv.weight, mode='fan_out', nonlinearity='relu')
+                new_conv1.weight[:, [-1], :, :] = dem_conv.weight
 
         self.conv1 = new_conv1
 

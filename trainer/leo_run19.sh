@@ -27,7 +27,7 @@ val_region_file="Val_area_2019.shp"
 val_gt_file="Methodenvergleich2019.shp"
 dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size=512
-aval_certainty=2
+aval_certainty=3
 bands="3 4"
 num_workers=2
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
@@ -51,7 +51,7 @@ log_every_n_steps=200
 flush_logs_every_n_steps=200
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/losses"
+log_dir="/cluster/scratch/bartonp/lightning_logs/tests"
 benchmark=True
 
 

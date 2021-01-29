@@ -18,6 +18,7 @@ class Avanet(nn.Module):
     For testing different network architectures for avalanche mapping.
     """
     def __init__(self, in_channels=3,
+                 dem=True,
                  backbone='avanet',
                  decoder='avanet',
                  replace_stride_with_dilation=False,
@@ -49,6 +50,7 @@ class Avanet(nn.Module):
         elif 'adapted_resnet' in backbone:
             self.encoder = AdaptedResnet(grad_feats,
                                          in_channels=in_channels,
+                                         dem=dem,
                                          backbone=backbone.replace('adapted_', ''),
                                          replace_stride_with_dilation=replace_stride_with_dilation)
             depth = 5
