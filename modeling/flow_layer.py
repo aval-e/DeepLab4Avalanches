@@ -23,17 +23,27 @@ class FlowLayer(nn.Module):
         self.bn1 = nn.BatchNorm2d(inplanes)
         self.conv1 = conv1x1(inplanes, outplanes)
         self.conv2 = conv1x1(inplanes, outplanes)
+        self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
+        self.att1 = SeparableConv2d(inplanes, outplanes, 3, padding=1)
+        self.att2 = SeparableConv2d(inplanes, outplanes, 3, padding=1)
+        self.add1 = conv1x1(2*outplanes, outplanes)
+        self.add2 = conv1x1(2*outplanes, outplanes)
         self.merge = SeparableConv2d(2 * outplanes, outplanes, 3, padding=1)
 
     def forward(self, x, grads):
         x = self.bn1(x)
+
+        attention1 = self.sigmoid(self.att1(x))
+        attention2 = self.sigmoid(self.att2(x))
         m1 = self.conv1(x)
         m2 = self.conv2(x)
 
+        attention1 = self.maxdown(attention1)
+        attention2 = self.maxdown(attention2)
         m1 = self.maxdown(m1)  # keep avalanche features even if they are small
         m2 = self.maxdown(m2)
-        grads = self.avgdown(grads)
+        grads = self.avgdown(grads)  # keep gradient direction when downsampling
 
         # get grads in absolute terms such that results remain independant of input size
         grads = grads / m1.shape[2]
@@ -44,15 +54,17 @@ class FlowLayer(nn.Module):
         grid1 = grid + grads
         grid2 = grid - grads
 
-        m1 = self.sigmoid(m1)
-        m2 = self.sigmoid(m2)
+        m1 = self.relu(m1)
+        m2 = self.relu(m2)
         m1_sum = m1
         m2_sum = m2
         for _ in range(self.iters):
             m1 = nn.functional.grid_sample(m1, grid1, align_corners=True)
             m2 = nn.functional.grid_sample(m2, grid2, align_corners=True)
-            m1_sum = m1_sum + m1
-            m2_sum = m2_sum + m2
+            m1 = m1 * attention1
+            m2 = m2 * attention2
+            m1_sum = self.add1(torch.cat([m1_sum, m1], dim=1))
+            m2_sum = self.add2(torch.cat([m2_sum, m2], dim=1))
         x = torch.cat([m1_sum, m2_sum], dim=1)
         x = x / self.iters  # ensure the same statistics independent of no. iterations
         x = self.merge(x)

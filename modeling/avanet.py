@@ -136,7 +136,7 @@ class Avanet(nn.Module):
         else:
             x = self.decoder(*x)
 
-        if self.training:
+        if self.training and isinstance(x, list):
             x[0] = self.segmentation_head(x[0])
         else:
             x = self.segmentation_head(x)
