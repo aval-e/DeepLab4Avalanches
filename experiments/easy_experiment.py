@@ -29,9 +29,7 @@ class EasyExperiment(LightningModule):
         super().__init__()
 
         # bug in lightning returns hparams as dict when loading from checkpoint
-        if isinstance(hparams, dict):
-            hparams = argparse.Namespace(**hparams)
-        self.hparams = hparams
+        self.save_hyperparameters(hparams)
         self.val_no = 0
 
         # loss objects

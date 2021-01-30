@@ -12,9 +12,9 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="19_myresnet18_flowlayers"
+exp_name="19_dspf_flowattention_lightning116"
 
-checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/year_comparison/resnet18_dspp/version_0/checkpoints/epoch=16.ckpt"
+checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/tests/19_dspf_flowattention_lightning116/version_0/checkpoints/epoch=1-step=683.ckpt"
 resume_training=False
 
 # Dataset hyperparameters
