@@ -10,66 +10,86 @@ import time
 
 
 class FlowLayer(nn.Module):
-    """ Layer which implements flow propagation along a gradient field in both directions"""
+    """ Layer which implements flow propagation along a gradient field in both directions.
+
+    Propagates features up and down a gradient field. Can cover a larger receptive field than standard convolution operation.
+    To get a smooth output and reduce computation, features are propagated at a reduced resolution such that they are
+    moved one pixel at a time. The output is upsampled bilinearly.
+
+    :param inplanes: no. of input channels
+    :param outplanes: no. of outputs channels
+    :param iterations: how many flow iterations to compute
+    :param pixels_per_iter: how many pixels to propagate features by each iteration
+    """
 
     def __init__(self, inplanes, outplanes, iterations=10, pixels_per_iter=4):
         super().__init__()
         self.iters = iterations
-        self.pixels_per_iter = pixels_per_iter
         self.avgdown = nn.AvgPool2d(pixels_per_iter)
-        self.maxdown = nn.MaxPool2d(pixels_per_iter)
-        self.up = nn.UpsamplingBilinear2d(scale_factor=pixels_per_iter)
         self.register_buffer('theta', torch.tensor([[1, 0, 0], [0, 1, 0]]).unsqueeze(dim=0).float())
+
         self.bn1 = nn.BatchNorm2d(inplanes)
-        self.conv1 = conv1x1(inplanes, outplanes)
-        self.conv2 = conv1x1(inplanes, outplanes)
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
-        self.att1 = SeparableConv2d(inplanes, outplanes, 3, padding=1)
-        self.att2 = SeparableConv2d(inplanes, outplanes, 3, padding=1)
-        self.add1 = conv1x1(2*outplanes, outplanes)
-        self.add2 = conv1x1(2*outplanes, outplanes)
+        self.flow1 = FlowProcess(inplanes, outplanes, iterations, pixels_per_iter)
+        self.flow2 = FlowProcess(inplanes, outplanes, iterations, pixels_per_iter)
+
         self.merge = SeparableConv2d(2 * outplanes, outplanes, 3, padding=1)
+        self.up = nn.UpsamplingBilinear2d(scale_factor=pixels_per_iter)
 
     def forward(self, x, grads):
-        x = self.bn1(x)
-
-        attention1 = self.sigmoid(self.att1(x))
-        attention2 = self.sigmoid(self.att2(x))
-        m1 = self.conv1(x)
-        m2 = self.conv2(x)
-
-        attention1 = self.maxdown(attention1)
-        attention2 = self.maxdown(attention2)
-        m1 = self.maxdown(m1)  # keep avalanche features even if they are small
-        m2 = self.maxdown(m2)
+        # get grads in absolute terms such that results remain independent of input size
         grads = self.avgdown(grads)  # keep gradient direction when downsampling
-
-        # get grads in absolute terms such that results remain independant of input size
-        grads = grads / m1.shape[2]
+        grid_shape = grads.shape
+        grads = grads / grid_shape[2]
         grads = grads.permute(0, 2, 3, 1).contiguous()
 
         # compute absolute sample points from relativ offsets (grads)
-        grid = nn.functional.affine_grid(self.theta.expand(m1.shape[0], 2, 3), m1.size(), align_corners=True)
+        grid = nn.functional.affine_grid(self.theta.expand(x.shape[0], 2, 3), grid_shape, align_corners=True)
         grid1 = grid + grads
         grid2 = grid - grads
 
-        m1 = self.relu(m1)
-        m2 = self.relu(m2)
-        m1_sum = m1
-        m2_sum = m2
-        for _ in range(self.iters):
-            m1 = nn.functional.grid_sample(m1, grid1, align_corners=True)
-            m2 = nn.functional.grid_sample(m2, grid2, align_corners=True)
-            m1 = m1 * attention1
-            m2 = m2 * attention2
-            m1_sum = self.add1(torch.cat([m1_sum, m1], dim=1))
-            m2_sum = self.add2(torch.cat([m2_sum, m2], dim=1))
-        x = torch.cat([m1_sum, m2_sum], dim=1)
+        # Iterate flows in both up and down hill
+        x = self.bn1(x)
+        x1 = self.flow1(x, grid1)
+        x2 = self.flow2(x, grid2)
+
+        # combine results
+        x = torch.cat([x1, x2], dim=1)
         x = x / self.iters  # ensure the same statistics independent of no. iterations
         x = self.merge(x)
         x = self.up(x)
         return x
+
+
+class FlowProcess(nn.Module):
+    """ Flow process which is required once in each direction by Flowlayer"""
+
+    def __init__(self, inplanes, outplanes, iterations=10, pixels_per_iter=4):
+        super().__init__()
+        self.iters = iterations
+        self.maxdown = nn.MaxPool2d(pixels_per_iter)
+        self.conv = conv1x1(inplanes, outplanes)
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+        self.att = SeparableConv2d(inplanes, outplanes, 3, padding=1)
+        self.add = conv1x1(2*outplanes, outplanes)
+
+    def forward(self, x, grid):
+        # Compute attention map based on input features
+        attention = self.sigmoid(self.att(x))
+        x = self.conv(x)
+
+        # keep avalanche features even if they are small with max pooling
+        attention = self.maxdown(attention)
+        x = self.maxdown(x)
+
+        # Relu instead of sigmoid to avoid saturating gradients
+        x = self.relu(x)
+        aggregate = x
+        for _ in range(self.iters):
+            x = nn.functional.grid_sample(x, grid, align_corners=True)
+            x = x * attention  # kill inputs when they move past specific locations
+            aggregate = self.add(torch.cat([aggregate, x], dim=1))
+        return aggregate
 
 
 class FlowAttention(nn.Module):
