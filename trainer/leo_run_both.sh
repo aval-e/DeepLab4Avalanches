@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="both_myresnet50"
+exp_name="myresnet18"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/avanet/avanet_fixflow_4px/version_0/checkpoints/epoch=10-v0.ckpt"
 resume_training=False
@@ -30,10 +30,11 @@ train_region_file2="Train_area_2019.shp"
 val_root_dir2="$train_root_dir2"
 val_ava_file2="$train_ava_file2"
 val_region_file2="Val_area_2019.shp"
+val_gt_file="Methodenvergleich2018.shp"
 val_gt_file2="Methodenvergleich2019.shp"
 dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
 tile_size=512
-aval_certainty=2
+aval_certainty=3
 bands="3 4"
 num_workers=2
 means="1023.9 949.9" #"986.3 1028.3 1023.9 949.9"
@@ -57,13 +58,13 @@ log_every_n_steps=200
 flush_logs_every_n_steps=200
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/presentation"
+log_dir="/cluster/scratch/bartonp/lightning_logs/final"
 benchmark=True
 
 
 # Model hyperparameters
 model='avanet'
-backbone='adapted_resnet50'
+backbone='adapted_resnet18'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
@@ -86,7 +87,7 @@ avanet_grad_attention=False
 
 decoder_out_ch=512
 decoder_dspf_ch="64 128 256"
-decoder_rates="4 8 12 16"
+decoder_rates="4 8 12"
 decoder_deformable=True
 
 python -m trainer.train \
@@ -107,6 +108,7 @@ python -m trainer.train \
 --val_root_dir2 $val_root_dir2 \
 --val_ava_file2 $val_ava_file2 \
 --val_region_file2 $val_region_file2 \
+--val_gt_file $val_gt_file \
 --val_gt_file2 $val_gt_file2 \
 --dem_dir "$dem_dir" \
 --tile_size $tile_size \

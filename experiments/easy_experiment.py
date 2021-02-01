@@ -1,5 +1,4 @@
 import torch
-import argparse
 import csv
 import os
 import warnings
@@ -22,13 +21,13 @@ from argparse import ArgumentParser
 class EasyExperiment(LightningModule):
     """ Pytorch Lightning Module for easily configuring and running different training experiments with the same logic.
     Everything from the model to the learning rate scheduler and loss function can be set through hparams object
-    from argparse.
+    from argparse. Hyperparameters will automatically be saved to tensorboard and yaml file.
     """
 
     def __init__(self, hparams):
         super().__init__()
 
-        # bug in lightning returns hparams as dict when loading from checkpoint
+        # Save hyperparameters and make them available through self.hparams
         self.save_hyperparameters(hparams)
         self.val_no = 0
 
@@ -157,13 +156,12 @@ class EasyExperiment(LightningModule):
         y_hat = self(x)
 
         pred = torch.round(y_hat)  # rounds probability to 0 or 1
-        y_mask = data_utils.labels_to_mask(y)
 
         # evaluate metrics only on center patch
         y_hat_crop = crop_to_center(y_hat)
         y_crop = crop_to_center(y)
         pred_crop = crop_to_center(pred)
-        y_mask_crop = crop_to_center(y_mask)
+        y_mask_crop = data_utils.labels_to_mask(y_crop)
 
         bce_loss = self.bce_loss(y_hat_crop, y_mask_crop)
         dice_score = soft_dice(y_mask_crop, y_hat_crop)

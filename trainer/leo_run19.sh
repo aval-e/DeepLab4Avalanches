@@ -12,7 +12,7 @@ export PYTHONPATH=$PWD
 #BSUB -R "select[gpu_model0==GeForceGTX1080Ti]"
 # #BSUB -o "lsf.resnet34"
 
-exp_name="19_dspf_flowattention_lightning116"
+exp_name="19_myresnet34"
 
 checkpoint="" #"/cluster/scratch/bartonp/lightning_logs/tests/19_dspf_flowattention_lightning116/version_0/checkpoints/epoch=1-step=683.ckpt"
 resume_training=False
@@ -51,13 +51,13 @@ log_every_n_steps=200
 flush_logs_every_n_steps=200
 accelerator="ddp"
 sync_batchnorm=True
-log_dir="/cluster/scratch/bartonp/lightning_logs/tests"
+log_dir="/cluster/scratch/bartonp/lightning_logs/final"
 benchmark=True
 
 
 # Model hyperparameters
 model='avanet'
-backbone='adapted_resnet18'
+backbone='adapted_resnet34'
 decoder='avanet_new'
 optimiser="adam"
 lr=1e-4
