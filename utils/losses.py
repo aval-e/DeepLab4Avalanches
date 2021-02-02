@@ -115,44 +115,6 @@ def weighted_bce(y_hat, target, labels, weight_multiplier):
     return F.binary_cross_entropy(y_hat, target, weight)
 
 
-def per_aval_accuracy(predictions, targets, detection_thresh=(0.5, 0.7, 0.8)):
-    """ Accuracy per avalanche with thresholded predictions"""
-    d = {'acc_cover': []}
-    thresh_keys = []
-    for thresh in detection_thresh:
-        key = 'acc_' + str(thresh)
-        thresh_keys.append(key)
-        d[key] = []
-
-    for i in range(predictions.shape[0]):
-        prediction = predictions[i, :, :, :]
-        target = targets[i, :, :, :]
-        for mask in target:
-            mask_sum = (mask > 0).sum().item()
-            acc = prediction[:, mask > 0].sum().item() / mask_sum if mask_sum else float('NaN')
-            d['acc_cover'].append(acc)
-            for i in range(len(detection_thresh)):
-                d[thresh_keys[i]].append(acc > detection_thresh[i] if not math.isnan(acc) else float('NaN'))
-    return d
-
-
-def per_aval_info(y_hats, targets):
-    """ Some useful info and soft metrics from predicted probabilities"""
-    soft_recall = []
-    area = []
-    certainty = []
-    for i in range(y_hats.shape[0]):
-        y_hat = y_hats[i, :, :, :]
-        target = targets[i, :, :, :]
-        for mask in target:
-            masked_pred = y_hat[:, mask > 0]
-            size = (mask > 0).sum().item()
-            soft_recall.append(masked_pred.sum().item() / size if size else float('NaN'))
-            area.append(size * 2.25)  # multiply by 1.5^2 to get meters^2
-            certainty.append(mask.max().item())
-    return {'soft_recall': soft_recall, 'area_m2': area, 'certainty': certainty}
-
-
 def create_loss_weight_matrix(batch_size, patch_size, distance, min_value=0.2):
     """ Creates a matrix for weighting loss less near the patch edges. Linear interpolation is used from the patch edge
         with min_value, to 'distance' pixels inward from which the value will be 1"""

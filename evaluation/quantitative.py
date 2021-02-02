@@ -1,16 +1,17 @@
 import os
+import math
 import torch
 import pandas
 import numpy as np
 from tqdm import tqdm
+from glob import glob
 from torch.nn import BCELoss
 from pytorch_lightning import seed_everything
 from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset_points import AvalancheDatasetPointsEval
 from torch.utils.data import DataLoader, ConcatDataset
-from utils.losses import crop_to_center, get_precision_recall_f1, soft_dice, per_aval_accuracy, per_aval_info
+from utils.losses import crop_to_center, get_precision_recall_f1, soft_dice, get_specificity_balanced_accuracy
 from utils import data_utils
-
 
 bce = BCELoss()
 
@@ -25,7 +26,7 @@ def load_model(checkpoint):
 
 def load_test_set(hparams, year='both'):
     root_dir = '/cluster/scratch/bartonp/slf_avalanches/'
-    if year == '18' or year =='both':
+    if year == '18' or year == 'both':
         test_set = AvalancheDatasetPointsEval(root_dir + '2018',
                                               'avalanches0118_endversion.shp',
                                               'Test_area_2018.shp',
@@ -34,7 +35,7 @@ def load_test_set(hparams, year='both'):
                                               bands=hparams.bands,
                                               means=hparams.means,
                                               stds=hparams.stds,
-                                        )
+                                              )
     if year == '19' or year == 'both':
         test_set2 = AvalancheDatasetPointsEval(root_dir + '2019',
                                                'avalanches0119_endversion.shp',
@@ -44,7 +45,7 @@ def load_test_set(hparams, year='both'):
                                                bands=hparams.bands,
                                                means=hparams.means,
                                                stds=hparams.stds,
-                                )
+                                               )
     if year == '19':
         test_set = test_set2
     elif year == 'both':
@@ -77,14 +78,16 @@ def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.
     for threshold in thresholds:
         pred = torch.round(y_hat + (0.5 - threshold))  # rounds probability to 0 or 1
         precision, recall, f1 = get_precision_recall_f1(y, pred)
-        _, _, f1_no_aval = get_precision_recall_f1(y_mask == 0, pred == 0)
-        f1_avg = 0.5 * (f1_no_aval + f1)
 
-        # Todo: check metrics when no label - precision should not be 0
+        # Background
+        precision_back, recall_back, f1_back = get_precision_recall_f1(y_mask == 0, pred == 0)
+
         hard_metrics[threshold]['precision'].append(precision.item())
         hard_metrics[threshold]['recall'].append(recall.item())
         hard_metrics[threshold]['f1'].append(f1.item())
-        hard_metrics[threshold]['f1_avg'].append(f1_avg.item())
+        hard_metrics[threshold]['precision_back'].append(precision_back.item())
+        hard_metrics[threshold]['recall_back'].append(recall_back.item())
+        hard_metrics[threshold]['f1_back'].append(f1_back.item())
 
         # per avalanche metrics
         accuracy = per_aval_accuracy(pred, y_individual)
@@ -92,6 +95,44 @@ def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.
             hard_metrics[threshold][key].extend(val)
 
     return soft_metrics, hard_metrics
+
+
+def per_aval_accuracy(predictions, targets, detection_thresh=(0.5, 0.7, 0.8)):
+    """ Accuracy per avalanche with thresholded predictions"""
+    d = {'acc_cover': []}
+    thresh_keys = []
+    for thresh in detection_thresh:
+        key = 'acc_' + str(thresh)
+        thresh_keys.append(key)
+        d[key] = []
+
+    for i in range(predictions.shape[0]):
+        prediction = predictions[i, :, :, :]
+        target = targets[i, :, :, :]
+        for mask in target:
+            mask_sum = (mask > 0).sum().item()
+            acc = prediction[:, mask > 0].sum().item() / mask_sum if mask_sum else float('NaN')
+            d['acc_cover'].append(acc)
+            for i in range(len(detection_thresh)):
+                d[thresh_keys[i]].append(acc > detection_thresh[i] if not math.isnan(acc) else float('NaN'))
+    return d
+
+
+def per_aval_info(y_hats, targets):
+    """ Some useful info and soft metrics from predicted probabilities"""
+    soft_recall = []
+    area = []
+    certainty = []
+    for i in range(y_hats.shape[0]):
+        y_hat = y_hats[i, :, :, :]
+        target = targets[i, :, :, :]
+        for mask in target:
+            masked_pred = y_hat[:, mask > 0]
+            size = (mask > 0).sum().item()
+            soft_recall.append(masked_pred.sum().item() / size if size else float('NaN'))
+            area.append(size * 2.25)  # multiply by 1.5^2 to get meters^2
+            certainty.append(mask.max().item())
+    return {'soft_recall': soft_recall, 'area_m2': area, 'certainty': certainty}
 
 
 def create_empty_metrics(thresholds, hard_metric_names):
@@ -140,33 +181,43 @@ def append_avg_metrics_to_dataframe(df, name, year, metrics, columns):
     return df
 
 
+def add_all_checkpoints_in_folder(checkpoint_folder):
+    subfolders = [sub for sub in os.listdir(checkpoint_folder) if os.path.isdir(os.path.join(checkpoint_folder, sub))]
+    checkpoints = []
+    for subfolder in subfolders:
+        for dirpath, _, filenames in os.walk(os.path.join(checkpoint_folder, subfolder)):
+            for filename in [f for f in filenames if f.endswith(".ckpt")]:
+                if subfolder.startswith('18'):
+                    year = '19'
+                elif subfolder.startswith('19'):
+                    year = '18'
+                else:
+                    year = 'both'
+                
+                checkpoints.append({'Name': subfolder, 'Year': year,
+                                    'path': os.path.join(dirpath, filename)})
+    return checkpoints
+
+
 def main():
     output_path = '/cluster/scratch/bartonp/lightning_logs/metrics/ablation/'
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
     checkpoint_folder = '/cluster/scratch/bartonp/lightning_logs/presentation/ablation'
-    checkpoints = [{'Name': 'both_deeplabv3+_no_dem', 'Year': 'both',
-                    'path': checkpoint_folder + 'both_deeplabv3+_no_dem/version_0/checkpoints/epoch=16.ckpt'},
-                   {'Name': 'both_deeplabv3+_4ch', 'Year': 'both',
-                    'path': checkpoint_folder + 'both_deeplabv3+_4ch/version_0/checkpoints/epoch=16.ckpt'},
-                   {'Name': 'both_myresnet18_deeplab_decoder', 'Year': 'both',
-                    'path': checkpoint_folder + 'both_myresnet18_deeplab_decoder/version_0/checkpoints/epoch=16.ckpt'},
-                   {'Name': 'both_myresnet18_nodeform_decoder', 'Year': 'both',
-                    'path': checkpoint_folder + 'both_myresnet18_nodeform_decoder/version_0/checkpoints/epoch=16.ckpt'},
-                   {'Name': 'both_myresnet18_nodeform_backbone', 'Year': 'both',
-                    'path': checkpoint_folder + 'both_myresnet18_nodeform_backbone/version_0/checkpoints/epoch=16.ckpt'},
-                   {'Name': 'both_myresnet34_certainty3', 'Year': 'both',
-                    'path': checkpoint_folder + 'both_myresnet34_certainty3/version_0/checkpoints/epoch\=15.ckpt'},
-                  ]
+
+    checkpoints = add_all_checkpoints_in_folder(checkpoint_folder)
+    # checkpoints = [{'Name': 'both_deeplabv3+_no_dem', 'Year': 'both',
+    #                 'path': checkpoint_folder + 'both_deeplabv3+_no_dem/version_0/checkpoints/epoch=16.ckpt'},
+    #                ]
 
     seed_everything(42)
 
-    thresholds = (0.4, 0.5, 0.6)
+    thresholds = (0.4, 0.45, 0.5)
 
     # create dataframe to store results
     stats_names = ['0.7_detected_area', '0.7_undetected_area', '0.7_acc_c1', '0.7_acc_c2', '0.7_acc_c3']
-    hard_metric_names = ['precision', 'recall', 'f1', 'f1_avg', 'acc_0.5', 'acc_0.7', 'acc_0.8', 'acc_cover']
+    hard_metric_names = ['precision', 'recall', 'f1', 'f1_back', 'recall_back', 'precision_back', 'acc_0.5', 'acc_0.7', 'acc_0.8', 'acc_cover']
     hard_metric_and_stat_names = hard_metric_names.copy()
     hard_metric_and_stat_names.extend(stats_names)
     index_tuples = [(0, 'bce'), (0, 'soft_dice'), (0, 'soft_recall')]
