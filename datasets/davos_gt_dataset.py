@@ -62,6 +62,7 @@ class DavosGtDataset(AvalancheDatasetBase):
 
         image = data_utils.get_all_bands_as_numpy(self.vrt, vrt_offset, self.tile_size,
                                                   means=self.means, stds=self.stds, bands=self.bands)
+        image = data_utils.redistribute_satellite_data(image)
         shp_image = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
 
         # add DEM after changing brightness etc but before rotating and flipping
@@ -69,7 +70,7 @@ class DavosGtDataset(AvalancheDatasetBase):
             dem_offset = np.array([p.x - self.dem_ulx, self.dem_uly - p.y])
             dem_offset = dem_offset / self.pixel_w - px_offset
             dem_image = data_utils.get_all_bands_as_numpy(self.dem, dem_offset, self.tile_size,
-                                                          means=[2800], stds=[1000])
+                                                          means=[2100], stds=[1000])
             image = np.concatenate([image, dem_image], axis=2)
 
         image = self.to_tensor(image)
