@@ -10,7 +10,7 @@ from pytorch_lightning import seed_everything
 from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset_points import AvalancheDatasetPointsEval
 from torch.utils.data import DataLoader, ConcatDataset
-from utils.losses import crop_to_center, get_precision_recall_f1, soft_dice, get_specificity_balanced_accuracy
+from utils.losses import crop_to_center, get_precision_recall_f1, soft_dice 
 from utils import data_utils
 
 bce = BCELoss()
@@ -200,11 +200,11 @@ def add_all_checkpoints_in_folder(checkpoint_folder):
 
 
 def main():
-    output_path = '/cluster/scratch/bartonp/lightning_logs/metrics/ablation/'
+    output_path = '/cluster/scratch/bartonp/lightning_logs/metrics/resnets/'
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    checkpoint_folder = '/cluster/scratch/bartonp/lightning_logs/presentation/ablation'
+    checkpoint_folder = '/cluster/scratch/bartonp/lightning_logs/final/resnets'
 
     checkpoints = add_all_checkpoints_in_folder(checkpoint_folder)
     # checkpoints = [{'Name': 'both_deeplabv3+_no_dem', 'Year': 'both',

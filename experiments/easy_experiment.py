@@ -15,6 +15,7 @@ from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice, c
     create_loss_weight_matrix, weighted_bce
 from utils import viz_utils, data_utils
 from utils.utils import nanmean
+import argparse
 from argparse import ArgumentParser
 
 
@@ -28,6 +29,8 @@ class EasyExperiment(LightningModule):
         super().__init__()
 
         # Save hyperparameters and make them available through self.hparams
+        if isinstance(hparams, dict):
+            hparams = argparse.Namespace(**hparams)
         self.save_hyperparameters(hparams)
         self.val_no = 0
 
