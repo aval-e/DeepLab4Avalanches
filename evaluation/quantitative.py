@@ -223,7 +223,7 @@ def main():
     index_tuples = [(0, 'bce'), (0, 'soft_dice'), (0, 'soft_recall')]
     for thresh in thresholds:
         index_tuples.extend([(thresh, name) for name in hard_metric_names])
-    index_tuples.extend([(thresholds[1], name) for name in stats_names])
+    index_tuples.extend([(0.5, name) for name in stats_names])
     myColumns = pandas.MultiIndex.from_tuples(index_tuples)
     myIndex = pandas.MultiIndex.from_tuples([('Name', 'Year')])
     df = pandas.DataFrame(columns=myColumns, index=myIndex)
