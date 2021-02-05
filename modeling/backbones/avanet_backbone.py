@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils import model_zoo
 from segmentation_models_pytorch.encoders.resnet import resnet_encoders
-from modeling.reusable_blocks import Bottleneck, DeformableBlock, SeBlock, BasicBlock
+from modeling.reusable_blocks import Bottleneck, DeformableBlock, SeBlock, BasicBlock, SeparableConv2d
 from torchvision.ops.deform_conv import DeformConv2d
 from torchvision.models.resnet import ResNet, conv1x1
 from segmentation_models_pytorch.encoders import _utils as utils
@@ -266,13 +266,17 @@ class OffsetNet(nn.Module):
     def __init__(self, in_channels, replace_stride_with_dilation):
         super(OffsetNet, self).__init__()
         self.layers = nn.ModuleList(
-            [nn.Sequential(BasicBlock(in_channels, 18)),
+            [nn.Sequential(BasicBlock(in_channels, in_channels),
+                           SeparableConv2d(in_channels, 18, 3, padding=1)),
              nn.Sequential(nn.AvgPool2d(2),
-                           BasicBlock(18, 18)),
+                           BasicBlock(18, 36),
+                           SeparableConv2d(36, 18, 3, padding=1)),
              nn.Sequential(nn.AvgPool2d(2),
-                           BasicBlock(18, 18)),
+                           BasicBlock(18, 36),
+                           SeparableConv2d(36, 18, 3, padding=1)),
              nn.Sequential(nn.AvgPool2d(2) if not replace_stride_with_dilation else nn.Identity(),
-                           BasicBlock(18, 18))
+                           BasicBlock(18, 36),
+                           SeparableConv2d(36, 18, 3, padding=1))
              ])
 
     def forward(self, x):

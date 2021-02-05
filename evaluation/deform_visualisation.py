@@ -25,28 +25,33 @@ def visualise_deformable_offsets(image, offsets, scale, pos):
     kernel[0] = grid[0] + offsets[1::2].cpu().numpy() * scale
     kernel[1] = grid[1] + offsets[0::2].cpu().numpy() * scale
 
-    ax.scatter(grid[0], grid[1])
+    ax.scatter(grid[0], grid[1], color='w')
     ax.scatter(kernel[0], kernel[1], color='r')
-    ax.quiver(grid[0], grid[1], (kernel[0]-grid[0]), (kernel[1]-grid[1]), angles='xy', scale_units='xy', scale=1, color='g')
+    ax.quiver(grid[0], grid[1], (kernel[0]-grid[0]), (kernel[1]-grid[1]), angles='xy', scale_units='xy', scale=1, color='w')
 
     plt.show()
+
 
 if __name__ == '__main__':
     a = torch.tensor([[0, 1, 2], [ 3, 4, 5], [6, 7, 8]]).view(1, 1, 3, 3).float()
     kernel = torch.tensor([[0, 1, 0], [0, 0, 0], [0, 0, 0]]).view(1, 1, 3, 3).float()
 
-    offsets = [0, 0] + [-0.5, 0] + 14*[0]
-    # offsets = torch.tensor(offsets).view(1, 18, 1, 1).float().clone()
-    offsets = torch.rand(18).view(1, 18, 1, 1).float()
+    offsets = [0, 0] + [1,0] + 14*[0]
+    offsets = torch.tensor(offsets).view(1, 18, 1, 1).float().clone()
+    # offsets = torch.rand(18).view(1, 18, 1, 1).float()
     print(offsets.numpy().flatten())
 
     conv = torchvision.ops.DeformConv2d(1, 1, 3, bias=False)
     conv.weight = torch.nn.Parameter(kernel)
 
+    pad = torch.nn.ZeroPad2d(1)
+    a = pad(a)
+    offsets = pad(offsets)
+
     b = conv(a, offsets)
 
     print(a.numpy())
-    print(b.item())
+    print(b)
 
     pos = [5, 5]
-    visualise_deformable_offsets(torch.zeros([11, 11]), offsets[0, :, 0, 0], 1, pos)
+    visualise_deformable_offsets(torch.zeros([11, 11]), offsets[0, :, 0, 0], 4, pos)
