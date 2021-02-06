@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from osgeo import gdal, osr
 import geopandas as gpd
 from tqdm import tqdm
@@ -6,7 +7,7 @@ from argparse import ArgumentParser
 from experiments.easy_experiment import EasyExperiment
 from datasets.avalanche_dataset_grid import AvalancheDatasetGrid
 from torch.utils.data import DataLoader
-from utils.losses import crop_to_center
+from utils.losses import crop_to_center, get_precision_recall_f1, soft_dice
 from utils import data_utils
 
 
@@ -37,6 +38,38 @@ def write_prediction(band, array, coords, border, ulx, uly, pixel_w, tile_size):
     band.FlushCache()
 
 
+def compute_metrics(metrics, y, y_hat):
+    y_mask = data_utils.labels_to_mask(y)
+    pred = y_hat.round()
+
+    precision, recall, f1 = get_precision_recall_f1(y, pred)
+    precision_back, recall_back, f1_back = get_precision_recall_f1(y_mask == 0, pred == 0)
+    metrics['dice_score'].append(soft_dice(y_mask, y_hat).item())
+    metrics['precision'].append(precision.item())
+    metrics['recall'].append(recall.item())
+    metrics['f1'].append(f1.item())
+    metrics['precision_back'].append(precision_back.item())
+    metrics['recall_back'].append(recall_back.item())
+    metrics['f1_back'].append(f1_back.item())
+
+
+def print_metrics(metrics):
+    for key, val in metrics.items():
+        metrics[key] = np.nanmean(np.array(val)).item()
+    print(metrics)
+
+
+def init_metrics():
+    metrics = {'dice_score': [],
+               'precision': [],
+               'recall': [],
+               'f1': [],
+               'precision_back': [],
+               'recall_back': [],
+               'f1_back': []}
+    return metrics
+
+
 def main(args):
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
@@ -46,7 +79,7 @@ def main(args):
     model.freeze()
     model.cuda()
 
-    tile_size = 512
+    tile_size = 1024
     border = 100
     test_set = AvalancheDatasetGrid(root_dir=args.image_dir,
                                     region_file=args.region_file,
@@ -59,7 +92,7 @@ def main(args):
                                     stds=[823.4, 975.5],
                                     )
 
-    test_loader = DataLoader(test_set, batch_size=1, shuffle=False, num_workers=3,
+    test_loader = DataLoader(test_set, batch_size=1, shuffle=False, num_workers=4,
                             drop_last=False, pin_memory=True)
 
     pixel_w = test_set.pixel_w
@@ -67,13 +100,24 @@ def main(args):
     out_band = out_raster.GetRasterBand(1)
     ulx, uly, _, _ = data_utils.get_raster_extent(out_raster)
 
+    if args.aval_path:
+        metrics = init_metrics()
+
     for sample in tqdm(iter(test_loader), desc='Predicting'):
         x = sample['input'].cuda()
-        # y_hat = model(x)
-        # y_hat = crop_to_center(y_hat, border)
-        y_hat = crop_to_center(x[:, [0], :, :], border)
+        y_hat = model(x)
+        y_hat = crop_to_center(y_hat, border)
 
         write_prediction(out_band, y_hat, sample['coords'], border, ulx, uly, pixel_w, tile_size)
+
+        if test_set.aval_path:
+            y = sample['ground truth'].cuda()
+            y = crop_to_center(y[:, [0], :, :], border)
+            compute_metrics(metrics, y, y_hat)
+
+    if args.aval_path:
+        print('Finished. Computing metrics:')
+        print_metrics(metrics)
 
 
 if __name__ == "__main__":

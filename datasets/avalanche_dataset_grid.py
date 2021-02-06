@@ -89,7 +89,9 @@ class AvalancheDatasetGrid(Dataset):
 
         out = {'input': image, 'coords': (coord.x, coord.y)}
         if self.aval_path:
-            out['ground truth'] = shp_image
+            aval_offset = ((coord.x - self.aval_ulx) / self.pixel_w, (self.aval_uly - coord.y) / self.pixel_w)
+            gt = data_utils.get_all_bands_as_numpy(self.aval_raster, aval_offset, self.tile_size)
+            out['ground truth'] = self.to_tensor(gt)
         return out
 
 
