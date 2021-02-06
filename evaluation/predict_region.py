@@ -11,7 +11,7 @@ from utils.losses import crop_to_center, get_precision_recall_f1, soft_dice
 from utils import data_utils
 
 
-def create_raster(region_file, output_dir, tile_size, pixel_w):
+def create_raster(region_file, output_path, tile_size, pixel_w):
     region = gpd.read_file(region_file)
     minx, miny, maxx, maxy = region.buffer(tile_size, join_style=2).total_bounds
     x_size = int((maxx - minx) // pixel_w)
@@ -21,7 +21,7 @@ def create_raster(region_file, output_dir, tile_size, pixel_w):
     srs.ImportFromEPSG(2056)
 
     driver = gdal.GetDriverByName('GTiff')
-    out_raster = driver.Create(os.path.join(output_dir, 'predictions.tif'), x_size, y_size, 1, gdal.GDT_Float32)
+    out_raster = driver.Create(os.path.join(output_path), x_size, y_size, 1, gdal.GDT_Float32)
     driver = None
     out_raster.SetGeoTransform((minx, pixel_w, 0, maxy, 0, -pixel_w))
     out_raster.SetProjection(srs.ExportToWkt())
@@ -71,9 +71,6 @@ def init_metrics():
 
 
 def main(args):
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
-
     model = EasyExperiment.load_from_checkpoint(args.checkpoint)
     model.eval()
     model.freeze()
@@ -96,7 +93,7 @@ def main(args):
                             drop_last=False, pin_memory=True)
 
     pixel_w = test_set.pixel_w
-    out_raster = create_raster(args.region_file, args.output_dir, tile_size, pixel_w)
+    out_raster = create_raster(args.region_file, args.output_path, tile_size, pixel_w)
     out_band = out_raster.GetRasterBand(1)
     ulx, uly, _, _ = data_utils.get_raster_extent(out_raster)
 
@@ -127,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument('--image_dir', type=str, default='None', help='directory containing all satellite images')
     parser.add_argument('--dem_path', type=str, default='', help='path to DEM if needed')
     parser.add_argument('--region_file', type=str, default='None', help='path to region file specifying which area to predict')
-    parser.add_argument('--output_dir', type=str, default='None', help='directory in which output file is created')
+    parser.add_argument('--output_path', type=str, default='None', help='path to output file of predictions. Will be created or overwritten.')
     parser.add_argument('--checkpoint', type=str, default='None', help='model checkpoint to use')
     parser.add_argument('--aval_path', type=str, default='', help='ground truth avalanche path if available for computing metrics')
     args = parser.parse_args()
