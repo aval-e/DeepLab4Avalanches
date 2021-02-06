@@ -191,7 +191,7 @@ def get_raster_extent(raster):
     return ulx, uly, lrx, lry
 
 
-def generate_point_grid(region, tile_size, overlap=(0, 0)):
+def generate_point_grid(region, tile_size, overlap=0):
     """
     Generate a geopandas Geoseries object of coordinates within a region
     corresponding to the top left corner of the corrsponding patch.
@@ -200,28 +200,28 @@ def generate_point_grid(region, tile_size, overlap=(0, 0)):
     it is completely covered by the points.
 
     :param region: shapefile opened with geopandas
-    :param tile_size: size (x,y) that patches will be in meters
-    :param overlap: overlap of tiles in (x,y) in meters
+    :param tile_size: size that patches will be in meters
+    :param overlap: overlap of tiles in meters
     :return: geopandas geoseries of coordinates as Points
     """
 
-    spacing = (tile_size[0] - overlap[0], tile_size[1] - overlap[1])
+    spacing = tile_size - overlap
 
     # generate uniform grid over the entire extent
     minx, miny, maxx, maxy = region.total_bounds
-    X, Y = np.mgrid[minx:maxx + spacing[0]:spacing[0], miny:maxy + spacing[1]:spacing[1]]
+    X, Y = np.mgrid[minx:maxx + spacing:spacing, miny:maxy + spacing:spacing]
     X, Y = X.ravel(), Y.ravel()
     points = gpd.GeoSeries(map(Point, zip(X, Y)))
 
     # slightly expand regions and filter out points outside of polygons
-    expanded_region = region.buffer(max(tile_size)/4, join_style=2)
+    expanded_region = region.buffer(tile_size/4, join_style=2)
     mask = points.within(expanded_region.loc[0])
     for i in range(1, len(expanded_region)):
         mask |= points.within(expanded_region.loc[i])
     points = points.loc[mask]
 
     # shift coordinates such that they are in the top left of each patch
-    points = points.translate(xoff=-tile_size[0] / 2, yoff=tile_size[1] / 2)
+    points = points.translate(xoff=-tile_size*3/4, yoff=tile_size*3/4)
 
     return points
 
