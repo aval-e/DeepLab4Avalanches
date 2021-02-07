@@ -11,30 +11,30 @@ from utils.viz_utils import viz_predictions, save_fig
 from utils.data_augmentation import center_crop_batch
 
 
-def main(hparams):
-    if not os.path.exists(hparams.save_dir):
-        os.makedirs(hparams.save_dir)
+def main(args):
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
 
     print('Loading model...')
-    model = EasyExperiment.load_from_checkpoint(hparams.ckpt_path)
+    model = EasyExperiment.load_from_checkpoint(args.ckpt_path)
     model.eval()
 
-    test_set = DavosGtDataset(hparams.test_root_dir,
-                              hparams.test_gt_file,
-                              hparams.test_ava_file,
-                              dem_path=hparams.dem_dir,
-                              tile_size=hparams.tile_size,
-                              bands=hparams.bands,
-                              means=hparams.means,
-                              stds=hparams.stds,
+    test_set = DavosGtDataset(args.test_root_dir,
+                              args.test_gt_file,
+                              args.test_ava_file,
+                              dem_path=model.hparams.dem_dir,
+                              tile_size=args.tile_size,
+                              bands=model.hparams.bands,
+                              means=model.hparams.means,
+                              stds=model.hparams.stds,
                               )
 
-    test_loader = DataLoader(test_set, batch_size=hparams.batch_size, shuffle=True, num_workers=hparams.num_workers,
-                             drop_last=False, pin_memory=True)
+    test_loader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=3, drop_last=False, pin_memory=True)
 
-    if not hparams.viz_diffs:
-        mylogger = TensorBoardLogger(hparams.log_dir, name=hparams.exp_name)
-        trainer = Trainer.from_argparse_args(hparams, logger=mylogger)
+    # Calculate statistics
+    if not args.viz_diffs:
+        mylogger = TensorBoardLogger(args.log_dir, name=args.exp_name)
+        trainer = Trainer.from_argparse_args(args, logger=mylogger)
         trainer.test(model, test_loader)
         return
 
@@ -57,7 +57,7 @@ def main(hparams):
         name = input("Enter name to save under or press enter to skip:\n")
         if name:
             print('saving...')
-            save_fig(fig, hparams.save_dir, name)
+            save_fig(fig, args.save_dir, name)
         else:
             print('searching for next difference...')
 
@@ -92,6 +92,6 @@ if __name__ == "__main__":
     parser = EasyExperiment.add_model_specific_args(parser)
 
     parser = Trainer.add_argparse_args(parser)
-    hparams = parser.parse_args()
+    args = parser.parse_args()
 
-    main(hparams)
+    main(args)
