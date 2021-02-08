@@ -1,10 +1,13 @@
+""" This script calculates the dataset input value distribution for each band. It was used for analysing the
+distributions of variables to ensure they were suitable for deep learning
+"""
+
+
 import numpy as np
 from torch.utils.data import DataLoader
 from datasets.avalanche_dataset_points import AvalancheDatasetPoints
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
-""" This script calculates the dataset input value distribution for each band"""
 
 
 def main():
@@ -51,12 +54,6 @@ def main():
 if __name__ == "__main__":
     no_channels = 5
     no_bins = 100
-
-    # home
-    # data_folder = '/home/patrick/ecovision/data/2018'
-    # ava_file = 'avalanches0118_endversion.shp'
-    # region_file = 'Region_Selection.shp'
-    # dem_path = '/home/patrick/ecovision/data/2018/avalanches0118_endversion.tif'
 
     # pfpc
     data_folder = '/home/pf/pfstud/bartonp/slf_avalanches/2018'

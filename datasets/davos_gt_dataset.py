@@ -9,7 +9,7 @@ from datasets.avalanche_dataset_base import AvalancheDatasetBase
 
 class DavosGtDataset(AvalancheDatasetBase):
     """
-    SLF Avalanche Dataset with sample corresponding to points from the ground truth data in davos
+    Avalanche dataset with sample corresponding to points from the ground truth data in Davos.
 
     :param root_dir: directory in which all data is located
     :param aval_file: shapefile name located in root_dir of the avalanches

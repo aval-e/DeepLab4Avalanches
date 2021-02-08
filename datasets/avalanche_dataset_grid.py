@@ -9,7 +9,7 @@ from torchvision.transforms import ToTensor
 
 class AvalancheDatasetGrid(Dataset):
     """
-    SLF Avalanche Dataset. Samples are taken on a grid within region file
+    Avalanche Dataset with samples taken on a grid within a specified region
 
     :param root_dir: directory in which all data is located
     :param region_file: shapefile containing polygon specifying which area will be considered by the Dataset
@@ -101,10 +101,9 @@ if __name__ == '__main__':
     # data_folder = '/media/patrick/Seagate Expansion Drive/SLF_Avaldata/2019'
     data_folder = '/home/patrick/ecovision/data/2019'
     ava_file = 'avalanches0119_endversion.shp'
-    # region_file = 'Region_Selection.shp'
     region_file = 'Multiple_regions.shp'
 
-    my_dataset = AvalancheDataset(data_folder, ava_file, region_file)
+    my_dataset = AvalancheDatasetGrid(data_folder, ava_file, region_file)
     dataloader = DataLoader(my_dataset, batch_size=1, shuffle=True, num_workers=1)
 
     dataiter = iter(dataloader)

@@ -4,7 +4,6 @@ import os
 import warnings
 from torch.nn import BCELoss
 from torch.nn import functional as F
-from modeling.deep_lab_v4 import DeepLabv4
 from modeling.avanet import Avanet
 from segm_models.segmentation_models_pytorch.deeplabv3 import DeepLabV3, DeepLabV3Plus
 from modeling.self_attention_unet import SelfAttentionUNet
@@ -22,7 +21,7 @@ from argparse import ArgumentParser
 class EasyExperiment(LightningModule):
     """ Pytorch Lightning Module for easily configuring and running different training experiments with the same logic.
     Everything from the model to the learning rate scheduler and loss function can be set through hparams object
-    from argparse. Hyperparameters will automatically be saved to tensorboard and yaml file.
+    from argparse. Hyperparameters will automatically be saved to tensorboard and hparams.yaml file.
     """
 
     def __init__(self, hparams):
@@ -45,8 +44,6 @@ class EasyExperiment(LightningModule):
         elif hparams.model == 'deeplabv3+':
             self.model = DeepLabV3Plus(self.hparams.backbone, in_channels=hparams.in_channels,
                                        encoder_weights='imagenet')
-        elif hparams.model == 'deeplabv4':
-            self.model = DeepLabv4(self.hparams.backbone, in_channels=hparams.in_channels)
         elif hparams.model == 'avanet':
             self.model = Avanet(in_channels=hparams.in_channels,
                                 dem=bool(hparams.dem_dir),
@@ -87,7 +84,7 @@ class EasyExperiment(LightningModule):
         self.logger.log_hyperparams(self.hparams, metrics=metric_placeholder)
 
     def forward(self, x):
-        # model may return a list of predictions for deep supervision. If so, apply sigmoid to all of them.
+        # model may return a list of predictions for deep supervision during training. If so, apply sigmoid to all of them.
         x = self.model(x)
         if isinstance(x, list):
             return [torch.sigmoid(item) for item in x]
@@ -124,7 +121,7 @@ class EasyExperiment(LightningModule):
         y_hats = self(x)
         y_mask = data_utils.labels_to_mask(y)
 
-        # y_hat expected to be a list with output at index 0 and intermediate predictions afterwards
+        # y_hat may be a list with output at index 0 and intermediate predictions afterwards when using deep supervision
         total_loss = torch.tensor(0.0)
         if not isinstance(y_hats, list):
             y_hats = [y_hats]
@@ -148,7 +145,7 @@ class EasyExperiment(LightningModule):
             total_loss = total_loss + multiplier * loss
 
         self.log('train_loss/bce', total_loss, on_epoch=True, sync_dist=True)
-        # Log random images
+        # Log random images at train_viz_interval
         if self.global_step % self.hparams.train_viz_interval == 0:
             fig = viz_utils.viz_predictions(x, y, y_hats[0], dem=self.hparams.dem_dir, fig_size=2)
             self.logger.experiment.add_figure("Training Sample", fig, self.global_step)
@@ -158,9 +155,10 @@ class EasyExperiment(LightningModule):
         x, y = batch
         y_hat = self(x)
 
-        pred = torch.round(y_hat)  # rounds probability to 0 or 1
+        # rounds probability to 0 or 1
+        pred = torch.round(y_hat)
 
-        # evaluate metrics only on center patch
+        # evaluate metrics only on center patch since edges are missing context and will not be used during deployment anyway
         y_hat_crop = crop_to_center(y_hat)
         y_crop = crop_to_center(y)
         pred_crop = crop_to_center(pred)
@@ -194,7 +192,7 @@ class EasyExperiment(LightningModule):
         return bce_loss
 
     def test_step(self, batch, batch_idx):
-        """ Check against ground truth obtained by other means - 'Methodenvergleich' """
+        """ Check against ground truth obtained by other means - 'Methodenvergleich', using DavosGtDataset """
         img, _, mapped, status, id = batch
         y_hat = self(img)
 
@@ -217,16 +215,12 @@ class EasyExperiment(LightningModule):
 
         same_davos_gt = torch.sum(correct).float() / torch.sum(correct + wrong)
         same_train_gt = torch.mean((~different).float())
-        correct_score = (torch.sum(diff_correct) - torch.sum(diff_wrong)).float() / torch.sum(diff_correct + diff_wrong)
-        unkown_score = (torch.sum(diff_unkown * pred) - torch.sum(diff_unkown * ~pred)).float() / torch.sum(diff_unkown)
-        old_score = (torch.sum(diff_old * pred) - torch.sum(diff_old * ~pred)).float() / torch.sum(diff_old)
 
         # log in the form of tensorboard hyperparameter metrics
         self.log('hp/same_davos_gt', same_davos_gt, sync_dist=True, reduce_fx=nanmean)
         self.log('hp/same_train_gt', same_train_gt, sync_dist=True, reduce_fx=nanmean)
-        self.log('hp/diff_correct', correct_score, sync_dist=True, reduce_fx=nanmean)
-        self.log('hp/diff_unkown', unkown_score, sync_dist=True, reduce_fx=nanmean)
-        self.log('hp/diff_old', old_score, sync_dist=True, reduce_fx=nanmean)
+
+        # The number logged are only with respect to predictions that are different from the labels
         self.log('hp/no_correct', torch.sum(diff_correct), sync_dist=True, reduce_fx=torch.sum, sync_dist_op=None)
         self.log('hp/no_wrong', torch.sum(diff_wrong), sync_dist=True, reduce_fx=torch.sum, sync_dist_op=None)
         self.log('hp/no_unkown', torch.sum(diff_unkown), sync_dist=True, reduce_fx=torch.sum, sync_dist_op=None)
@@ -241,6 +235,8 @@ class EasyExperiment(LightningModule):
         return ids
 
     def test_epoch_end(self, outputs):
+        """ Aggregate all metrics from the test steps and save them to csv file"""
+
         aggr_outputs = {}
         for key in outputs[0]:
             aggr_outputs[key] = []
@@ -252,7 +248,7 @@ class EasyExperiment(LightningModule):
             print(aggr_outputs)
             return
 
-        # Save results to csv file
+        # Save results to csv file in the same directory as other logs
         csv_name = os.path.join(self.logger.log_dir, 'davos_test_IDs.csv')
         print('Saving test ids to: ' + csv_name)
         with open(csv_name, 'w') as csv_file:
@@ -265,8 +261,8 @@ class EasyExperiment(LightningModule):
 
     @staticmethod
     def add_model_specific_args(parent_parser):
-        """ allows adding model specific args via command line and logging them
-        """
+        """ allows adding model specific args via command line and logging them """
+
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument('--model', type=str, default='deeplab',
                             help='Model architecture. One of "deeplab", "deeplabv3+", "avanet" or "sa_unet"')
