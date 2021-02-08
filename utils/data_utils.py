@@ -191,6 +191,22 @@ def get_raster_extent(raster):
     return ulx, uly, lrx, lry
 
 
+def labels_to_mask(labels):
+    """ Convert image labels to mask of zeros and ones. Returns binary mask of avalanches ignoring their certainty"""
+    return (labels != 0).float()
+
+
+def get_avalanches_in_region(avalanches, region):
+    """
+    Return geoseries of all avalanches within the region
+    """
+    selection = avalanches.intersects(region.geometry.loc[0])
+    for i in range(1, len(region)):
+        selection |= avalanches.intersects(region.geometry.loc[i])
+
+    return avalanches[selection]
+
+
 def generate_point_grid(region, tile_size, overlap=0):
     """
     Generate a geopandas Geoseries object of coordinates within a region
@@ -224,22 +240,6 @@ def generate_point_grid(region, tile_size, overlap=0):
     points = points.translate(xoff=-tile_size*3/4, yoff=tile_size*3/4)
 
     return points
-
-
-def get_avalanches_in_region(avalanches, region):
-    """
-    Return geoseries of all avalanches within the region
-    """
-    selection = avalanches.intersects(region.geometry.loc[0])
-    for i in range(1, len(region)):
-        selection |= avalanches.intersects(region.geometry.loc[i])
-
-    return avalanches[selection]
-
-
-def labels_to_mask(labels):
-    """ Convert image labels to mask of zeros and ones. Returns binary mask of avalanches ignoring their certainty"""
-    return (labels != 0).float()
 
 
 def generate_sample_points(avalanches, region, tile_size, no_aval_ratio=0.05, n=200):

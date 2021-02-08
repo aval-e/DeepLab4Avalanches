@@ -4,6 +4,7 @@ import torch
 
 
 def str2bool(v):
+    """ Converts strings to bools. Useful for argparse"""
     if isinstance(v, bool):
         return v
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -24,7 +25,8 @@ def ba_collate_fn(batch):
     return default_collate(batch)
 
 
-def inst_collate_fn(batch):#
+def inst_collate_fn(batch):
+    """ Collate_fn modified to work for instance segmentation """
     # first handle batch augmentation
     sample_elem = batch[0]
     if isinstance(sample_elem, list):
@@ -34,5 +36,5 @@ def inst_collate_fn(batch):#
 
 
 def nanmean(x):
-    """ Calculate mean ignoring nan values"""
+    """ Calculate mean ignoring nan values on pytorch tensors"""
     return x[~torch.isnan(x)].mean()

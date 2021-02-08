@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 from matplotlib import patches
-from torchvision.utils import make_grid
 import torch
 import os
 from utils.lookup import INSTLABEL_2_STR, STATUS_2_STR, STATUS_COLORS
@@ -229,7 +228,7 @@ def save_fig(fig, dir, name):
 
 
 def numpy_from_torch(tensor):
-    """ Utility to convert torch tensor to numpy for visualing with matplotlib"""
+    """ Utility to convert torch tensor to numpy for visualising with matplotlib"""
     if tensor.ndim == 4:
         return tensor.permute(0, 2, 3, 1).cpu().numpy()
     elif tensor.ndim == 3:
