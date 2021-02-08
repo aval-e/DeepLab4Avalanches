@@ -58,7 +58,7 @@ benchmark=True
 # Model hyperparameters
 model='avanet'
 backbone='adapted_resnet34'
-decoder='avanet_new'
+decoder='avanet'
 optimiser="adam"
 lr=1e-4
 lr_scheduler='multistep'
@@ -73,15 +73,10 @@ val_viz_idx=4
 
 # Avanet options
 avanet_rep_stride_with_dil=True
-avanet_no_blocks="3 4 4 3"
-avanet_deformable=True
 avanet_px_per_iter=4
-avanet_grad_attention=False
-
 decoder_out_ch=512
 decoder_dspf_ch="64 128 256"
 decoder_rates="4 8 12"
-decoder_deformable=True
 
 python -m trainer.train \
 --exp_name $exp_name \
@@ -135,11 +130,7 @@ python -m trainer.train \
 --scheduler_steps $scheduler_steps \
 --lr_scheduler $lr_scheduler \
 --avanet_rep_stride_with_dil $avanet_rep_stride_with_dil \
---avanet_no_blocks $avanet_no_blocks \
---avanet_deformable $avanet_deformable \
 --avanet_px_per_iter $avanet_px_per_iter \
---avanet_grad_attention $avanet_grad_attention \
 --decoder_out_ch $decoder_out_ch \
 --decoder_dspf_ch $decoder_dspf_ch \
 --decoder_rates $decoder_rates \
---decoder_deformable $decoder_deformable \

@@ -40,7 +40,7 @@ log_dir="/scratch/bartonp/lightning_logs"
 # Model hyperparameters
 model='avanet'
 backbone='adapted_resnet18'
-decoder='avanet_new'
+decoder='avanet'
 optimiser="adam"
 lr=5e-5
 in_channels=3
@@ -49,11 +49,7 @@ val_viz_idx=4
 
 # Avanet options
 avanet_rep_stride_with_dil=True
-avanet_no_blocks="3 4 4 3"
-avanet_deformable=True
 avanet_px_per_iter=4
-avanet_grad_attention=False
-
 decoder_rates="4 8 12"
 
 python -m trainer.train \
@@ -97,10 +93,7 @@ python -m trainer.train \
 --train_viz_interval $train_viz_interval \
 --val_viz_idx $val_viz_idx \
 --avanet_rep_stride_with_dil $avanet_rep_stride_with_dil \
---avanet_no_blocks $avanet_no_blocks \
---avanet_deformable $avanet_deformable \
 --avanet_px_per_iter $avanet_px_per_iter \
---avanet_grad_attention $avanet_grad_attention \
 --decoder_rates $decoder_rates \
 --limit_train_batches 1.0 \
 --limit_val_batches 1.0 \

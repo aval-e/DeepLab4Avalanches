@@ -2,6 +2,8 @@ import torch
 import csv
 import os
 import warnings
+import argparse
+from argparse import ArgumentParser
 from torch.nn import BCELoss
 from torch.nn import functional as F
 from modeling.avanet import Avanet
@@ -14,8 +16,6 @@ from utils.losses import get_precision_recall_f1, recall_for_label, soft_dice, c
     create_loss_weight_matrix, weighted_bce
 from utils import viz_utils, data_utils
 from utils.utils import nanmean
-import argparse
-from argparse import ArgumentParser
 
 
 class EasyExperiment(LightningModule):
@@ -50,14 +50,10 @@ class EasyExperiment(LightningModule):
                                 backbone=hparams.backbone,
                                 decoder=hparams.decoder,
                                 replace_stride_with_dilation=hparams.avanet_rep_stride_with_dil,
-                                no_blocks=hparams.avanet_no_blocks,
-                                deformable=hparams.avanet_deformable,
                                 px_per_iter=hparams.avanet_px_per_iter,
-                                grad_attention=hparams.avanet_grad_attention,
                                 decoder_out_ch=hparams.decoder_out_ch,
                                 decoder_dspf_ch=hparams.decoder_dspf_ch,
                                 decoder_rates=hparams.decoder_rates,
-                                decoder_deformable=hparams.decoder_deformable,
                                 )
         elif hparams.model == 'sa_unet':
             self.model = SelfAttentionUNet(hparams.in_channels, 1, depth=4, wf=6, batch_norm=True)

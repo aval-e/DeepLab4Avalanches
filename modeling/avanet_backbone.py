@@ -1,89 +1,17 @@
 import torch
 import torch.nn as nn
 from torch.utils import model_zoo
-from segmentation_models_pytorch.encoders.resnet import resnet_encoders
-from modeling.reusable_blocks import Bottleneck, DeformableBlock, SeBlock, BasicBlock, SeparableConv2d
+from modeling.reusable_blocks import BasicBlock, SeparableConv2d
 from torchvision.ops.deform_conv import DeformConv2d
-from torchvision.models.resnet import ResNet, conv1x1
+from torchvision.models.resnet import ResNet
+from segmentation_models_pytorch.encoders.resnet import resnet_encoders
 from segmentation_models_pytorch.encoders import _utils as utils
-
-
-class AvanetBackbone(nn.Module):
-
-    def __init__(self, groups=1, width_per_group=64, norm_layer=None, replace_stride_with_dilation=False,
-                 no_blocks=(2, 3, 2, 2), deformable=True):
-        super(AvanetBackbone, self).__init__()
-        if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
-        self._norm_layer = norm_layer
-
-        self.groups = groups
-        self.base_width = width_per_group
-
-        self.layer0 = nn.Sequential(
-            nn.Conv2d(3, 62, kernel_size=3, padding=1, bias=False),
-            nn.Conv2d(62, 62, kernel_size=3, padding=1, bias=False),
-            nn.Conv2d(62, 62, kernel_size=3, padding=1, bias=False),
-        )
-        self.bn1 = norm_layer(64)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-
-        ch = (3, 64, 64, 128, 256, 512)
-        self.out_channels = ch
-
-        self.layer1 = self._make_layer(ch[1], ch[2], no_blocks[0], stride=2, deformable=deformable)
-        self.layer2 = self._make_layer(ch[2], ch[3], no_blocks[1], stride=2, deformable=deformable)
-        self.layer3 = self._make_layer(ch[3], ch[4], no_blocks[2], stride=2, deformable=deformable)
-        if replace_stride_with_dilation:
-            self.layer4 = self._make_layer(ch[4], ch[5], no_blocks[3], dilation=2, deformable=deformable)
-        else:
-            self.layer4 = self._make_layer(ch[4], ch[5], no_blocks[3], stride=2, deformable=deformable)
-
-        self.layers = nn.ModuleList([self.layer1, self.layer2, self.layer3, self.layer4])
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-
-    def _make_layer(self, inplanes, planes, blocks, stride=1, dilation=1, deformable=False):
-        norm_layer = self._norm_layer
-        block = Bottleneck if not deformable else DeformableBlock
-
-        layers = []
-        layers.append(block(inplanes, planes, stride, 1,
-                            self.base_width, dilation, norm_layer))
-        for _ in range(1, blocks):
-            layers.append(block(planes, planes, groups=self.groups,
-                                base_width=self.base_width, dilation=1,
-                                norm_layer=norm_layer))
-
-        return nn.Sequential(*layers)
-
-    def forward(self, x, grads):
-        features = [nn.Identity()]
-
-        x = self.layer0(x)
-        x = torch.cat([x, grads], dim=1)
-        x = self.bn1(x)
-        x = self.relu(x)
-        features.append(x)
-        x = self.maxpool(x)
-
-        for layer in self.layers:
-            x = layer(x)
-            features.append(x)
-
-        return features
 
 
 class AdaptedResnet(ResNet):
     """ Version of the resnet that uses deformable convolutions in all its layers.
 
-     Offsets for the deformable convolutions are calculated by a seperate network.
+     Offsets for the deformable convolutions are calculated separately by OffsetNet.
      :param grad_feats: general gradient features as calculated by another network
      :param in_channels: number of input channels including the DEM if used
      :param dem: whether one of the input channels represents the DEM. Parameters will be initialised differently for
@@ -193,7 +121,36 @@ class AdaptedResnet(ResNet):
         self.conv1 = new_conv1
 
 
+class OffsetNet(nn.Module):
+    """ Small network for computing the offsets to be used with the adapted resnet"""
+    def __init__(self, in_channels, replace_stride_with_dilation):
+        super(OffsetNet, self).__init__()
+        self.layers = nn.ModuleList(
+            [nn.Sequential(BasicBlock(in_channels, in_channels),
+                           SeparableConv2d(in_channels, 18, 3, padding=1)),
+             nn.Sequential(nn.AvgPool2d(2),
+                           BasicBlock(18, 36),
+                           SeparableConv2d(36, 18, 3, padding=1)),
+             nn.Sequential(nn.AvgPool2d(2),
+                           BasicBlock(18, 36),
+                           SeparableConv2d(36, 18, 3, padding=1)),
+             nn.Sequential(nn.AvgPool2d(2) if not replace_stride_with_dilation else nn.Identity(),
+                           BasicBlock(18, 36),
+                           SeparableConv2d(36, 18, 3, padding=1))
+             ])
+
+    def forward(self, x):
+        x = x[0]
+        features = []
+        for layer in self.layers:
+            x = layer(x)
+            features.append(x)
+        return features
+
+
 class DeformableBasicBlock(nn.Module):
+    """ Takes a standard basic block from the resnet and makes the first convolution deformable"""
+
     def __init__(self, basic_block):
         super(DeformableBasicBlock, self).__init__()
         conv1 = basic_block.conv1
@@ -230,6 +187,8 @@ class DeformableBasicBlock(nn.Module):
 
 
 class SeDeformableBasicBlock(DeformableBasicBlock):
+    """ Slight modification on the DeformableBasicBlock which also adds squeeze and excitation to the block"""
+
     def __init__(self, basic_block):
         super().__init__(basic_block=basic_block)
         self.pool = nn.AdaptiveAvgPool2d(1)
@@ -260,29 +219,3 @@ class SeDeformableBasicBlock(DeformableBasicBlock):
         out = self.relu(out)
 
         return (out, offsets)
-
-
-class OffsetNet(nn.Module):
-    def __init__(self, in_channels, replace_stride_with_dilation):
-        super(OffsetNet, self).__init__()
-        self.layers = nn.ModuleList(
-            [nn.Sequential(BasicBlock(in_channels, in_channels),
-                           SeparableConv2d(in_channels, 18, 3, padding=1)),
-             nn.Sequential(nn.AvgPool2d(2),
-                           BasicBlock(18, 36),
-                           SeparableConv2d(36, 18, 3, padding=1)),
-             nn.Sequential(nn.AvgPool2d(2),
-                           BasicBlock(18, 36),
-                           SeparableConv2d(36, 18, 3, padding=1)),
-             nn.Sequential(nn.AvgPool2d(2) if not replace_stride_with_dilation else nn.Identity(),
-                           BasicBlock(18, 36),
-                           SeparableConv2d(36, 18, 3, padding=1))
-             ])
-
-    def forward(self, x):
-        x = x[0]
-        features = []
-        for layer in self.layers:
-            x = layer(x)
-            features.append(x)
-        return features

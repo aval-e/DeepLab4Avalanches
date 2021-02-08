@@ -14,6 +14,7 @@ def conv1x1(in_planes, out_planes, stride=1):
 
 
 class BasicBlock(nn.Module):
+    """ BasicBlock is a residual block from resnet. Used with resnets18 and resnet34"""
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, groups=1,
@@ -114,7 +115,7 @@ class Bottleneck(nn.Module):
 
 
 class DeformableBlock(Bottleneck):
-    """ Custom deformable version"""
+    """ Deformable version of the Bottleneck block which computes offsets directly from the input features"""
 
     def __init__(self, inplanes, planes, stride=1, groups=1,
                  base_width=64, dilation=1, norm_layer=None):
@@ -150,7 +151,7 @@ class DeformableBlock(Bottleneck):
 
 
 class SeBlock(Bottleneck):
-    """ effective squeeze and excitation"""
+    """ Modified Bottleneck which implements effective squeeze and excitation """
     def __init__(self, inplanes, planes, stride=1, groups=1,
                  base_width=64, dilation=1, norm_layer=None):
         super(SeBlock, self).__init__(inplanes, planes, stride, groups, base_width, dilation, norm_layer)
@@ -188,7 +189,6 @@ class SeBlock(Bottleneck):
 
 
 class SeparableConv2d(nn.Sequential):
-
     def __init__(
             self,
             in_channels,
@@ -219,7 +219,6 @@ class SeparableConv2d(nn.Sequential):
 
 
 class DeformableSeparableConv2d(nn.Module):
-
     def __init__(
             self,
             in_channels,

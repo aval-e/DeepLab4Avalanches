@@ -1,12 +1,12 @@
+import time
 import torch
 from torch import nn
-from modeling.reusable_blocks import conv1x1, conv3x3, SeparableConv2d, Bottleneck
+import matplotlib.pyplot as plt
+from modeling.reusable_blocks import conv1x1, SeparableConv2d
 from kornia.filters.sobel import SpatialGradient
 from kornia.utils.image import image_to_tensor, tensor_to_image
 from kornia.enhance.normalize import normalize_min_max
 from kornia.augmentation import RandomCrop
-import matplotlib.pyplot as plt
-import time
 
 
 class FlowLayer(nn.Module):
@@ -92,31 +92,9 @@ class FlowProcess(nn.Module):
         return aggregate
 
 
-class FlowAttention(nn.Module):
-    """ Attention Layer for where to propagate information along gradient"""
-
-    def __init__(self, inplanes, replace_stride_with_dilation=False):
-        super().__init__()
-        self.replace_stride_with_dilation = replace_stride_with_dilation
-        self.upsample = nn.UpsamplingBilinear2d(scale_factor=2)
-        self.block1 = Bottleneck(inplanes[-1] + inplanes[-2], inplanes[-2])
-        self.block2 = Bottleneck(inplanes[-2] + inplanes[-3], inplanes[-3])
-        self.conv1x1 = conv1x1(inplanes[-3], 1)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        features = self.upsample(x[-1]) if not self.replace_stride_with_dilation else x[-1]
-        features = torch.cat([features, x[-2]], dim=1)
-        features = self.block1(features)
-        features = self.upsample(features)
-        features = torch.cat([features, x[-3]], dim=1)
-        features = self.block2(features)
-        features = self.conv1x1(features)
-        features = self.sigmoid(features)
-        return torch.cat(2 * [features], dim=1)
-
-
 if __name__ == '__main__':
+    # Test layer
+
     plt.interactive(True)
     import matplotlib
     matplotlib.use('TkAgg')

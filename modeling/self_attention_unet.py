@@ -19,10 +19,11 @@ class SelfAttentionUNet(nn.Module):
         kernel_size=3,
     ):
         """
-        Implementation of
+        Modified version of the U-Net to also use selfattention in its layers
         U-Net: Convolutional Networks for Biomedical Image Segmentation
         (Ronneberger et al., 2015)
         https://arxiv.org/abs/1505.04597
+
 
         Using the default arguments will yield the exact version used
         in the original paper
