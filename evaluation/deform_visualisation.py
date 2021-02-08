@@ -1,3 +1,5 @@
+""" This utility function can be used to visualise the deformable convolution kernel """
+
 import numpy as np
 import torch
 import torchvision
@@ -5,7 +7,9 @@ from matplotlib import pyplot as plt
 
 
 def visualise_deformable_offsets(image, offsets, scale, pos):
-    """ Visualise the offsets used in a deformable 3x3 convolution
+    """ Visualise the offsets used in a deformable 3x3 convolution.
+    Creates a plot with the image as background and the deformed convolutional kernel elements overlayed in red.
+    The transformation from the standard kernel is shown with white arrows.
 
     :param image: background image
     :param offsets: 18 offsets
@@ -33,12 +37,13 @@ def visualise_deformable_offsets(image, offsets, scale, pos):
 
 
 if __name__ == '__main__':
+    # Just some test to determine which offset elements correspond to which kernel elements and check visualisation
     a = torch.tensor([[0, 1, 2], [ 3, 4, 5], [6, 7, 8]]).view(1, 1, 3, 3).float()
     kernel = torch.tensor([[0, 1, 0], [0, 0, 0], [0, 0, 0]]).view(1, 1, 3, 3).float()
 
     offsets = [0, 0] + [1,0] + 14*[0]
-    offsets = torch.tensor(offsets).view(1, 18, 1, 1).float().clone()
-    # offsets = torch.rand(18).view(1, 18, 1, 1).float()
+    # offsets = torch.tensor(offsets).view(1, 18, 1, 1).float().clone()
+    offsets = torch.rand(18).view(1, 18, 1, 1).float() - 0.5
     print(offsets.numpy().flatten())
 
     conv = torchvision.ops.DeformConv2d(1, 1, 3, bias=False)
@@ -54,4 +59,4 @@ if __name__ == '__main__':
     print(b)
 
     pos = [5, 5]
-    visualise_deformable_offsets(torch.zeros([11, 11]), offsets[0, :, 0, 0], 4, pos)
+    visualise_deformable_offsets(torch.zeros([11, 11]), offsets[0, :, 1, 1], 4, pos)

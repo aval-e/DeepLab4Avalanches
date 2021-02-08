@@ -1,10 +1,23 @@
+""" This script is used for evaluating models on various metrics.
+
+Multiple experiments can be run by adding a dictionary to the list for each experiments, describing its name, year to
+be tested on, and path to the model checkpoint.
+
+Soft and hard metrics are computer. Hard metrics refer to those where the probability has to be tresholded to get a
+a binary mask, and are computed with respect to multiple thresholds for comparison. Soft metrics are those that can be
+computed directly from the predicted probabilities.
+
+Soft metrics: BCE, soft_dice, soft_recall - recall summed directly over the raw rather thresholded probabilities
+Hard metrics: precision, recall, f1, f1_background, recall_background, precision_background,
+              accuracy at 50% coverage, 70% and 80%. acc_cover is the percentage of area covered per avalanche.
+"""
+
 import os
 import math
 import torch
 import pandas
 import numpy as np
 from tqdm import tqdm
-from glob import glob
 from torch.nn import BCELoss
 from pytorch_lightning import seed_everything
 from experiments.easy_experiment import EasyExperiment
@@ -16,8 +29,8 @@ from utils import data_utils
 bce = BCELoss()
 
 
-def load_model(checkpoint):
-    model = EasyExperiment.load_from_checkpoint(checkpoint)
+def load_model(checkpoint_path):
+    model = EasyExperiment.load_from_checkpoint(checkpoint_path)
     model.eval()
     model.freeze()
     model.cuda()
@@ -25,6 +38,7 @@ def load_model(checkpoint):
 
 
 def load_test_set(hparams, year='both'):
+    """ load the test set on leonhard for 2018, 2019 or both"""
     root_dir = '/cluster/scratch/bartonp/slf_avalanches/'
     if year == '18' or year == 'both':
         test_set = AvalancheDatasetPointsEval(root_dir + '2018',
@@ -55,6 +69,7 @@ def load_test_set(hparams, year='both'):
 
 
 def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.4, 0.5, 0.6)):
+    """ Calculate the metrics for one sample. Hard metrics are evaluated with respect to different thresholds"""
     y_individual = crop_to_center(y_individual)
     y_hat = crop_to_center(y_hat)
 
@@ -74,7 +89,7 @@ def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.
     soft_metrics['area_m2'].extend(aval_info['area_m2'])
     soft_metrics['certainty'].extend(aval_info['certainty'])
 
-    # hard metrics
+    # hard metrics for each threshold
     for threshold in thresholds:
         pred = torch.round(y_hat + (0.5 - threshold))  # rounds probability to 0 or 1
         precision, recall, f1 = get_precision_recall_f1(y, pred)
@@ -98,7 +113,8 @@ def calc_metrics(soft_metrics, hard_metrics, y_individual, y_hat, thresholds=(0.
 
 
 def per_aval_accuracy(predictions, targets, detection_thresh=(0.5, 0.7, 0.8)):
-    """ Accuracy per avalanche with thresholded predictions"""
+    """ Accuracy per avalanche. Detection is determined by a minimum area of the avalanche that is predicted as
+    avalanche """
     d = {'acc_cover': []}
     thresh_keys = []
     for thresh in detection_thresh:
@@ -119,7 +135,7 @@ def per_aval_accuracy(predictions, targets, detection_thresh=(0.5, 0.7, 0.8)):
 
 
 def per_aval_info(y_hats, targets):
-    """ Some useful info and soft metrics from predicted probabilities"""
+    """ Some useful information on a per avalanche basis, and soft metrics from predicted probabilities"""
     soft_recall = []
     area = []
     certainty = []
@@ -136,6 +152,7 @@ def per_aval_info(y_hats, targets):
 
 
 def create_empty_metrics(thresholds, hard_metric_names):
+    """ Initialises the metrics dictionaries with empty lists """
     soft_metrics = {}
     soft_metrics['bce'] = []
     soft_metrics['soft_dice'] = []
@@ -154,6 +171,7 @@ def create_empty_metrics(thresholds, hard_metric_names):
 
 
 def append_avg_metrics_to_dataframe(df, name, year, metrics, columns):
+    """ Computes the average metrics across the dataset and appends an entry for that experiment to the pandas dataframe """
     soft, hard = metrics
 
     avg_metrics = {}
@@ -181,11 +199,15 @@ def append_avg_metrics_to_dataframe(df, name, year, metrics, columns):
     return df
 
 
-def add_all_checkpoints_in_folder(checkpoint_folder):
-    subfolders = [sub for sub in os.listdir(checkpoint_folder) if os.path.isdir(os.path.join(checkpoint_folder, sub))]
-    checkpoints = []
+def add_all_experiments_in_folder(experiment_folder):
+    """ Automatically add all experiments from subfolders. The subfolder is used as the experiment name, and the year
+    is set both per default, unless the subfolder name starts with the year it was trained on, in which case it will be
+    tested on the other.
+    """
+    subfolders = [sub for sub in os.listdir(experiment_folder) if os.path.isdir(os.path.join(experiment_folder, sub))]
+    experiments = []
     for subfolder in subfolders:
-        for dirpath, _, filenames in os.walk(os.path.join(checkpoint_folder, subfolder)):
+        for dirpath, _, filenames in os.walk(os.path.join(experiment_folder, subfolder)):
             for filename in [f for f in filenames if f.endswith(".ckpt")]:
                 if subfolder.startswith('18'):
                     year = '19'
@@ -194,9 +216,9 @@ def add_all_checkpoints_in_folder(checkpoint_folder):
                 else:
                     year = 'both'
                 
-                checkpoints.append({'Name': subfolder, 'Year': year,
+                experiments.append({'Name': subfolder, 'Year': year,
                                     'path': os.path.join(dirpath, filename)})
-    return checkpoints
+    return experiments
 
 
 def main():
@@ -204,18 +226,18 @@ def main():
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    checkpoint_folder = '/cluster/scratch/bartonp/lightning_logs/final/resnets'
+    experiments_folder = '/cluster/scratch/bartonp/lightning_logs/final/resnets'
 
-    checkpoints = add_all_checkpoints_in_folder(checkpoint_folder)
-    # checkpoints = [{'Name': 'both_deeplabv3+_no_dem', 'Year': 'both',
-    #                 'path': checkpoint_folder + 'both_deeplabv3+_no_dem/version_0/checkpoints/epoch=16.ckpt'},
+    experiments = add_all_experiments_in_folder(experiments_folder)
+    # experiments = [{'Name': 'both_deeplabv3+_no_dem', 'Year': 'both',
+    #                 'path': experiments_folder + 'both_deeplabv3+_no_dem/version_0/checkpoints/epoch=16.ckpt'},
     #                ]
 
     seed_everything(42)
 
     thresholds = (0.4, 0.45, 0.5)
 
-    # create dataframe to store results
+    # create dataframe with all relevant entries to store results
     stats_names = ['0.7_detected_area', '0.7_undetected_area', '0.7_acc_c1', '0.7_acc_c2', '0.7_acc_c3']
     hard_metric_names = ['precision', 'recall', 'f1', 'f1_back', 'recall_back', 'precision_back', 'acc_0.5', 'acc_0.7', 'acc_0.8', 'acc_cover']
     hard_metric_and_stat_names = hard_metric_names.copy()
@@ -229,18 +251,17 @@ def main():
     df = pandas.DataFrame(columns=myColumns, index=myIndex)
 
     with torch.no_grad():
-        for checkpoint in checkpoints:
-            model = load_model(checkpoint['path'])
+        # Loop over all experiments
+        for experiment in experiments:
+            model = load_model(experiment['path'])
 
-            dataset = load_test_set(model.hparams, checkpoint['Year'])
+            dataset = load_test_set(model.hparams, experiment['Year'])
             test_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=4,
                                      drop_last=False, pin_memory=True)
 
             metrics = create_empty_metrics(thresholds, hard_metric_names)
 
-            for j, batch in enumerate(tqdm(iter(test_loader), desc='Testing: ' + checkpoint['Name'])):
-                # if j > 50:
-                #     break
+            for j, batch in enumerate(tqdm(iter(test_loader), desc='Testing: ' + experiment['Name'])):
                 x, y = batch
                 x = x.cuda()
                 y = y.cuda()
@@ -248,7 +269,7 @@ def main():
 
                 calc_metrics(*metrics, y, y_hat, thresholds)
 
-            df = append_avg_metrics_to_dataframe(df, checkpoint['Name'], checkpoint['Year'], metrics, myColumns)
+            df = append_avg_metrics_to_dataframe(df, experiment['Name'], experiment['Year'], metrics, myColumns)
 
             # save backup in case an error occours later on
             df.to_excel(output_path + 'metrics_backup.xlsx')

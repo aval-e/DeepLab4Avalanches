@@ -7,7 +7,7 @@ from osgeo import gdal
 
 class AvalancheDatasetBase(Dataset):
     """
-    Base for avalanche datasets since they all open the same data but return different data when getting items
+    Base class for avalanche datasets since they all open the same data but return different data when getting items
 
     :param root_dir: directory in which all data is located
     :param aval_file: shapefile name located in root_dir of the avalanches

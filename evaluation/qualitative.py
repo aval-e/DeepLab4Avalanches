@@ -1,10 +1,11 @@
-import os
-import torch
-from experiments.easy_experiment import EasyExperiment
-from datasets.avalanche_dataset_points import AvalancheDatasetPoints
-from torch.utils.data import DataLoader, ConcatDataset
-from utils.viz_utils import viz_predictions, save_fig
-from utils.losses import crop_to_center
+""" This script was used for the qualitative evaluation of models.
+
+Predictions are visualised with matplotlib one sample at a time, showing input, ground truth and predictions.
+Each sample can either be saved to the save_dir by entering a name for it, or be skipped by pressing enter without
+entering a name.
+
+A list of checkpoints can be given to directly compare models.
+"""
 
 save_dir = '/scratch/bartonp/images/presentation'
 
@@ -14,6 +15,15 @@ checkpoints = [checkpoint_dir + 'both_deeplabv3+/version_0/checkpoints/epoch=16.
                ]
 
 dem_dir = '/home/pf/pfstud/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif'
+
+import os
+import torch
+from experiments.easy_experiment import EasyExperiment
+from datasets.avalanche_dataset_points import AvalancheDatasetPoints
+from torch.utils.data import DataLoader, ConcatDataset
+from utils.viz_utils import viz_predictions, save_fig
+from utils.losses import crop_to_center
+
 
 def load_test_set(hparams, year='both'):
     root_dir = '/home/pf/pfstud/bartonp/slf_avalanches/'

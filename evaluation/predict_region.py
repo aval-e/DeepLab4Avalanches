@@ -1,3 +1,15 @@
+""" This script can be used to run a model across an entire region and save predictions to a GeoTiff.
+
+To see all configuration options, run the script with the --help flag.
+The script can be run having set all relevant flags of paths to the input images, output directory and region file. The
+region file is needed to define which area needs to be predicted and is expected to be a shapefile.
+
+Predictions will be written to a GeoTiff stored under the output directory specified with the flags. Predictions are
+not thresholded but raw floats between 0 and 1 representing the probability of an avalanche.
+
+A ground truth avalanche file may also be included with the --aval_path flag if metrics are to be computed.
+"""
+
 import os
 import numpy as np
 from osgeo import gdal, osr
@@ -12,6 +24,9 @@ from utils import data_utils
 
 
 def create_raster(region_file, output_path, tile_size, pixel_w):
+    """ Create the output raster such that it covers the entire region to be predicted and uses EPSG 2056 coordinate
+    system.
+    """
     region = gpd.read_file(region_file)
     minx, miny, maxx, maxy = region.buffer(tile_size, join_style=2).total_bounds
     x_size = int((maxx - minx) // pixel_w)
@@ -30,15 +45,24 @@ def create_raster(region_file, output_path, tile_size, pixel_w):
     return out_raster
 
 
-def write_prediction(band, array, coords, border, ulx, uly, pixel_w, tile_size):
+def write_prediction(band, array, coords, border, ulx, uly, pixel_w):
+    """ Write the predictions of a patch to the raster.
+    :param band: band of the output raster to be written to
+    :param array: numpy array of predictions to be written to raster
+    :param coords: tuple of (x,y) coordinates of the top left corner of the patch
+    :param ulx: coordinate of the most left pixel in the raster
+    :param uly: coordinate of the top most pixel in the raster
+    :param pixel_w: Pixel width or spatial resolution
+    """
     xoff = int((coords[0] - ulx) / pixel_w + border)
     yoff = int((uly - coords[1]) / pixel_w + border)
 
     band.WriteArray(array.squeeze().cpu().numpy(), xoff=xoff, yoff=yoff)
-    band.FlushCache()
+    band.FlushCache()  # Write cached raster to file
 
 
 def compute_metrics(metrics, y, y_hat):
+    """ Compute metrics for a patch """
     y_mask = data_utils.labels_to_mask(y)
     pred = y_hat.round()
 
@@ -76,8 +100,8 @@ def main(args):
     model.freeze()
     model.cuda()
 
-    tile_size = 1024
-    border = 100
+    tile_size = args.tile_size
+    border = args.border
     test_set = AvalancheDatasetGrid(root_dir=args.image_dir,
                                     region_file=args.region_file,
                                     dem_path=args.dem_path,
@@ -105,7 +129,7 @@ def main(args):
         y_hat = model(x)
         y_hat = crop_to_center(y_hat, border)
 
-        write_prediction(out_band, y_hat, sample['coords'], border, ulx, uly, pixel_w, tile_size)
+        write_prediction(out_band, y_hat, sample['coords'], border, ulx, uly, pixel_w)
 
         if test_set.aval_path:
             y = sample['ground truth'].cuda()
@@ -121,11 +145,13 @@ if __name__ == "__main__":
     parser = ArgumentParser(description='Run avalanche prediction on satellite images')
 
     # Trainer args
-    parser.add_argument('--image_dir', type=str, default='None', help='directory containing all satellite images')
+    parser.add_argument('--image_dir', type=str, help='directory containing all satellite images')
     parser.add_argument('--dem_path', type=str, default='', help='path to DEM if needed')
-    parser.add_argument('--region_file', type=str, default='None', help='path to region file specifying which area to predict')
-    parser.add_argument('--output_path', type=str, default='None', help='path to output file of predictions. Will be created or overwritten.')
-    parser.add_argument('--checkpoint', type=str, default='None', help='model checkpoint to use')
+    parser.add_argument('--region_file', type=str, help='path to region file specifying which area to predict')
+    parser.add_argument('--output_path', type=str, help='path to output file of predictions. Will be created or overwritten.')
+    parser.add_argument('--checkpoint', type=str, help='model checkpoint to use')
     parser.add_argument('--aval_path', type=str, default='', help='ground truth avalanche path if available for computing metrics')
+    parser.add_argument('--tile_size', type=int, default=1024, help='Tile size to be used for predictions. Default: 1024')
+    parser.add_argument('--border', type=int, default=100, help='Border to be disregarded for each sample in pixels. Default: 100')
     args = parser.parse_args()
     main(args)

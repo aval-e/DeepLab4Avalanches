@@ -1,11 +1,20 @@
+""" This script is used to evaluate models with respect to ground truth data different from the avalanche labels,
+available around Davos.
+
+It can either be run in visualise difference mode, where one can step through examples were predictions are different to
+avalanche labels and save interesting ones. Or, it is run only to compute some statistics with respect to the ground
+truth data.
+
+For more information on all flags run the script with the --help flag.
+"""
+
 import os
 from argparse import ArgumentParser
-from pytorch_lightning import Trainer, seed_everything, Callback
+from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 from experiments.easy_experiment import EasyExperiment
 from datasets.davos_gt_dataset import DavosGtDataset
-from torch.utils.data import DataLoader, random_split
-from torchvision.transforms import ToTensor
+from torch.utils.data import DataLoader
 from utils.utils import str2bool
 from utils.viz_utils import viz_predictions, save_fig
 from utils.data_augmentation import center_crop_batch
@@ -31,13 +40,14 @@ def main(args):
 
     test_loader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=3, drop_last=False, pin_memory=True)
 
-    # Calculate statistics
+    # Only calculate statistics if not in visual mode
     if not args.viz_diffs:
         mylogger = TensorBoardLogger(args.log_dir, name=args.exp_name)
         trainer = Trainer.from_argparse_args(args, logger=mylogger)
         trainer.test(model, test_loader)
         return
 
+    # Step through examples step for step when in visual mode
     print('Starting evaluation loop')
     for batch in iter(test_loader):
         x, y, mapped, status, id = batch
