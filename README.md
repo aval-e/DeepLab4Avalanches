@@ -3,7 +3,7 @@ Avalanche Mapping in optical satellite imagery using deep learning.
 
 This readme only gives an overview. More documentation is provided in the form of docstrings throughout the code.
 
-For an explanation of the concepts, ideas and evaluation, see the report.
+For an explanation of the concepts, ideas and evaluation, see the `Report.pdf`
 
 ### Structure
 
@@ -45,3 +45,18 @@ The following flags need to be set:
 * --dem_path: path to the DEM if needed
 * --region_file: a shapefile specifiying which region to predict over
 * --output_path: the complete path and file name in which to store predictions. This will be a GeoTiff
+
+### Data and checkpoints
+
+Data and checkpoints can be found both the pf drive and directly on the leonhard cluster:
+
+* EcoVision lab: `/home/pf/pfstud/bartonp`
+* On Leonhard: `/cluster/work/igp_psr/bartonp`
+
+Data is organised as follows:
+
+* slf_avalanches: contains all satellite images, avalanche labels and regions
+* checkpoints: contains the best model checkpoints from avanet and deeplab
+* dem_ch: contains the DEM of switzerland upsampled to 1.5m resolution in ESPG:2056
+* predictions: contains the predictions for the whole test areas in the form of GeoTiffs
+
