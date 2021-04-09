@@ -14,10 +14,10 @@ dependencies:
   - brotlipy=0.7.0=py37h7b6447c_1000
   - bzip2=1.0.8=h7b6447c_0
   - c-ares=1.15.0=h7b6447c_1001
-  - ca-certificates=2020.6.20=hecda079_0
+  - ca-certificates=2021.1.19=h06a4308_0
   - cachetools=4.1.1=py_0
   - cairo=1.14.12=h8948797_3
-  - certifi=2020.6.20=py37he5f6b98_2
+  - certifi=2020.12.5=py37h06a4308_0
   - cffi=1.14.0=py37h2e261b9_0
   - chardet=3.0.4=py37_1003
   - click=7.1.2=py_0
@@ -29,6 +29,7 @@ dependencies:
   - cycler=0.10.0=py37_0
   - dbus=1.13.16=hb2f20db_0
   - descartes=1.1.0=py_4
+  - et_xmlfile=1.0.1=py_1001
   - expat=2.2.9=he6710b0_2
   - fiona=1.8.4=py37hc38cc03_0
   - fontconfig=2.13.0=h9420a91_0
@@ -51,6 +52,7 @@ dependencies:
   - icu=58.2=he6710b0_3
   - idna=2.10=py_0
   - intel-openmp=2020.2=254
+  - jdcal=1.4.1=py_0
   - jpeg=9b=h024ee3a_2
   - json-c=0.13.1=h1bed415_0
   - kealib=1.4.7=hd0c454d_6
@@ -63,6 +65,7 @@ dependencies:
   - libdap4=3.19.1=h6ec2957_0
   - libedit=3.1.20191231=h14c3975_1
   - libffi=3.2.1=hd88cf55_4
+  - libgcc=7.2.0=h69d50b8_2
   - libgcc-ng=9.1.0=hdf63c60_0
   - libgdal=2.3.3=h2e7e64b_0
   - libgfortran-ng=7.3.0=hdf63c60_0
@@ -87,7 +90,7 @@ dependencies:
   - mkl-service=2.3.0=py37he904b0f_0
   - mkl_fft=1.1.0=py37h23d657b_0
   - mkl_random=1.1.1=py37h0573a6f_0
-  - multidict=4.7.5=py37h8f50634_2
+  - multidict=5.1.0=py37h27cfd23_2
   - munch=2.5.0=py_0
   - ncurses=6.2=he6710b0_1
   - ninja=1.10.1=py37hfd86e86_0
@@ -96,7 +99,8 @@ dependencies:
   - oauthlib=3.1.0=py_0
   - olefile=0.46=py_0
   - openjpeg=2.3.0=h05c96fa_1
-  - openssl=1.1.1h=h516909a_0
+  - openpyxl=3.0.5=py_0
+  - openssl=1.1.1i=h27cfd23_0
   - packaging=20.4=pyh9f0ad1d_0
   - pandas=1.1.1=py37he6710b0_0
   - pcre=8.44=he6710b0_0
@@ -120,7 +124,6 @@ dependencies:
   - python-dateutil=2.8.1=py_0
   - python_abi=3.7=1_cp37m
   - pytorch=1.6.0=py3.7_cuda10.2.89_cudnn7.6.5_0
-  - pytorch-lightning=1.0.3=py_0
   - pytz=2020.1=py_0
   - pyyaml=5.3.1=py37h7b6447c_1
   - qt=5.9.7=h5867ecd_1
@@ -151,13 +154,27 @@ dependencies:
   - xerces-c=3.2.2=h780794e_0
   - xz=5.2.5=h7b6447c_0
   - yaml=0.2.5=h7b6447c_0
-  - yarl=1.5.1=py37h8f50634_0
+  - yarl=1.6.3=py37h27cfd23_0
   - zipp=3.1.0=py_0
   - zlib=1.2.11=h7b6447c_3
   - zstd=1.4.5=h9ceee32_0
   - pip:
+    - aiohttp==3.7.3
+    - async-timeout==3.0.1
+    - cloudpickle==1.6.0
+    - cython==0.29.21
     - efficientnet-pytorch==0.6.3
+    - fvcore==0.1.2.post20201111
+    - gputil==1.4.0
+    - kornia==0.4.1
+    - opencv-python==4.4.0.46
+    - portalocker==2.0.0
     - pretrainedmodels==0.7.4
-    - segmentation-models-pytorch==0.1.2
+    - pycocotools==2.0.2
+    - pydot==1.4.1
+    - pytorch-lightning==1.1.6
+    - tabulate==0.8.7
+    - termcolor==1.1.0
     - timm==0.1.20
+    - yacs==0.1.8
 prefix: /home/patrick/miniconda3/envs/eco
