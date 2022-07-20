@@ -22,10 +22,9 @@ Option 1:
 4. `pip install -r requirements.txt`
 5. `pip install -e .`
 
-Option2 :
-a. Make sure conda is installed
-b. Navigate to directory with environment.yml file
-c. `conda env create -f environment.yml` 
+Option 2 (using anaconda):
+1. Navigate to directory with environment.yml file
+2. `conda env create -f environment.yml` 
 
 ### Training
 
