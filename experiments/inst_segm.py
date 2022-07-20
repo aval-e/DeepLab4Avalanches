@@ -11,6 +11,8 @@ class InstSegmentation(EasyExperiment):
 
     This needs special treatment since input and output formats are different. Different losses are needed during
     training and outputs need to be handled differently during validation and testing.
+    
+    This was shortly tested but not further pursued for avalanches.
     """
 
     def forward(self, *args, **kwargs):
