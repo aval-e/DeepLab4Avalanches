@@ -89,9 +89,9 @@ if __name__ == "__main__":
     parser = DavosGtDataset.add_argparse_args(parser)
 
     # Dataset paths
-    parser.add_argument('--test_root_dir', type=str, default='/home/patrick/ecovision/data/2018',
+    parser.add_argument('--test_root_dir', type=str, default='/home/rootdir',
                         help='root directory of the training set')
-    parser.add_argument('--test_ava_file', type=str, default='avalanches0118_endversion.shp',
+    parser.add_argument('--test_ava_file', type=str, default='avalanchePolygons_yr1.shp',
                         help='File name of avalanche shapefile in root directory of training set')
     parser.add_argument('--test_gt_file', type=str, default='Methodenvergleich2018.shp',
                         help='File name of gt comparison data in davos')
