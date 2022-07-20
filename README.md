@@ -1,4 +1,4 @@
-DeepLab4Avalanches
+#DeepLab4Avalanches
 
 This repository contains code for automatic avalanche segmentation in optical satellite imagery using deep learning. For an explanation of the concepts, ideas and evaluation, see publication below. Please use the following citation when using the code for a publication:
 
