@@ -23,7 +23,7 @@ Option 1:
 5. `pip install -e .`
 
 Option2 :
-a. Make sure conda is installed 
+a. Make sure conda is installed
 b. Navigate to directory with environment.yml file
 c. `conda env create -f environment.yml` 
 
