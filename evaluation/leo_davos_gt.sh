@@ -1,27 +1,20 @@
 #!/usr/bin/env bash
 
-#BSUB -n 5
-#BSUB -W 239
-#BSUB -R "rusage[ngpus_excl_p=1]"
-#BSUB -R "rusage[mem=6000]"
-
-exp_name="avanet_davos_gt_eval_19"
-ckpt_path="/cluster/scratch/bartonp/lightning_logs/final/negoffsets/myresnet34_negoffets/myresnet34_negoffets/version_0/checkpoints/epoch=17-step=22103.ckpt"
+exp_name="nameofExperiment"
+ckpt_path="/path/to/the/checkpoint/file.ckpt"
 
 viz_diffs=False
 save_dir="/cluster/scratch/bartonp/lightning_logs/eval/davos_gt_eval"
 
 # Dataset hyperparameters
-#test_root_dir="/cluster/scratch/bartonp/slf_avalanches/2018"
-#test_ava_file="avalanches0118_endversion.shp"
-test_root_dir="/cluster/scratch/bartonp/slf_avalanches/2019"
-test_ava_file="avalanches0119_endversion.shp"
+test_root_dir="/path/to/root/directory/test_year"
+test_ava_file="avalanchePolygons.shp"
 test_gt_file='Methodenvergleich2019.shp'
-dem_dir="/cluster/work/igp_psr/bartonp/dem_ch/swissalti3d_2017_ESPG2056_packbits_tiled.tif"
+dem_dir="/path/to/DEM/DHM.tif"
 tile_size=512
 
 gpus=1
-log_dir="/cluster/scratch/bartonp/lightning_logs/eval/davos_gt_eval"
+log_dir="/dir/to/eval/davos_gt_eval"
 
 python -m evaluation.davos_gt_eval \
 --exp_name $exp_name \
