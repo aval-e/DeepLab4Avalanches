@@ -1,6 +1,6 @@
 """ This script was used for the qualitative evaluation of models.
 
-Predictions are visualised with matplotlib one sample at a time, showing input, ground truth and predictions.
+Predictions are visualised with matplotlib one sample at a time, showing input, ground truth and predictions for all models specified by checkpoints.
 Each sample can either be saved to the save_dir by entering a name for it, or be skipped by pressing enter without
 entering a name.
 
