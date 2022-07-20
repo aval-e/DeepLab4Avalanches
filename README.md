@@ -15,12 +15,17 @@ More documentation is provided in the form of docstrings throughout the code.
 * **utils**: various utilities for data manipulation, visualization, etc.
 
 ### Installation
-
+Option 1:
 1. Create virtual environment
 2. Install gdal
 3. Change to root directory
 4. `pip install -r requirements.txt`
 5. `pip install -e .`
+
+Option2 :
+a. Make sure conda is installed 
+b. Navigate to directory with environment.yml file
+c. `conda env create -f environment.yml` 
 
 ### Training
 
