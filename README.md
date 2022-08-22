@@ -1,7 +1,12 @@
 # DeepLab4Avalanches
-This repository contains code for automatic avalanche segmentation in optical satellite imagery using deep learning. For an explanation of the concepts, ideas and evaluation, see publication below. Please use the following citation when using the code for a publication:
+This repository contains code for automatic avalanche segmentation in optical satellite imagery using deep learning. For an explanation of the concepts, ideas and evaluation, see publication below. Please cite our publication if you relied on it:
 
 Hafner, E. D., Barton, P., Daudt, R. C., Wegner, J. D., Schindler, K., and Bühler, Y.: Automated avalanche mapping from SPOT 6/7 satellite imagery: results, evaluation, potential and limitations, The Cryosphere Discuss. [preprint], https://doi.org/10.5194/tc-2022-80, in review, 2022.
+
+and cite the code as follows:
+
+Barton, P., Hafner, E. D., Daudt, R. C., Wegner, J. D., Schindler, K., and Bühler, Y.: Automated avalanche mapping from SPOT 6/7 satellite imagery with a DeepLabv3+, [code], 2022.
+
 
 More documentation is provided in the form of docstrings throughout the code.
 
