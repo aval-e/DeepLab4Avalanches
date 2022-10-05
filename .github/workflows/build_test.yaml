@@ -1,0 +1,28 @@
+name: Installation Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        container:
+          - "ubuntu:20.04"
+          - "ubuntu:22.04"
+    container: ${{ matrix.container }}
+    steps:
+      - uses: actions/checkout@v1
+      - name: submodule update
+        run: git submodule update --init --recursive
+      - name: Install python dependencies
+        run: pip install -r requirements.txt
+      - name: Install package
+        run: pip install -e .
