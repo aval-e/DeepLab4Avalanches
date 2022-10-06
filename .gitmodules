@@ -1,0 +1,4 @@
+[submodule "segm_models"]
+	path = segm_models
+	url = https://github.com/qubvel/segmentation_models.pytorch.git
+	branch = 176f2777cbfc4101abf9b10d1339c7a3e93f06f2
