@@ -28,8 +28,12 @@ Option 1:
 5. `pip install -e .`
 
 Option 2 (using anaconda):
-1. Navigate to directory with environment.yml file
-2. `conda env create -f environment.yml` 
+
+1. Navigate to directory with environment.yml file and change the prefix path in the environment.yml file
+2. Change the segm_models path in the requirements.txt file
+3. `conda env create -f environment.yml` 
+4. `conda activate eco`
+5. `run pip install -e .` in the root dir
 
 ### Training
 

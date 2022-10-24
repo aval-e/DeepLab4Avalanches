@@ -59,7 +59,7 @@ requests-oauthlib==1.3.0
 rsa==4.6
 Rtree==0.9.4
 scipy==1.5.2
-segmentation-models-pytorch @ file:///cluster/home/bartonp/avamap/segm_models
+segmentation-models-pytorch @ file:///home/elyas/Desktop/SpotTheAvalanche/DeepLab4Avalanches/segm_models
 Shapely==1.6.4
 six==1.15.0
 snuggs==1.4.7
