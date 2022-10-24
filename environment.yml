@@ -177,4 +177,4 @@ dependencies:
     - termcolor==1.1.0
     - timm==0.1.20
     - yacs==0.1.8
-prefix: /home/patrick/miniconda3/envs/eco
+prefix: /home/elyas/anaconda3/envs/eco
