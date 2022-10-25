@@ -21,6 +21,7 @@ from datasets.avalanche_dataset_grid import AvalancheDatasetGrid
 from torch.utils.data import DataLoader
 from utils.losses import crop_to_center, get_precision_recall_f1, soft_dice
 from utils import data_utils
+import errno
 
 
 def create_raster(region_file, output_path, tile_size, pixel_w):
@@ -140,16 +141,28 @@ def main(args):
         print('Finished. Computing metrics:')
         print_metrics(metrics)
 
+def dir_path(string):
+    if os.path.isdir(string):
+        return string
+    else:
+        raise NotADirectoryError(string)
+
+def file_path(string):
+    if os.path.isfile(string):
+        return string
+    else:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), string)
+
 
 if __name__ == "__main__":
     parser = ArgumentParser(description='Run avalanche prediction on satellite images')
 
     # Trainer args
-    parser.add_argument('--image_dir', type=str, help='directory containing all satellite images')
-    parser.add_argument('--dem_path', type=str, default='', help='path to DEM if needed')
-    parser.add_argument('--region_file', type=str, help='path to region file specifying which area to predict')
-    parser.add_argument('--output_path', type=str, help='path to output file of predictions. Will be created or overwritten.')
-    parser.add_argument('--checkpoint', type=str, help='model checkpoint to use')
+    parser.add_argument('--image_dir', type=dir_path, required = True, help='directory containing all satellite images')
+    parser.add_argument('--dem_path', type=file_path, required = True, default='', help='path to DEM if needed')
+    parser.add_argument('--region_file', type=file_path, required = True, help='path to region file specifying which area to predict')
+    parser.add_argument('--output_path', type=dir_path, required = True, help='path to output file of predictions. Will be created or overwritten.')
+    parser.add_argument('--checkpoint', type=file_path, required = True, help='model checkpoint to use')
     parser.add_argument('--aval_path', type=str, default='', help='ground truth avalanche path if available for computing metrics')
     parser.add_argument('--tile_size', type=int, default=1024, help='Tile size to be used for predictions. Default: 1024')
     parser.add_argument('--border', type=int, default=100, help='Border to be disregarded for each sample in pixels. Default: 100')
