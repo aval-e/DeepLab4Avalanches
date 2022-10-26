@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
 python -m evaluation.predict_region \
---image_dir '/path/to/the/image/directory' \
---dem_path '/path/to/DEM/DHM.tif'\
---region_file '/path/to/specify/the/region/for/prediction/region.shp' \
---output_path '/path/to/store/output.tif' \
---checkpoint '/path/to/the/checkpoint/file.ckpt' \
---aval_path '/path/for/avalanches/to/validate/against/avalanches.tif' # optional
-
-
+--image_dir '/home/elyas/Desktop/SpotTheAvalanche/DroneData/Drone_imagery' \
+--dem_path '/home/elyas/Desktop/SpotTheAvalanche/DroneData/davos_dem_25cm_lv95.tif' \
+--region_file '/home/elyas/Desktop/SpotTheAvalanche/DroneData/AOI/braema_aoi.shp' \
+--output_path '/home/elyas/Desktop/SpotTheAvalanche/DroneData/Output/output2.tif' \
+--checkpoint '/home/elyas/Desktop/SpotTheAvalanche/DroneData/Checkpoints/epoch=12-step=32850.ckpt' \
+--aval_path '/home/elyas/Desktop/SpotTheAvalanche/DroneData/annotations/20190119_BraemaN_lv95.shp' \

@@ -33,7 +33,7 @@ Option 2 (using anaconda):
 2. Change the segm_models path in the requirements.txt file
 3. `conda env create -f environment.yml` 
 4. `conda activate eco`
-5. `run pip install -e .` in the root dir
+5. `run pip install -e .` in the root dir and in the segm_models
 
 ### Training
 

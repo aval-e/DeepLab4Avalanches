@@ -123,7 +123,7 @@ dependencies:
   - python=3.7.4=h265db76_1
   - python-dateutil=2.8.1=py_0
   - python_abi=3.7=1_cp37m
-  - pytorch=1.6.0=py3.7_cuda10.2.89_cudnn7.6.5_0
+  - pytorch=1.6.0
   - pytz=2020.1=py_0
   - pyyaml=5.3.1=py37h7b6447c_1
   - qt=5.9.7=h5867ecd_1
