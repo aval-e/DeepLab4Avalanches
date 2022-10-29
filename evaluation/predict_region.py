@@ -108,10 +108,10 @@ def main(args):
                                     dem_path=args.dem_path,
                                     aval_path=args.aval_path,
                                     tile_size=tile_size,
-                                    overlap=border*2,
-                                    bands=[3, 4],
-                                    means=[1023.9, 949.9],
-                                    stds=[823.4, 975.5],
+                                    overlap=border*120,
+                                    bands=[1, 2, 3],
+                                    means=[1023.9, 949.9, 800],
+                                    stds=[823.4, 975.5, 400],
                                     )
 
     test_loader = DataLoader(test_set, batch_size=1, shuffle=False, num_workers=4,
@@ -158,13 +158,13 @@ if __name__ == "__main__":
     parser = ArgumentParser(description='Run avalanche prediction on satellite images')
 
     # Trainer args
-    parser.add_argument('--image_dir', type=dir_path, required = True, help='directory containing all satellite images')
-    parser.add_argument('--dem_path', type=file_path, required = True, default='', help='path to DEM if needed')
-    parser.add_argument('--region_file', type=file_path, required = True, help='path to region file specifying which area to predict')
-    parser.add_argument('--output_path', type=dir_path, required = True, help='path to output file of predictions. Will be created or overwritten.')
-    parser.add_argument('--checkpoint', type=file_path, required = True, help='model checkpoint to use')
+    parser.add_argument('--image_dir', type=str, required = True, help='directory containing all satellite images')
+    parser.add_argument('--dem_path', type=str, required = True, default='', help='path to DEM if needed')
+    parser.add_argument('--region_file', type=str, required = True, help='path to region file specifying which area to predict')
+    parser.add_argument('--output_path', type=str, required = True, help='path to output file of predictions. Will be created or overwritten.')
+    parser.add_argument('--checkpoint', type=str, required = True, help='model checkpoint to use')
     parser.add_argument('--aval_path', type=str, default='', help='ground truth avalanche path if available for computing metrics')
-    parser.add_argument('--tile_size', type=int, default=1024, help='Tile size to be used for predictions. Default: 1024')
+    parser.add_argument('--tile_size', type=int, default=512, help='Tile size to be used for predictions. Default: 1024')
     parser.add_argument('--border', type=int, default=100, help='Border to be disregarded for each sample in pixels. Default: 100')
     args = parser.parse_args()
     main(args)
