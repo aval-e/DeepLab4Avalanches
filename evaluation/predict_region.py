@@ -164,7 +164,7 @@ if __name__ == "__main__":
     parser.add_argument('--output_path', type=str, required = True, help='path to output file of predictions. Will be created or overwritten.')
     parser.add_argument('--checkpoint', type=str, required = True, help='model checkpoint to use')
     parser.add_argument('--aval_path', type=str, default='', help='ground truth avalanche path if available for computing metrics')
-    parser.add_argument('--tile_size', type=int, default=512, help='Tile size to be used for predictions. Default: 1024')
+    parser.add_argument('--tile_size', type=int, default=3072, help='Tile size to be used for predictions. Default: 1024')
     parser.add_argument('--border', type=int, default=100, help='Border to be disregarded for each sample in pixels. Default: 100')
     args = parser.parse_args()
     main(args)
