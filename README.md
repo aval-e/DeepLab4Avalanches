@@ -31,9 +31,11 @@ Option 2 (using anaconda):
 
 1. Navigate to directory with environment.yml file and change the prefix path in the environment.yml file
 2. Change the segm_models path in the requirements.txt file
-3. `conda env create -f environment.yml` 
-4. `conda activate eco`
-5. `run pip install -e .` in the root dir and in the segm_models
+3. run command `git submodule update --init --recursive` in root dir
+4. `conda env create -f environment.yml` 
+5. `conda activate eco`
+6. `run pip install -e .` in the root dir and in the segm_models
+ 
 
 ### Training
 
@@ -44,6 +46,7 @@ Training can be run with  `bash run1yr.sh` or `bash run2yrs.sh` script. Training
 ### Prediction
 
 To automatically predict avalanches on new satellite images run `bash predict_region.sh` script. This creates a 1 band GeoTiff with probability values ranging from 0-1, where is certainly no avalanche, and 1 is certainly an avalanche. The predictions can be thresholded to get a binary map of predictions, with their certainty determined by the threshold.
+Tile size and border size might have to be adapted to the desired resolution
 
 The following flags need to be set:
 
@@ -51,6 +54,5 @@ The following flags need to be set:
 * --dem_path: path to the DEM if needed
 * --region_file: a shapefile specifiying which region to predict over
 * --output_path: the complete path and file name in which to store predictions. This will be a GeoTiff
-
-
+* --checkpoint: the path to the desired .ckpt file
 
