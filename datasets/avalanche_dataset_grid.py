@@ -58,7 +58,7 @@ class AvalancheDatasetGrid(Dataset):
 
         # get sample points within region
         region = gpd.read_file(os.path.join(root_dir, region_file))
-        self.points = data_utils.generate_point_grid(region, tile_size, overlap)
+        self.points = data_utils.generate_point_grid(region, tile_size, self.pixel_w, overlap)
 
         self.to_tensor = ToTensor()
 

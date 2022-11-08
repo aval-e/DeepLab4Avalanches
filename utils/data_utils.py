@@ -207,7 +207,7 @@ def get_avalanches_in_region(avalanches, region):
     return avalanches[selection]
 
 
-def generate_point_grid(region, tile_size, overlap=0):
+def generate_point_grid(region, tile_size, pixel_w ,overlap=0):
     """
     Generate a geopandas Geoseries object of coordinates within a region
     corresponding to the top left corner of the corrsponding patch.
@@ -221,23 +221,25 @@ def generate_point_grid(region, tile_size, overlap=0):
     :return: geopandas geoseries of coordinates as Points
     """
 
-    spacing = tile_size - overlap
+    spacing = tile_size*pixel_w - overlap
 
     # generate uniform grid over the entire extent
-    minx, miny, maxx, maxy = region.total_bounds
+
+    minx, miny, maxx, maxy = region.buffer(tile_size, join_style=2).total_bounds
+    #minx, miny, maxx, maxy = region.total_bounds
     X, Y = np.mgrid[minx:maxx + spacing:spacing, miny:maxy + spacing:spacing]
     X, Y = X.ravel(), Y.ravel()
     points = gpd.GeoSeries(map(Point, zip(X, Y)))
 
     # slightly expand regions and filter out points outside of polygons
-    expanded_region = region.buffer(tile_size/4, join_style=2)
+    expanded_region = region.buffer(tile_size*pixel_w/2, join_style=2)
     mask = points.within(expanded_region.loc[0])
     for i in range(1, len(expanded_region)):
         mask |= points.within(expanded_region.loc[i])
     points = points.loc[mask]
 
     # shift coordinates such that they are in the top left of each patch
-    points = points.translate(xoff=-tile_size*3/4, yoff=tile_size*3/4)
+    points = points.translate(xoff=-tile_size*pixel_w*1/2, yoff=tile_size*pixel_w*1/2)
 
     return points
 
