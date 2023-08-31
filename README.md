@@ -45,7 +45,7 @@ Training can be run with  `bash run1yr.sh` or `bash run2yrs.sh` script. Training
 
 ### Prediction
 
-To automatically predict avalanches on new satellite images run `bash predict_region.sh` script. This creates a 1 band GeoTiff with probability values ranging from 0-1, where is certainly no avalanche, and 1 is certainly an avalanche. The predictions can be thresholded to get a binary map of predictions, with their certainty determined by the threshold.
+To automatically predict avalanches on new satellite images run `bash predict.sh` script. This creates a 1 band GeoTiff with probability values ranging from 0-1, where is certainly no avalanche, and 1 is certainly an avalanche. The predictions can be thresholded to get a binary map of predictions, with their certainty determined by the threshold.
 Tile size and border size might have to be adapted to the desired resolution
 
 The following flags need to be set:
